@@ -1,113 +1,212 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { 
+  Container, 
+  Button, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper,
+  Typography,
+  Box,
+  Checkbox,
+  FormControlLabel,
+  ThemeProvider,
+  createTheme,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useReactToPrint } from 'react-to-print';
+
+// Initialize Firebase (replace with your config)
+const firebaseConfig = {
+  apiKey: "AIzaSyAtKLKB3-Nl0fP-9yeYd9SywiMXyAgtpLM",
+  authDomain: "oz-card-randomizer.firebaseapp.com",
+  projectId: "oz-card-randomizer",
+  storageBucket: "oz-card-randomizer.appspot.com",
+  messagingSenderId: "1060427616291",
+  appId: "1:1060427616291:web:30e164d8a82a8d8899a196",
+  measurementId: "G-D3P5Y0M38K"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const collections = [
+  { id: 'africansavanna', name: 'African Savannah' },
+  { id: 'californiatrail', name: 'California Trail' },
+  { id: 'childrenszoo', name: 'Children\'s Zoo' },
+  { id: 'tropicalrainforest', name: 'Tropical Rainforest' },
+  { id: 'specialedition', name: 'Special Edition' }
+];
+
+// Create a custom theme
+const theme = createTheme({
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#ffffff',
+          boxShadow: 'none',
+          border: '1px solid #e0e0e0',
+        },
+      },
+    },
+  },
+});
 
 export default function Home() {
+  const [boosterPacks, setBoosterPacks] = useState<any[][]>([]);
+  const [cardsData, setCardsData] = useState<{ [key: string]: any }>({});
+  const [checkedItems, setCheckedItems] = useState<{ [key: string]: boolean }>({});
+  const [expandedPacks, setExpandedPacks] = useState<number[]>([]);
+  const componentRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const data: { [key: string]: any } = {};
+      for (const col of [...collections.map(c => c.id), 'spoonbill']) {
+        const querySnapshot = await getDocs(collection(db, col));
+        data[col] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
+      setCardsData(data);
+    };
+
+    fetchData();
+  }, []);
+
+  const generateBoosterPack = () => {
+    const pack: any[] = [];
+    const usedCards = new Set();
+
+    const addCard = (collection: string) => {
+      let card;
+      do {
+        card = cardsData[collection][Math.floor(Math.random() * cardsData[collection].length)];
+      } while (usedCards.has(`${collection}-${card.id}`));
+      pack.push({ ...card, collection });
+      usedCards.add(`${collection}-${card.id}`);
+    };
+
+    // Steps 1-3
+    for (const col of collections.slice(0, 4).map(c => c.id)) {
+      addCard(col);
+      addCard(col);
+    }
+
+    // Steps 4-5
+    const randomCollection = collections[Math.floor(Math.random() * (collections.length - 1))].id;
+    addCard(randomCollection);
+
+    // Step 6
+    addCard('spoonbill');
+
+    return pack;
+  };
+
+  const generatePacks = (count: number) => {
+    const newPacks = [];
+    for (let i = 0; i < count; i++) {
+      newPacks.push(generateBoosterPack());
+    }
+    setBoosterPacks(newPacks);
+    setCheckedItems({});
+    // Set only the first pack to be expanded if count > 1
+    setExpandedPacks(count === 1 ? [0] : []);
+  };
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current || null,
+  });
+
+  const handleCheck = (packIndex: number, cardIndex: number) => {
+    setCheckedItems(prev => ({
+      ...prev,
+      [`${packIndex}-${cardIndex}`]: !prev[`${packIndex}-${cardIndex}`]
+    }));
+  };
+
+  const getCollectionName = (id: string) => {
+    const collection = collections.find(c => c.id === id);
+    return collection ? collection.name : 'Spoonbill';
+  };
+
+  const handleAccordionChange = (panel: number) => (event: any, isExpanded: any) => {
+    setExpandedPacks(prev => 
+      isExpanded ? [...prev, panel] : prev.filter(p => p !== panel)
+    );
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <ThemeProvider theme={theme}>
+      <Container maxWidth="lg" sx={{ backgroundColor: '#f5f5f5', minHeight: '100vh', py: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Booster Pack Generator
+        </Typography>
+        <Box sx={{ mb: 2 }}>
+          <Button variant="contained" onClick={() => generatePacks(1)} sx={{ mr: 1 }}>Generate 1 Pack</Button>
+          <Button variant="contained" onClick={() => generatePacks(5)} sx={{ mr: 1 }}>Generate 5 Packs</Button>
+          <Button variant="contained" onClick={() => generatePacks(10)} sx={{ mr: 1 }}>Generate 10 Packs</Button>
+          <Button variant="contained" onClick={() => generatePacks(20)} sx={{ mr: 1 }}>Generate 20 Packs</Button>
+          <Button variant="contained" onClick={handlePrint}>Print</Button>
+        </Box>
+        <div ref={componentRef}>
+          {boosterPacks.map((pack, packIndex) => (
+            <Accordion 
+              key={packIndex}
+              expanded={expandedPacks.includes(packIndex)}
+              onChange={handleAccordionChange(packIndex)}
+              sx={{ mb: 2 }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>Booster Pack #{packIndex + 1}</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <TableContainer component={Paper} sx={{ backgroundColor: '#ffffff' }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Collection</TableCell>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Number</TableCell>
+                        <TableCell>Done</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {pack.map((card, cardIndex) => (
+                        <TableRow key={cardIndex}>
+                          <TableCell>{getCollectionName(card.collection)}</TableCell>
+                          <TableCell>{card.name}</TableCell>
+                          <TableCell>{card.number}</TableCell>
+                          <TableCell>
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={!!checkedItems[`${packIndex}-${cardIndex}`]}
+                                  onChange={() => handleCheck(packIndex, cardIndex)}
+                                />
+                              }
+                              label=""
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </AccordionDetails>
+            </Accordion>
+          ))}
         </div>
-      </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+      </Container>
+    </ThemeProvider>
   );
 }
