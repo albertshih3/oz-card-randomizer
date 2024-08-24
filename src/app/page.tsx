@@ -22,6 +22,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Link,
+  CircularProgress,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useReactToPrint } from 'react-to-print';
@@ -68,16 +70,28 @@ export default function Home() {
   const [cardsData, setCardsData] = useState<{ [key: string]: any }>({});
   const [checkedItems, setCheckedItems] = useState<{ [key: string]: boolean }>({});
   const [expandedPacks, setExpandedPacks] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const componentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const data: { [key: string]: any } = {};
-      for (const col of [...collections.map(c => c.id), 'spoonbill']) {
-        const querySnapshot = await getDocs(collection(db, col));
-        data[col] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      try {
+        setLoading(true);
+        const data: { [key: string]: any } = {};
+        for (const col of [...collections.map(c => c.id), 'spoonbill']) {
+          const querySnapshot = await getDocs(collection(db, col));
+          data[col] = querySnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter((card: { id: string; active?: boolean }) => card.active !== false); // Consider cards active if 'active' is true or null/undefined
+        }
+        setCardsData(data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load card data. Please try again later.");
+        setLoading(false);
       }
-      setCardsData(data);
     };
 
     fetchData();
@@ -88,39 +102,58 @@ export default function Home() {
     const usedCards = new Set();
 
     const addCard = (collection: string) => {
-      let card;
-      do {
-        card = cardsData[collection][Math.floor(Math.random() * cardsData[collection].length)];
-      } while (usedCards.has(`${collection}-${card.id}`));
+      const availableCards = cardsData[collection].filter((card: { id: any; }) => !usedCards.has(`${collection}-${card.id}`));
+      if (availableCards.length === 0) {
+        console.warn(`No more available cards in ${collection} collection`);
+        return false;
+      }
+
+      const card = availableCards[Math.floor(Math.random() * availableCards.length)];
       pack.push({ ...card, collection });
       usedCards.add(`${collection}-${card.id}`);
+      return true;
     };
 
     // Steps 1-3
     for (const col of collections.slice(0, 4).map(c => c.id)) {
-      addCard(col);
-      addCard(col);
+      if (!addCard(col) || !addCard(col)) {
+        console.warn(`Not enough cards in ${col} collection`);
+      }
     }
 
     // Steps 4-5
-    const randomCollection = collections[Math.floor(Math.random() * (collections.length - 1))].id;
-    addCard(randomCollection);
+    let randomCollection;
+    let attempts = 0;
+    do {
+      randomCollection = collections[Math.floor(Math.random() * (collections.length - 1))].id;
+      attempts++;
+    } while (!addCard(randomCollection) && attempts < 10);
+
+    if (attempts >= 10) {
+      console.warn("Failed to add a card from a random collection after 10 attempts");
+    }
 
     // Step 6
-    addCard('spoonbill');
+    if (!addCard('spoonbill')) {
+      console.warn('Not enough cards in spoonbill collection');
+    }
 
     return pack;
   };
 
   const generatePacks = (count: number) => {
-    const newPacks = [];
-    for (let i = 0; i < count; i++) {
-      newPacks.push(generateBoosterPack());
+    try {
+      const newPacks = [];
+      for (let i = 0; i < count; i++) {
+        newPacks.push(generateBoosterPack());
+      }
+      setBoosterPacks(newPacks);
+      setCheckedItems({});
+      setExpandedPacks(count === 1 ? [0] : []);
+    } catch (err) {
+      console.error("Error generating packs:", err);
+      setError("Failed to generate booster packs. Please try again.");
     }
-    setBoosterPacks(newPacks);
-    setCheckedItems({});
-    // Set only the first pack to be expanded if count > 1
-    setExpandedPacks(count === 1 ? [0] : []);
   };
 
   const handlePrint = useReactToPrint({
@@ -140,10 +173,29 @@ export default function Home() {
   };
 
   const handleAccordionChange = (panel: number) => (event: any, isExpanded: any) => {
-    setExpandedPacks(prev => 
+    setExpandedPacks(prev =>
       isExpanded ? [...prev, panel] : prev.filter(p => p !== panel)
     );
   };
+
+  if (loading) {
+    return (
+      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container sx={{ textAlign: 'center', mt: 4 }}>
+        <Typography color="error">{error}</Typography>
+        <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
+          Retry
+        </Button>
+      </Container>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -156,11 +208,14 @@ export default function Home() {
           <Button variant="contained" onClick={() => generatePacks(5)} sx={{ mr: 1 }}>Generate 5 Packs</Button>
           <Button variant="contained" onClick={() => generatePacks(10)} sx={{ mr: 1 }}>Generate 10 Packs</Button>
           <Button variant="contained" onClick={() => generatePacks(20)} sx={{ mr: 1 }}>Generate 20 Packs</Button>
-          <Button variant="contained" onClick={handlePrint}>Print</Button>
+          <Button variant="contained" onClick={handlePrint} sx={{ mr: 1 }}>Print</Button>
+          <Button variant="contained" component={Link} href="/edit">
+            Edit Cards
+          </Button>
         </Box>
         <div ref={componentRef}>
           {boosterPacks.map((pack, packIndex) => (
-            <Accordion 
+            <Accordion
               key={packIndex}
               expanded={expandedPacks.includes(packIndex)}
               onChange={handleAccordionChange(packIndex)}
