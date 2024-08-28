@@ -27,6 +27,7 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useReactToPrint } from 'react-to-print';
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Initialize Firebase (replace with your config)
 const firebaseConfig = {
@@ -41,6 +42,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 
 const collections = [
   { id: 'africansavanna', name: 'African Savannah' },
