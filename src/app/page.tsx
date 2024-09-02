@@ -3,15 +3,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { 
-  Container, 
-  Button, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+import {
+  Container,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
   Typography,
   Box,
@@ -28,6 +28,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useReactToPrint } from 'react-to-print';
 import { getAnalytics, isSupported } from "firebase/analytics";
+import EditIcon from '@mui/icons-material/Edit';
 
 // Initialize Firebase (replace with your config)
 const firebaseConfig = {
@@ -51,21 +52,6 @@ const collections = [
   { id: 'tropicalrainforest', name: 'Tropical Rainforest' },
   { id: 'specialedition', name: 'Special Edition' }
 ];
-
-// Create a custom theme
-const theme = createTheme({
-  components: {
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          backgroundColor: '#ffffff',
-          boxShadow: 'none',
-          border: '1px solid #e0e0e0',
-        },
-      },
-    },
-  },
-});
 
 export default function Home() {
   const [boosterPacks, setBoosterPacks] = useState<any[][]>([]);
@@ -200,70 +186,68 @@ export default function Home() {
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container maxWidth="lg" sx={{ backgroundColor: '#f5f5f5', minHeight: '100vh', py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Booster Pack Generator
-        </Typography>
-        <Box sx={{ mb: 2 }}>
-          <Button variant="contained" onClick={() => generatePacks(1)} sx={{ mr: 1 }}>Generate 1 Pack</Button>
-          <Button variant="contained" onClick={() => generatePacks(5)} sx={{ mr: 1 }}>Generate 5 Packs</Button>
-          <Button variant="contained" onClick={() => generatePacks(10)} sx={{ mr: 1 }}>Generate 10 Packs</Button>
-          <Button variant="contained" onClick={() => generatePacks(20)} sx={{ mr: 1 }}>Generate 20 Packs</Button>
-          <Button variant="contained" onClick={handlePrint} sx={{ mr: 1 }}>Print</Button>
-          <Button variant="contained" component={Link} href="/edit">
-            Edit Cards
-          </Button>
-        </Box>
-        <div ref={componentRef}>
-          {boosterPacks.map((pack, packIndex) => (
-            <Accordion
-              key={packIndex}
-              expanded={expandedPacks.includes(packIndex)}
-              onChange={handleAccordionChange(packIndex)}
-              sx={{ mb: 2 }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography>Booster Pack #{packIndex + 1}</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <TableContainer component={Paper} sx={{ backgroundColor: '#ffffff' }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Collection</TableCell>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Number</TableCell>
-                        <TableCell>Done</TableCell>
+    <Container maxWidth="lg" sx={{ minHeight: '100vh', py: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Booster Pack Generator
+      </Typography>
+      <Box sx={{ mb: 2 }}>
+        <Button variant="contained" onClick={() => generatePacks(1)} sx={{ mr: 1 }}>Generate Booster Pack!</Button>
+        <Button variant="contained" onClick={() => generatePacks(5)} sx={{ mr: 1 }}>Generate 5 Packs</Button>
+        <Button variant="contained" onClick={() => generatePacks(10)} sx={{ mr: 1 }}>Generate 10 Packs</Button>
+        <Button variant="contained" onClick={() => generatePacks(20)} sx={{ mr: 1 }}>Generate 20 Packs</Button>
+        {/* <Button variant="contained" onClick={handlePrint} sx={{ mr: 1 }}>Print</Button> */}
+        <Button variant="contained" color='success' endIcon={<EditIcon />} component={Link} href="/edit">
+          Edit Cards
+        </Button>
+      </Box>
+      <div ref={componentRef}>
+        {boosterPacks.map((pack, packIndex) => (
+          <Accordion
+            key={packIndex}
+            expanded={expandedPacks.includes(packIndex)}
+            onChange={handleAccordionChange(packIndex)}
+            sx={{ mb: 2 }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography>Booster Pack #{packIndex + 1}</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <TableContainer component={Paper} sx={{ backgroundColor: '#ffffff' }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Collection</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Number</TableCell>
+                      <TableCell>Done</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pack.map((card, cardIndex) => (
+                      <TableRow key={cardIndex}>
+                        <TableCell>{getCollectionName(card.collection)}</TableCell>
+                        <TableCell>{card.name}</TableCell>
+                        <TableCell>{card.number}</TableCell>
+                        <TableCell>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={!!checkedItems[`${packIndex}-${cardIndex}`]}
+                                onChange={() => handleCheck(packIndex, cardIndex)}
+                              />
+                            }
+                            label=""
+                          />
+                        </TableCell>
                       </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {pack.map((card, cardIndex) => (
-                        <TableRow key={cardIndex}>
-                          <TableCell>{getCollectionName(card.collection)}</TableCell>
-                          <TableCell>{card.name}</TableCell>
-                          <TableCell>{card.number}</TableCell>
-                          <TableCell>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={!!checkedItems[`${packIndex}-${cardIndex}`]}
-                                  onChange={() => handleCheck(packIndex, cardIndex)}
-                                />
-                              }
-                              label=""
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </div>
-      </Container>
-    </ThemeProvider>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </div>
+    </Container>
   );
 }
