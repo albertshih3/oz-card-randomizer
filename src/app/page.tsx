@@ -50,7 +50,8 @@ const collections = [
   { id: 'californiatrail', name: 'California Trail' },
   { id: 'childrenszoo', name: 'Children\'s Zoo' },
   { id: 'tropicalrainforest', name: 'Tropical Rainforest' },
-  { id: 'specialedition', name: 'Special Edition' }
+  { id: 'specialedition', name: 'Special Edition' },
+  { id: 'booatthezoo', name: 'Boo at the Zoo' }
 ];
 
 export default function Home() {
@@ -113,7 +114,7 @@ export default function Home() {
     let randomCollection;
     let attempts = 0;
     do {
-      randomCollection = collections[Math.floor(Math.random() * (collections.length - 1))].id;
+      randomCollection = collections[Math.floor(Math.random() * (collections.length))].id;
       attempts++;
     } while (!addCard(randomCollection) && attempts < 10);
 

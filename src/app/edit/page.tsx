@@ -54,6 +54,7 @@ const collections = [
   { id: 'tropicalrainforest', name: 'Tropical Rainforest' },
   { id: 'specialedition', name: 'Special Edition' },
   { id: 'spoonbill', name: 'Spoonbill' },
+  { id: 'booatthezoo', name: 'Boo At The Zoo' }
 ];
 
 export default function CardManagement() {
