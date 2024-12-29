@@ -32,13 +32,13 @@ import EditIcon from '@mui/icons-material/Edit';
 
 // Initialize Firebase (replace with your config)
 const firebaseConfig = {
-  apiKey: "AIzaSyAtKLKB3-Nl0fP-9yeYd9SywiMXyAgtpLM",
-  authDomain: "oz-card-randomizer.firebaseapp.com",
-  projectId: "oz-card-randomizer",
-  storageBucket: "oz-card-randomizer.appspot.com",
-  messagingSenderId: "1060427616291",
-  appId: "1:1060427616291:web:30e164d8a82a8d8899a196",
-  measurementId: "G-D3P5Y0M38K"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
