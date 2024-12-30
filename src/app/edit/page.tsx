@@ -2,41 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  addDoc,
-} from "firebase/firestore";
+import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from "firebase/firestore";
 import { getAuth, signInWithCustomToken } from "firebase/auth";
-import { useAuth } from "@clerk/nextjs"; // Clerk's useAuth hook
-import {
-  Container,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Switch,
-  TextField,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Box,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-} from "@mui/material";
+import { useAuth } from "@clerk/nextjs";
+import { Container, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Switch, Button, Box } from "@mui/material";
+import CardDialog from "../components/CardManagement";
+import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
-// Firebase Configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -52,23 +24,25 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 const collections = [
-  { id: 'africansavanna', name: 'African Savannah' },
-  { id: 'californiatrail', name: 'California Trail' },
-  { id: 'childrenszoo', name: "Children's Zoo" },
-  { id: 'tropicalrainforest', name: 'Tropical Rainforest' },
-  { id: 'specialedition', name: 'Special Edition' },
-  { id: 'booatthezoo', name: 'Boo at the Zoo' },
+  { id: "africansavanna", name: "African Savannah" },
+  { id: "californiatrail", name: "California Trail" },
+  { id: "childrenszoo", name: "Children's Zoo" },
+  { id: "tropicalrainforest", name: "Tropical Rainforest" },
+  { id: "specialedition", name: "Special Edition" },
+  { id: "booatthezoo", name: "Boo at the Zoo" },
 ];
 
+type SortDirection = 'asc' | 'desc';
+type SortColumn = 'name' | 'number' | 'collection' | 'active';
+
 export default function CardManagement() {
-  const { getToken } = useAuth(); // Clerk's getToken method
+  const { getToken } = useAuth();
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [newCardName, setNewCardName] = useState("");
-  const [newCardNumber, setNewCardNumber] = useState("");
-  const [newCardActive, setNewCardActive] = useState(false);
-  const [newCardCategory, setNewCardCategory] = useState("");
+  const [editingCard, setEditingCard] = useState<any>(null);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
     const signIntoFirebaseWithClerk = async () => {
@@ -107,33 +81,102 @@ export default function CardManagement() {
     try {
       await updateDoc(cardRef, { active: newActiveState });
       setCards((prevCards) =>
-        prevCards.map((c) =>
-          c.id === card.id ? { ...c, active: newActiveState } : c
-        )
+        prevCards.map((c) => (c.id === card.id ? { ...c, active: newActiveState } : c))
       );
     } catch (err) {
       console.error("Failed to toggle card active state:", err);
     }
   };
 
-  const handleCreateCard = async () => {
+  const handleEditCard = (card: any) => {
+    setEditingCard(card);
+    setOpenDialog(true);
+  };
+
+  const handleCreateCard = () => {
+    setEditingCard(null);
+    setOpenDialog(true);
+  };
+
+  const handleDeleteCard = async (card: any) => {
     try {
-      const newCard = {
-        name: newCardName,
-        number: newCardNumber,
-        active: newCardActive,
-        category: newCardCategory,
-      };
-      const docRef = await addDoc(collection(db, newCardCategory), newCard);
-      setCards((prevCards) => [...prevCards, { id: docRef.id, collection: newCardCategory, ...newCard }]);
+      const cardRef = doc(db, card.collection, card.id);
+      await deleteDoc(cardRef);
+      setCards((prevCards) => prevCards.filter((c) => c.id !== card.id));
       setOpenDialog(false);
-      setNewCardName("");
-      setNewCardNumber("");
-      setNewCardActive(false);
-      setNewCardCategory("");
+      setEditingCard(null);
     } catch (err) {
-      console.error("Error creating card:", err);
+      console.error("Failed to delete card:", err);
     }
+  };
+
+  const handleSaveCard = async (cardData: any) => {
+    try {
+      if (editingCard) {
+        const cardRef = doc(db, editingCard.collection, editingCard.id);
+        await updateDoc(cardRef, cardData);
+        setCards((prevCards) =>
+          prevCards.map((c) =>
+            c.id === editingCard.id ? { ...c, ...cardData } : c
+          )
+        );
+      } else {
+        const docRef = await addDoc(collection(db, cardData.category), cardData);
+        setCards((prevCards) => [
+          ...prevCards,
+          { id: docRef.id, collection: cardData.category, ...cardData },
+        ]);
+      }
+    } catch (err) {
+      console.error("Error saving card:", err);
+    } finally {
+      setOpenDialog(false);
+      setEditingCard(null);
+    }
+  };
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedCards = () => {
+    return [...cards].sort((a, b) => {
+      let compareA, compareB;
+
+      if (sortColumn === 'collection') {
+        compareA = collections.find((c) => c.id === a.collection)?.name || '';
+        compareB = collections.find((c) => c.id === b.collection)?.name || '';
+      } else {
+        compareA = a[sortColumn];
+        compareB = b[sortColumn];
+      }
+
+      // Handle string values
+      if (typeof compareA === 'string' && typeof compareB === 'string') {
+        compareA = compareA.toLowerCase();
+        compareB = compareB.toLowerCase();
+      }
+      
+      // Handle numeric values
+      if (sortColumn === 'number') {
+        compareA = Number(compareA);
+        compareB = Number(compareB);
+      }
+
+      if (compareA < compareB) return sortDirection === 'asc' ? -1 : 1;
+      if (compareA > compareB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) return null;
+    return sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />;
   };
 
   if (loading) {
@@ -148,11 +191,7 @@ export default function CardManagement() {
     <Container>
       <Typography variant="h4">Card Management</Typography>
       <Box display="flex" justifyContent="center" marginTop={2}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setOpenDialog(true)}
-        >
+        <Button variant="contained" color="primary" onClick={handleCreateCard}>
           Create Card
         </Button>
       </Box>
@@ -160,15 +199,35 @@ export default function CardManagement() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Number</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Active</TableCell>
+              <TableCell 
+                onClick={() => handleSort('name')}
+                style={{ cursor: 'pointer' }}
+              >
+                Name <SortIcon column="name" />
+              </TableCell>
+              <TableCell 
+                onClick={() => handleSort('number')}
+                style={{ cursor: 'pointer' }}
+              >
+                Number <SortIcon column="number" />
+              </TableCell>
+              <TableCell 
+                onClick={() => handleSort('collection')}
+                style={{ cursor: 'pointer' }}
+              >
+                Category <SortIcon column="collection" />
+              </TableCell>
+              <TableCell 
+                onClick={() => handleSort('active')}
+                style={{ cursor: 'pointer' }}
+              >
+                Active <SortIcon column="active" />
+              </TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {cards.map((card) => (
+            {getSortedCards().map((card) => (
               <TableRow key={card.id}>
                 <TableCell>{card.name}</TableCell>
                 <TableCell>{card.number}</TableCell>
@@ -180,7 +239,7 @@ export default function CardManagement() {
                   />
                 </TableCell>
                 <TableCell>
-                  <Button>Edit</Button>
+                  <Button onClick={() => handleEditCard(card)}>Edit</Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -188,55 +247,13 @@ export default function CardManagement() {
         </Table>
       </TableContainer>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Create New Card</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Card Name"
-            value={newCardName}
-            onChange={(e) => setNewCardName(e.target.value)}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Card Number"
-            value={newCardNumber}
-            onChange={(e) => setNewCardNumber(e.target.value)}
-            fullWidth
-            margin="normal"
-          />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={newCardCategory}
-              onChange={(e) => setNewCardCategory(e.target.value)}
-            >
-              {collections.map((collection) => (
-                <MenuItem key={collection.id} value={collection.id}>
-                  {collection.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Box display="flex" alignItems="center" marginTop={2}>
-            <Switch
-              checked={newCardActive}
-              onChange={(e) => setNewCardActive(e.target.checked)}
-            />
-            <Typography>Active</Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button
-            onClick={handleCreateCard}
-            variant="contained"
-            color="primary"
-          >
-            Create
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CardDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onSave={handleSaveCard}
+        onDelete={handleDeleteCard}
+        editingCard={editingCard}
+      />
     </Container>
   );
 }
