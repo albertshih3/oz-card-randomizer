@@ -5,7 +5,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from "firebase/firestore";
 import { getAuth, signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/nextjs";
-import { Container, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Switch, Button, Box } from "@mui/material";
+import { Container, CircularProgress, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Switch, Button, Box } from "@mui/material";
 import CardDialog from "../components/CardManagement";
 import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
@@ -179,13 +179,21 @@ export default function CardManagement() {
     return sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />;
   };
 
+  
+
   if (loading) {
     return (
-      <Container>
-        <Typography>Loading...</Typography>
-      </Container>
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        height="100vh"
+      >
+        <CircularProgress />
+      </Box>
     );
   }
+  
 
   return (
     <Container>

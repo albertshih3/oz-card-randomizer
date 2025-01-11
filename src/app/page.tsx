@@ -190,9 +190,9 @@ export default function Home() {
 
   return (
     <Container maxWidth="lg" sx={{ minHeight: '100vh', py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+      {/* <Typography variant="h4" component="h1" gutterBottom>
         Booster Pack Generator
-      </Typography>
+      </Typography> */}
       <Box sx={{ mb: 2 }}>
         <Button variant="contained" onClick={() => generatePacks(1)} sx={{ mr: 1 }}>Generate Booster Pack!</Button>
         <Button variant="contained" onClick={() => generatePacks(5)} sx={{ mr: 1 }}>Generate 5 Packs</Button>
