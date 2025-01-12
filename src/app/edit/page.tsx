@@ -23,6 +23,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+// New collections! ARCAS, New Nature Foundation, Disney woot woot. 1/11/24
+
 const collections = [
   { id: "africansavanna", name: "African Savannah" },
   { id: "californiatrail", name: "California Trail" },
@@ -30,6 +32,9 @@ const collections = [
   { id: "tropicalrainforest", name: "Tropical Rainforest" },
   { id: "specialedition", name: "Special Edition" },
   { id: "booatthezoo", name: "Boo at the Zoo" },
+  { id: "arcas", name: "ARCAS" },
+  { id: "newnaturefoundation", name: "New Nature Foundation" },
+  { id: "disney", name: "Disney" },
 ];
 
 type SortDirection = 'asc' | 'desc';

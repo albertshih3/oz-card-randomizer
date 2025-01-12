@@ -48,13 +48,17 @@ const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 const auth = getAuth(app);
 
 const collections = [
-  { id: 'africansavanna', name: 'African Savannah' },
-  { id: 'californiatrail', name: 'California Trail' },
-  { id: 'childrenszoo', name: 'Children\'s Zoo' },
-  { id: 'tropicalrainforest', name: 'Tropical Rainforest' },
-  { id: 'specialedition', name: 'Special Edition' },
-  { id: 'booatthezoo', name: 'Boo at the Zoo' }
+  { id: "africansavanna", name: "African Savannah" },
+  { id: "californiatrail", name: "California Trail" },
+  { id: "childrenszoo", name: "Children's Zoo" },
+  { id: "tropicalrainforest", name: "Tropical Rainforest" },
+  { id: "specialedition", name: "Special Edition" },
+  { id: "booatthezoo", name: "Boo at the Zoo" },
+  { id: "arcas", name: "ARCAS" },
+  { id: "newnaturefoundation", name: "New Nature Foundation" },
+  { id: "disney", name: "Disney" },
 ];
+
 
 export default function Home() {
   const [boosterPacks, setBoosterPacks] = useState<any[][]>([]);

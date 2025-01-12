@@ -22,7 +22,11 @@ const collections = [
   { id: "tropicalrainforest", name: "Tropical Rainforest" },
   { id: "specialedition", name: "Special Edition" },
   { id: "booatthezoo", name: "Boo at the Zoo" },
+  { id: "arcas", name: "ARCAS" },
+  { id: "newnaturefoundation", name: "New Nature Foundation" },
+  { id: "disney", name: "Disney" },
 ];
+
 
 interface CardDialogProps {
   open: boolean;
