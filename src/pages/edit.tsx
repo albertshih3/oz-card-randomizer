@@ -1,20 +1,24 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { getAuth, signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
+import { useAsyncList } from "@react-stately/data";
 import { Spinner } from "@heroui/spinner";
-import { Table, TableHeader, TableBody, TableColumn, TableRow, TableCell } from "@heroui/table";
-import { Switch } from "@heroui/switch";
-import { Input } from "@heroui/input";
+import {
+    Table,
+    TableHeader,
+    TableBody,
+    TableColumn,
+    TableRow,
+    TableCell,
+    getKeyValue,
+} from "@heroui/table";
 import { Button } from "@heroui/button";
-import { Select, SelectItem } from "@heroui/select";
-import { Tooltip } from "@heroui/tooltip";
-import { DeleteIcon, EditIcon } from "@/components/icons";
+import { EditIcon } from "@/components/icons";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
-import { useAsyncList } from "@react-stately/data";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,6 +31,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+import { getFirestore } from "firebase/firestore";
 const db = getFirestore(app);
 const auth = getAuth(app);
 
@@ -42,36 +47,35 @@ const collections = [
     { id: "disney", name: "Disney" },
 ];
 
-export default function EditPage() {
+interface Card {
+    id: string;
+    collection: string;
+    number: string;
+    active: boolean;
+    name: string;
+    collectionName?: string;
+}
+
+export default function EditCardsPage() {
     const { isLoaded, userId, getToken } = useAuth();
     const [loading, setLoading] = useState(true);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    interface Card {
-        id: string;
-        collection: string;
-        number: string;
-        active: boolean;
-        name: string;
-        collectionName?: string;
-    }
-    
-    const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+    const navigate = useNavigate();
 
     const list = useAsyncList({
         async load() {
-            const allCards: { id: string; collection: string; number: any; active: boolean; name: any; collectionName: string | undefined; }[] = [];
+            const allCards: Card[] = [];
             try {
-                for (const collectionObj of collections) {
-                    const querySnapshot = await getDocs(collection(db, collectionObj.id));
+                for (const colObj of collections) {
+                    const querySnapshot = await getDocs(collection(db, colObj.id));
                     querySnapshot.forEach((doc) => {
-                        const docData = doc.data();
+                        const data = doc.data();
                         allCards.push({
                             id: doc.id,
-                            collection: collectionObj.id,
-                            number: docData.number,
-                            active: docData.active === true,
-                            name: docData.name,
-                            collectionName: collections.find(c => c.id === collectionObj.id)?.name
+                            collection: colObj.id,
+                            number: data.number,
+                            active: data.active === true,
+                            name: data.name,
+                            collectionName: collections.find((c) => c.id === colObj.id)?.name,
                         });
                     });
                 }
@@ -83,51 +87,40 @@ export default function EditPage() {
                 return { items: [] };
             }
         },
+        async sort({ items, sortDescriptor }) {
+            return {
+                items: items.sort((a, b) => {
+                    let first = a[sortDescriptor.column as keyof Card];
+                    let second = b[sortDescriptor.column as keyof Card];
+                    if (first === undefined) first = '';
+                    if (second === undefined) second = '';
+                    let cmp = (parseInt(first as string) || first) < (parseInt(second as string) || second) ? -1 : 1;
+                    if (sortDescriptor.direction === "descending") {
+                        cmp *= -1;
+                    }
+                    return cmp;
+                }),
+            };
+        },
     });
 
     useEffect(() => {
-        const signIntoFirebaseWithClerk = async () => {
+        const signIntoFirebase = async () => {
             const token = await getToken({ template: "integration_firebase" });
             await signInWithCustomToken(auth, token || "");
             list.reload();
         };
-
-        signIntoFirebaseWithClerk();
+        signIntoFirebase();
     }, [getToken]);
 
     const handleEditClick = (card: Card) => {
-        setSelectedCard(card);
-        setIsDialogOpen(true);
+        // Navigate to the edit page using query params for editing an existing card.
+        navigate(`/editcard?cardId=${card.id}&collection=${card.collection}`);
     };
 
-    const handleSave = async (updatedCard: { collection: string; id: string; name: any; number: any; active: any; } | null) => {
-        if (!updatedCard) return;
-        try {
-            const cardRef = doc(db, updatedCard.collection, updatedCard.id);
-            await updateDoc(cardRef, {
-                name: updatedCard.name,
-                number: updatedCard.number,
-                active: updatedCard.active,
-                collection: updatedCard.collection,
-            });
-            list.reload();
-        } catch (err) {
-            console.error("Error updating card:", err);
-        } finally {
-            setIsDialogOpen(false);
-        }
-    };
-
-    const handleDelete = async (cardToDelete: Card) => {
-        try {
-            const cardRef = doc(db, cardToDelete.collection, cardToDelete.id);
-            await deleteDoc(cardRef);
-            list.reload();
-        } catch (err) {
-            console.error("Error deleting card:", err);
-        } finally {
-            setIsDialogOpen(false);
-        }
+    const handleNewCardClick = () => {
+        // Navigate to the edit page with a query parameter indicating a new card.
+        navigate("/editcard?new=true");
     };
 
     if (!isLoaded) {
@@ -136,110 +129,65 @@ export default function EditPage() {
 
     if (!userId) {
         return (
-            <>
-                <Unauthorized />
-                <DefaultLayout>
-                    <div className="flex justify-center items-center h-screen">
-                        <Spinner />
-                    </div>
-                </DefaultLayout>
-            </>
+            <DefaultLayout>
+                <div className="flex justify-center items-center h-screen">
+                    <Unauthorized />
+                    <Spinner />
+                </div>
+            </DefaultLayout>
         );
     }
 
     return (
-        <>
-            <DefaultLayout>
-                <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-                    <h1 className="text-2xl font-bold">Edit Cards</h1>
-                    {loading ? (
-                        <Spinner />
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableColumn>Name</TableColumn>
-                                <TableColumn>Number</TableColumn>
-                                <TableColumn>Collection</TableColumn>
-                                <TableColumn>Active</TableColumn>
-                                <TableColumn>Actions</TableColumn>
-                            </TableHeader>
-                            <TableBody>
-                                {list.items.map((card) => (
-                                    <TableRow key={card.id}>
-                                        <TableCell>{card.name}</TableCell>
-                                        <TableCell>{card.number}</TableCell>
-                                        <TableCell>{card.collectionName}</TableCell>
+        <DefaultLayout>
+            <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+                <h1 className="text-2xl font-bold">Edit Cards</h1>
+                {loading ? (
+                    <Spinner />
+                ) : (
+                    <Table sortDescriptor={list.sortDescriptor} onSortChange={list.sort}>
+                        <TableHeader>
+                            <TableColumn key="name" allowsSorting>Name</TableColumn>
+                            <TableColumn key="number" allowsSorting>Number</TableColumn>
+                            <TableColumn key="collectionName" allowsSorting>Collection</TableColumn>
+                            <TableColumn key="actions">Actions</TableColumn>
+                        </TableHeader>
+                        <TableBody isLoading={loading} items={list.items} loadingContent={<Spinner label="Loading..." />}>
+                            {(item: Card) => (
+                                <TableRow key={item.id}>
+                                    {(columnKey) =>
                                         <TableCell>
-                                            <Switch isSelected={card.active} />
+                                            {columnKey === "actions" ? (
+                                                <div className="flex gap-2">
+                                                    <Button variant="bordered" color="default" onPress={() => handleEditClick(item)}>
+                                                        <EditIcon /> Edit Card
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                getKeyValue(item, columnKey)
+                                            )}
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-2">
-                                                <Tooltip content="Edit Card">
-                                                    <Button variant="bordered" onPress={() => handleEditClick(card)}><EditIcon /> Edit Card</Button>
-                                                </Tooltip>
-                                                <Tooltip content="Delete Card">
-                                                    <div onClick={() => handleDelete(card)} className="cursor-pointer">
-                                                        <DeleteIcon />
-                                                    </div>
-                                                </Tooltip>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </section>
-
-
-
-            </DefaultLayout>
-
-            {/* Modal Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full border border-gray-300">
-                    <DialogHeader>
-                        <DialogTitle>{selectedCard ? "Edit Card" : "Create Card"}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <Input
-                            label="Card Name"
-                            value={selectedCard?.name || ""}
-                            onChange={(e) => setSelectedCard(selectedCard ? { ...selectedCard, name: e.target.value } : null)}
-                            className="w-full"
-                        />
-                        <Input
-                            label="Card Number"
-                            value={selectedCard?.number || ""}
-                            onChange={(e) => setSelectedCard(selectedCard ? { ...selectedCard, number: e.target.value } : null)}
-                            className="w-full"
-                        />
-                        <Select
-                            label="Category"
-                            value={selectedCard?.collection || ""}
-                            onChange={(e) => setSelectedCard(selectedCard ? { ...selectedCard, collection: e.target.value } : null)}
-                            className="w-full"
-                        >
-                            {collections.map((collection) => (
-                                <SelectItem key={collection.id} value={collection.id}>{collection.name}</SelectItem>
-                            ))}
-                        </Select>
-                    </div>
-                    <DialogFooter className="flex justify-between mt-6">
-                        {selectedCard && (
-                            <Button onPress={() => handleDelete(selectedCard)} variant="bordered" color="secondary">
-                                Delete
-                            </Button>
-                        )}
-                        <Button onPress={() => setIsDialogOpen(false)} variant="ghost">Cancel</Button>
-                        <Button onPress={() => handleSave(selectedCard)} variant="solid" color="primary">
-                            {selectedCard ? "Save Changes" : "Create"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-
-        </>
+                                    }
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
+            </section>
+            {/* Sticky New Card Button */}
+            <div
+                style={{
+                    position: "fixed",
+                    bottom: "20px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 1000,
+                }}
+            >
+                <Button variant="solid" color="primary" onPress={handleNewCardClick}>
+                    New Card
+                </Button>
+            </div>
+        </DefaultLayout>
     );
 }
