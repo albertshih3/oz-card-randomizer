@@ -46,11 +46,20 @@ export default function EditPage() {
     const { isLoaded, userId, getToken } = useAuth();
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [selectedCard, setSelectedCard] = useState(null);
+    interface Card {
+        id: string;
+        collection: string;
+        number: string;
+        active: boolean;
+        name: string;
+        collectionName?: string;
+    }
+    
+    const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
     const list = useAsyncList({
         async load() {
-            const allCards = [];
+            const allCards: { id: string; collection: string; number: any; active: boolean; name: any; collectionName: string | undefined; }[] = [];
             try {
                 for (const collectionObj of collections) {
                     const querySnapshot = await getDocs(collection(db, collectionObj.id));
@@ -86,12 +95,13 @@ export default function EditPage() {
         signIntoFirebaseWithClerk();
     }, [getToken]);
 
-    const handleEditClick = (card) => {
+    const handleEditClick = (card: Card) => {
         setSelectedCard(card);
         setIsDialogOpen(true);
     };
 
-    const handleSave = async (updatedCard) => {
+    const handleSave = async (updatedCard: { collection: string; id: string; name: any; number: any; active: any; } | null) => {
+        if (!updatedCard) return;
         try {
             const cardRef = doc(db, updatedCard.collection, updatedCard.id);
             await updateDoc(cardRef, {
@@ -108,7 +118,7 @@ export default function EditPage() {
         }
     };
 
-    const handleDelete = async (cardToDelete) => {
+    const handleDelete = async (cardToDelete: Card) => {
         try {
             const cardRef = doc(db, cardToDelete.collection, cardToDelete.id);
             await deleteDoc(cardRef);
@@ -195,19 +205,19 @@ export default function EditPage() {
                         <Input
                             label="Card Name"
                             value={selectedCard?.name || ""}
-                            onChange={(e) => setSelectedCard({ ...selectedCard, name: e.target.value })}
+                            onChange={(e) => setSelectedCard(selectedCard ? { ...selectedCard, name: e.target.value } : null)}
                             className="w-full"
                         />
                         <Input
                             label="Card Number"
                             value={selectedCard?.number || ""}
-                            onChange={(e) => setSelectedCard({ ...selectedCard, number: e.target.value })}
+                            onChange={(e) => setSelectedCard(selectedCard ? { ...selectedCard, number: e.target.value } : null)}
                             className="w-full"
                         />
                         <Select
                             label="Category"
                             value={selectedCard?.collection || ""}
-                            onChange={(e) => setSelectedCard({ ...selectedCard, collection: e.target.value })}
+                            onChange={(e) => setSelectedCard(selectedCard ? { ...selectedCard, collection: e.target.value } : null)}
                             className="w-full"
                         >
                             {collections.map((collection) => (
@@ -217,12 +227,12 @@ export default function EditPage() {
                     </div>
                     <DialogFooter className="flex justify-between mt-6">
                         {selectedCard && (
-                            <Button onClick={() => handleDelete(selectedCard)} variant="outline" color="secondary">
+                            <Button onPress={() => handleDelete(selectedCard)} variant="bordered" color="secondary">
                                 Delete
                             </Button>
                         )}
-                        <Button onClick={() => setIsDialogOpen(false)} variant="ghost">Cancel</Button>
-                        <Button onClick={() => handleSave(selectedCard)} variant="solid" color="primary">
+                        <Button onPress={() => setIsDialogOpen(false)} variant="ghost">Cancel</Button>
+                        <Button onPress={() => handleSave(selectedCard)} variant="solid" color="primary">
                             {selectedCard ? "Save Changes" : "Create"}
                         </Button>
                     </DialogFooter>
