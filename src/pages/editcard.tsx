@@ -10,6 +10,7 @@ import {
 import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Input } from "@heroui/input";
+import { Switch } from "@heroui/switch";
 import { initializeApp } from "firebase/app";
 import {
   doc,
@@ -214,6 +215,17 @@ export default function EditCardPage() {
                   </SelectItem>
                 ))}
               </Select>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Active Status</label>
+                <Switch
+                  isSelected={selectedCard?.active || false}
+                  onValueChange={(isSelected) =>
+                    setSelectedCard(
+                      selectedCard ? { ...selectedCard, active: isSelected } : null
+                    )
+                  }
+                />
+              </div>
             </div>
           </ModalBody>
           <ModalFooter>
