@@ -17,7 +17,7 @@ export const siteConfig = {
       href: "/changelog",
     },
     {
-      label: "About",
+      label: "Usage",
       href: "/about",
     }
   ],
@@ -35,7 +35,7 @@ export const siteConfig = {
       href: "/changelog",
     },
     {
-      label: "About",
+      label: "Usage",
       href: "/about",
     }
   ],

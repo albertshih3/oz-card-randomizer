@@ -184,12 +184,8 @@ export default function IndexPage() {
                 row[`${getCollectionName(collection)} 2`] = cards[1] ? `#${cards[1].number} - ${cards[1].name}` : "";
             });
 
-            const allCollections = [
-                "africansavanna", "californiatrail", "childrenszoo", "tropicalrainforest",
-                "specialedition", "booatthezoo", "arcas", "newnaturefoundation", "disney"
-            ];
 
-            const wildcard = pack.find((card: { collection: string; }) => allCollections.includes(card.collection));
+            const wildcard = pack[8];
             row["Wildcard"] = wildcard ? `#${wildcard.number} - ${wildcard.name}` : "";
 
             const spoonbill = pack.find((card: { collection: string; }) => card.collection === "spoonbill");
