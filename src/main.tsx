@@ -7,6 +7,8 @@ import { Provider } from "./provider.tsx";
 import "@/styles/globals.css";
 import { ClerkProvider } from '@clerk/clerk-react'
 
+import { Analytics } from '@vercel/analytics/next';
+
 // Clerk auth public key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -20,6 +22,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 		<BrowserRouter>
 			<Provider>
 				<ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+					<Analytics />
 					<App />
 				</ClerkProvider>
 			</Provider>
