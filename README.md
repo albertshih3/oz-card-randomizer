@@ -1,6 +1,6 @@
 # Oakland Zoo Booster Pack Generator
 
-A web application for generating randomized trading card booster packs for the Oakland Zoo Learning & Engagement program. This tool helps staff create balanced booster packs from various animal collections and export them to Excel spreadsheets for inventory management.
+A web application for generating randomized trading card booster packs for the Oakland Zoo Learning & Engagement trading card program. This tool helps staff create balanced booster packs from various animal collections.
 
 🌐 **Live Application**: [ozboosterpacks.albertshih.org](https://ozboosterpacks.albertshih.org)
 
@@ -8,7 +8,7 @@ A web application for generating randomized trading card booster packs for the O
 
 - **Random Booster Pack Generation**: Creates balanced packs with cards from multiple zoo collections
 - **Bulk Generation**: Generate multiple booster packs at once (1-20+ packs)
-- **Excel Export**: Export pack contents to Excel spreadsheet for tracking and inventory
+- **Excel Export**: Export bulk pack contents to Excel spreadsheet for easier (and offline) use.
 - **Card Management**: Admin interface for managing card database (add/edit/deactivate cards)
 - **Real-time Updates**: Cards are pulled from Firebase database with real-time availability
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
@@ -26,6 +26,7 @@ The generator pulls cards from these Oakland Zoo collections:
 - New Nature Foundation
 - Disney
 - Spoonbill (special cards)
+- More to come ;)
 
 ## Booster Pack Composition
 
@@ -66,7 +67,7 @@ npm install
 ```
 
 3. Set up environment variables:
-Create a `.env` file with your Firebase configuration:
+Create a `.env` file with the Firebase configuration (hopefully you don't have this):
 ```env
 VITE_FIREBASE_API_KEY=your_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
