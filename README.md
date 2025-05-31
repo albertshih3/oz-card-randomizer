@@ -1,36 +1,163 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Oakland Zoo Booster Pack Generator
 
-## Getting Started
+A web application for generating randomized trading card booster packs for the Oakland Zoo Learning & Engagement program. This tool helps staff create balanced booster packs from various animal collections and export them to Excel spreadsheets for inventory management.
 
-First, run the development server:
+🌐 **Live Application**: [ozboosterpacks.albertshih.org](https://ozboosterpacks.albertshih.org)
 
+## Features
+
+- **Random Booster Pack Generation**: Creates balanced packs with cards from multiple zoo collections
+- **Bulk Generation**: Generate multiple booster packs at once (1-20+ packs)
+- **Excel Export**: Export pack contents to Excel spreadsheet for tracking and inventory
+- **Card Management**: Admin interface for managing card database (add/edit/deactivate cards)
+- **Real-time Updates**: Cards are pulled from Firebase database with real-time availability
+- **Responsive Design**: Works on desktop, tablet, and mobile devices
+
+## Card Collections
+
+The generator pulls cards from these Oakland Zoo collections:
+- African Savannah
+- California Trail
+- Children's Zoo
+- Tropical Rainforest
+- Special Edition (including Australia cards)
+- Boo at the Zoo
+- ARCAS
+- New Nature Foundation
+- Disney
+- Spoonbill (special cards)
+
+## Booster Pack Composition
+
+Each booster pack contains:
+- 2 cards from each of the first 4 collections (8 cards total)
+- 1 random card from any collection (wildcard)
+- 1 Spoonbill card
+- **Total: 10 cards per pack**
+
+## Technologies Used
+
+- **Frontend**: React + TypeScript + Vite
+- **UI Framework**: [HeroUI v2](https://heroui.com)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com)
+- **Database**: Firebase Firestore
+- **Authentication**: Clerk (for admin features)
+- **Excel Export**: xlsx library
+- **Animations**: Framer Motion
+- **Hosting**: Vercel
+
+## Development Setup
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm, yarn, pnpm, or bun
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/albertshih3/oz-card-randomizer.git
+cd oz-card-randomizer
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+Create a `.env` file with your Firebase configuration:
+```env
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+4. Run the development server:
+```bash
+npm run dev
+```
 
-## Learn More
+### Build for Production
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Linting
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```bash
+npm run lint
+```
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # Base UI components
+│   ├── editcard.tsx    # Card editing interface
+│   ├── navbar.tsx      # Navigation component
+│   └── theme-switch.tsx # Dark/light mode toggle
+├── pages/              # Application pages
+│   ├── index.tsx       # Main generator page
+│   ├── edit.tsx        # Admin card management
+│   ├── about.tsx       # Usage instructions
+│   └── changelog.tsx   # Version history
+├── config/             # Application configuration
+├── hooks/              # Custom React hooks
+├── layouts/            # Page layout components
+├── lib/                # Utility functions
+├── styles/             # Global styles
+└── types/              # TypeScript type definitions
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Firebase Database Structure
+
+Collections in Firestore:
+- `africansavanna` - African Savannah cards
+- `californiatrail` - California Trail cards
+- `childrenszoo` - Children's Zoo cards
+- `tropicalrainforest` - Tropical Rainforest cards
+- `specialedition` - Special Edition cards
+- `booatthezoo` - Boo at the Zoo cards
+- `arcas` - ARCAS cards
+- `newnaturefoundation` - New Nature Foundation cards
+- `disney` - Disney cards
+- `spoonbill` - Special Spoonbill cards
+
+Each card document contains:
+```javascript
+{
+  name: "Card Name",
+  number: "Card Number",
+  active: true/false  // Whether card appears in generator
+}
+```
+
+## Usage
+
+### For Staff (Basic Use)
+1. Visit [ozboosterpacks.albertshih.org](https://ozboosterpacks.albertshih.org)
+2. Click "Generate Booster Pack" for a single pack
+3. Use the table to track which cards to pull from inventory
+4. For multiple packs, click "Create a Spreadsheet" and specify quantity
+
+### For Admins (Card Management)
+1. Click "Edit Cards" in the navigation
+2. Sign in with approved account
+3. Add, edit, or deactivate cards as needed
+4. Contact ashih@oaklandzoo.org for access
+
+## Contact
+
+- **App Support**: Albert Shih - [ashih@oaklandzoo.org](mailto:ashih@oaklandzoo.org)
+- **Program Information**: Patrick Wolff - [pwolff@oaklandzoo.org](mailto:pwolff@oaklandzoo.org)
+
+## License
+
+This project is for internal use by Oakland Zoo Learning & Engagement staff only.
