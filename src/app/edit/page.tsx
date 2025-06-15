@@ -8,6 +8,7 @@ import { useAuth } from "@clerk/nextjs";
 import { Container, CircularProgress, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Switch, Button, Box } from "@mui/material";
 import CardDialog from "../components/CardManagement";
 import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
+import * as gtag from '../../lib/gtag';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -88,6 +89,13 @@ export default function CardManagement() {
       setCards((prevCards) =>
         prevCards.map((c) => (c.id === card.id ? { ...c, active: newActiveState } : c))
       );
+      
+      // Track Google Analytics event
+      gtag.event({
+        action: 'toggle_card_active',
+        category: 'card_management',
+        label: newActiveState ? 'activate' : 'deactivate',
+      });
     } catch (err) {
       console.error("Failed to toggle card active state:", err);
     }
@@ -125,12 +133,26 @@ export default function CardManagement() {
             c.id === editingCard.id ? { ...c, ...cardData } : c
           )
         );
+        
+        // Track Google Analytics event
+        gtag.event({
+          action: 'edit_card',
+          category: 'card_management',
+          label: cardData.category,
+        });
       } else {
         const docRef = await addDoc(collection(db, cardData.category), cardData);
         setCards((prevCards) => [
           ...prevCards,
           { id: docRef.id, collection: cardData.category, ...cardData },
         ]);
+        
+        // Track Google Analytics event
+        gtag.event({
+          action: 'create_card',
+          category: 'card_management',
+          label: cardData.category,
+        });
       }
     } catch (err) {
       console.error("Error saving card:", err);

@@ -30,6 +30,7 @@ import { useReactToPrint } from 'react-to-print';
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, signInWithCustomToken } from 'firebase/auth'
 import EditIcon from '@mui/icons-material/Edit';
+import * as gtag from '../lib/gtag';
 
 // Initialize Firebase (replace with your config)
 const firebaseConfig = {
@@ -145,6 +146,14 @@ export default function Home() {
       setBoosterPacks(newPacks);
       setCheckedItems({});
       setExpandedPacks(count === 1 ? [0] : []);
+      
+      // Track Google Analytics event
+      gtag.event({
+        action: 'generate_packs',
+        category: 'engagement',
+        label: `${count}_packs`,
+        value: count,
+      });
     } catch (err) {
       console.error("Error generating packs:", err);
       setError("Failed to generate booster packs. Please try again.");
