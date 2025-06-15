@@ -55,7 +55,8 @@ export default function Changelog() {
                     </h3>
                     <ul className="mt-2 space-y-1 list-disc pl-5">
                       <li>Fixed Excel sheet generation issue</li>
-                      <li>Restored Vercel analytics for better usage tracking</li>
+                      <li>Enhanced analytics tracking with Firebase and Google Analytics</li>
+                      <li>Added comprehensive usage metrics collection for page views, card generation, and user interactions</li>
                     </ul>
                   </div>
                   

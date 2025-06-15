@@ -1,4 +1,4 @@
-export const GA_TRACKING_ID = process.env.VITE_GA_ID || '';
+export const GA_TRACKING_ID = import.meta.env.VITE_GA_ID || '';
 
 // Initialize gtag if it doesn't exist
 export const initGtag = () => {
