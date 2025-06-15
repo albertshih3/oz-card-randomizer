@@ -19,6 +19,7 @@ import { Button } from "@heroui/button";
 import { EditIcon } from "@/components/icons";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
+import { event } from "@/lib/gtag";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -114,11 +115,21 @@ export default function EditCardsPage() {
     }, [getToken]);
 
     const handleEditClick = (card: Card) => {
+        event({
+            action: 'click',
+            category: 'card_management',
+            label: 'edit_card'
+        });
         // Navigate to the edit page using query params for editing an existing card.
         navigate(`/editcard?cardId=${card.id}&collection=${card.collection}`);
     };
 
     const handleNewCardClick = () => {
+        event({
+            action: 'click',
+            category: 'card_management',
+            label: 'new_card'
+        });
         // Navigate to the edit page with a query parameter indicating a new card.
         navigate("/editcard?new=true");
     };

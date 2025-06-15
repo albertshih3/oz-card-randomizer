@@ -15,8 +15,18 @@ import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SignInButton, SignedOut, SignedIn, UserButton, SignOutButton } from "@clerk/clerk-react";
 import { Button } from "@heroui/button";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 export const Navbar = () => {
+  const { trackEvent } = useAnalytics();
+
+  const handleNavClick = (label: string) => {
+    trackEvent('click', 'navigation', `nav_${label.toLowerCase()}`);
+  };
+
+  const handleAuthClick = (action: 'sign_in' | 'sign_out') => {
+    trackEvent('click', 'authentication', action);
+  };
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
@@ -41,6 +51,7 @@ export const Navbar = () => {
                 )}
                 color="foreground"
                 href={item.href}
+                onPress={() => handleNavClick(item.label)}
               >
                 {item.label}
               </Link>
@@ -86,6 +97,7 @@ export const Navbar = () => {
                 color="foreground"
                 href={item.href}
                 size="lg"
+                onPress={() => handleNavClick(item.label)}
               >
                 {item.label}
               </Link>
@@ -100,6 +112,7 @@ export const Navbar = () => {
                 className="text-md font-bold text-default-1000 bg-default-100"
                 color="primary"
                 variant="flat"
+                onPress={() => handleAuthClick('sign_in')}
               >
                 Sign In </Button>
             </SignInButton>

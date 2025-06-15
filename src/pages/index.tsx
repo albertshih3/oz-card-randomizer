@@ -17,6 +17,7 @@ import {
 import { Skeleton } from '@heroui/skeleton';
 import React from 'react';
 import { utils, writeFile } from 'xlsx';
+import { event, timing, exception } from '@/lib/gtag';
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -74,6 +75,10 @@ export default function IndexPage() {
                 setLoading(false);
             } catch (err) {
                 console.error("Error fetching data:", err);
+                exception({
+                    description: `Failed to load card data: ${err}`,
+                    fatal: false
+                });
                 setError("Failed to load card data. Please try again later.");
                 setLoading(false);
             }
@@ -93,11 +98,22 @@ export default function IndexPage() {
 
     // open modal function
     const handleOpenModal = () => {
+        event({
+            action: 'click',
+            category: 'engagement',
+            label: 'open_spreadsheet_modal'
+        });
         setShowModal(true);
     };
 
     // Generate boosterpack
     const generateBoosterPack = () => {
+        const startTime = performance.now();
+        event({
+            action: 'generate',
+            category: 'booster_pack',
+            label: 'single_pack'
+        });
         const pack: any[] = [];
         const usedCards = new Set();
 
@@ -135,12 +151,26 @@ export default function IndexPage() {
             console.warn('Not enough cards in spoonbill collection');
         }
 
+        const endTime = performance.now();
+        timing({
+            name: 'pack_generation',
+            value: Math.round(endTime - startTime),
+            category: 'performance',
+            label: 'single_pack'
+        });
+
         return pack;
     };
 
     // MORE PACKS (multiple packs)
     const generatePacks = (count: number) => {
         try {
+            event({
+                action: 'generate',
+                category: 'booster_pack',
+                label: 'multiple_packs',
+                value: count
+            });
             const newPacks = [];
             for (let i = 0; i < count; i++) {
                 newPacks.push(generateBoosterPack());
@@ -148,6 +178,10 @@ export default function IndexPage() {
             setBoosterPacks(newPacks);
         } catch (err) {
             console.error("Error generating packs:", err);
+            exception({
+                description: `Failed to generate booster packs: ${err}`,
+                fatal: false
+            });
             setError("Failed to generate booster packs. Please try again.");
         }
     };
@@ -156,6 +190,12 @@ export default function IndexPage() {
 
     // Function to generate packs and export
     const handleGenerateAndExport = () => {
+        event({
+            action: 'export',
+            category: 'spreadsheet',
+            label: 'generate_and_export',
+            value: numPacks
+        });
         setIsExporting(true); // Start loading state
         generatePacks(numPacks);
         setExportTrigger(true); // Signal to trigger export when packs are ready
@@ -168,6 +208,13 @@ export default function IndexPage() {
             console.warn("No data to export");
             return;
         }
+        
+        event({
+            action: 'download',
+            category: 'export',
+            label: 'excel_export',
+            value: boosterPacks.length
+        });
 
         // Construct sheet data
         const sheetData = boosterPacks.map((pack, index) => {

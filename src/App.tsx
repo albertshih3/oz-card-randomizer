@@ -5,8 +5,11 @@ import AboutPage from "@/pages/about";
 import EditPage from "@/pages/edit";
 import Changelog from "@/pages/changelog";
 import EditCardPage from "./pages/editcard";
+import { usePageView } from "@/hooks/use-analytics";
 
 function App() {
+  usePageView();
+  
   return (
     <Routes>
       <Route element={<IndexPage />} path="/" />

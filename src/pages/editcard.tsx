@@ -26,6 +26,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { Spinner } from "@heroui/spinner";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
+import { event } from "@/lib/gtag";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -119,6 +120,11 @@ export default function EditCardPage() {
     if (!updatedCard) return;
     try {
       if (isNew) {
+        event({
+          action: 'create',
+          category: 'card_management',
+          label: 'card_created'
+        });
         // Create a new card
         const colRef = firestoreCollection(db, updatedCard.collection);
         await addDoc(colRef, {
@@ -128,6 +134,11 @@ export default function EditCardPage() {
           collection: updatedCard.collection,
         });
       } else {
+        event({
+          action: 'update',
+          category: 'card_management',
+          label: 'card_updated'
+        });
         const cardRef = doc(db, updatedCard.collection, updatedCard.id);
         await updateDoc(cardRef, {
           name: updatedCard.name,
@@ -144,6 +155,11 @@ export default function EditCardPage() {
 
   const handleDelete = async (cardToDelete: Card) => {
     try {
+      event({
+        action: 'delete',
+        category: 'card_management',
+        label: 'card_deleted'
+      });
       const cardRef = doc(db, cardToDelete.collection, cardToDelete.id);
       await deleteDoc(cardRef);
       navigate("/edit");
