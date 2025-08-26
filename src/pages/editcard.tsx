@@ -11,48 +11,23 @@ import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Input } from "@heroui/input";
 import { Switch } from "@heroui/switch";
-import { initializeApp } from "firebase/app";
 import {
   doc,
   updateDoc,
   deleteDoc,
   getDoc,
   addDoc,
-  getFirestore,
   collection as firestoreCollection,
 } from "firebase/firestore";
-import { getAuth, signInWithCustomToken } from "firebase/auth";
+import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
 import { Spinner } from "@heroui/spinner";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
+import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
+import { db, auth } from "@/lib/firebase";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-const collections = [
-  { id: "africansavanna", name: "African Savannah" },
-  { id: "californiatrail", name: "California Trail" },
-  { id: "childrenszoo", name: "Children's Zoo" },
-  { id: "tropicalrainforest", name: "Tropical Rainforest" },
-  { id: "specialedition", name: "Special Edition" },
-  { id: "booatthezoo", name: "Boo at the Zoo" },
-  { id: "arcas", name: "ARCAS" },
-  { id: "newnaturefoundation", name: "New Nature Foundation" },
-  { id: "disney", name: "Disney" },
-];
 
 interface Card {
   id: string;
@@ -69,6 +44,7 @@ export default function EditCardPage() {
   const { getToken, userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [collections, setCollections] = useState<{id: string, name: string}[]>([]);
 
   // Parse query parameters (e.g. ?cardId=...&collection=... or ?new=true)
   const searchParams = new URLSearchParams(location.search);
@@ -77,21 +53,28 @@ export default function EditCardPage() {
   const isNew = searchParams.get("new") === "true";
 
   useEffect(() => {
-    if (isNew) {
-      // For a new card, initialize an empty card object.
-      setSelectedCard({
-        id: "",
-        collection: "",
-        number: "",
-        active: false,
-        name: "",
-      });
-      setLoading(false);
-      return;
-    }
-    if (!cardId || !collectionId) return;
-    const fetchCard = async () => {
+    const loadData = async () => {
       try {
+        // Load categories first
+        const categories = await getCategories();
+        const legacyCollections = categoriesToLegacyFormat(categories);
+        setCollections(legacyCollections);
+
+        if (isNew) {
+          // For a new card, initialize an empty card object.
+          setSelectedCard({
+            id: "",
+            collection: "",
+            number: "",
+            active: false,
+            name: "",
+          });
+          setLoading(false);
+          return;
+        }
+        
+        if (!cardId || !collectionId) return;
+
         const token = await getToken({ template: "integration_firebase" });
         await signInWithCustomToken(auth, token || "");
         const cardRef = doc(db, collectionId, cardId);
@@ -104,16 +87,17 @@ export default function EditCardPage() {
             number: data.number,
             active: data.active === true,
             name: data.name,
-            collectionName: collections.find((c) => c.id === collectionId)?.name,
+            collectionName: legacyCollections.find((c) => c.id === collectionId)?.name,
           });
         }
       } catch (err) {
-        console.error("Error fetching card:", err);
+        console.error("Error loading data:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchCard();
+    
+    loadData();
   }, [cardId, collectionId, getToken, isNew]);
 
   const handleSave = async (updatedCard: Card | null) => {

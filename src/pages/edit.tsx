@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { initializeApp } from "firebase/app";
-import { collection, getDocs } from "firebase/firestore";
-import { getAuth, signInWithCustomToken } from "firebase/auth";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
 import { useAsyncList } from "@react-stately/data";
 import { Spinner } from "@heroui/spinner";
@@ -16,37 +15,15 @@ import {
     getKeyValue,
 } from "@heroui/table";
 import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
+import { Switch } from "@heroui/switch";
+import { Tooltip } from "@heroui/tooltip";
 import { EditIcon } from "@/components/icons";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
-
-const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-import { getFirestore } from "firebase/firestore";
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-const collections = [
-    { id: "africansavanna", name: "African Savannah" },
-    { id: "californiatrail", name: "California Trail" },
-    { id: "childrenszoo", name: "Children's Zoo" },
-    { id: "tropicalrainforest", name: "Tropical Rainforest" },
-    { id: "specialedition", name: "Special Edition" },
-    { id: "booatthezoo", name: "Boo at the Zoo" },
-    { id: "arcas", name: "ARCAS" },
-    { id: "newnaturefoundation", name: "New Nature Foundation" },
-    { id: "disney", name: "Disney" },
-];
+import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
+import { db, auth } from "@/lib/firebase";
 
 interface Card {
     id: string;
@@ -60,13 +37,21 @@ interface Card {
 export default function EditCardsPage() {
     const { isLoaded, userId, getToken } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [updatingCardId, setUpdatingCardId] = useState<string | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [showSortingTooltip, setShowSortingTooltip] = useState(false);
     const navigate = useNavigate();
 
     const list = useAsyncList({
         async load() {
             const allCards: Card[] = [];
             try {
-                for (const colObj of collections) {
+                // Load categories first
+                const categories = await getCategories();
+                const legacyCollections = categoriesToLegacyFormat(categories);
+
+                for (const colObj of legacyCollections) {
                     const querySnapshot = await getDocs(collection(db, colObj.id));
                     querySnapshot.forEach((doc) => {
                         const data = doc.data();
@@ -76,7 +61,7 @@ export default function EditCardsPage() {
                             number: data.number,
                             active: data.active === true,
                             name: data.name,
-                            collectionName: collections.find((c) => c.id === colObj.id)?.name,
+                            collectionName: legacyCollections.find((c) => c.id === colObj.id)?.name,
                         });
                     });
                 }
@@ -106,13 +91,42 @@ export default function EditCardsPage() {
     });
 
     useEffect(() => {
+        if (!isLoaded || !userId || isAuthenticated) return;
+        
         const signIntoFirebase = async () => {
-            const token = await getToken({ template: "integration_firebase" });
-            await signInWithCustomToken(auth, token || "");
-            list.reload();
+            try {
+                const token = await getToken({ template: "integration_firebase" });
+                await signInWithCustomToken(auth, token || "");
+                setIsAuthenticated(true);
+                list.reload();
+            } catch (err) {
+                console.error("Error signing into Firebase:", err);
+            }
         };
         signIntoFirebase();
-    }, [getToken]);
+    }, [isLoaded, userId, getToken, isAuthenticated]);
+
+    // Show sorting tooltip on first visit
+    useEffect(() => {
+        if (!loading && list.items.length > 0) {
+            const hasSeenSortingTip = localStorage.getItem('hasSeenSortingTip');
+            
+            if (!hasSeenSortingTip) {
+                const timer = setTimeout(() => {
+                    setShowSortingTooltip(true);
+                }, 1500);
+                
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [loading, list.items.length]);
+
+    const handleHeaderHover = () => {
+        if (showSortingTooltip) {
+            setShowSortingTooltip(false);
+            localStorage.setItem('hasSeenSortingTip', 'true');
+        }
+    };
 
     const handleEditClick = (card: Card) => {
         event({
@@ -133,6 +147,51 @@ export default function EditCardsPage() {
         // Navigate to the edit page with a query parameter indicating a new card.
         navigate("/editcard?new=true");
     };
+
+    const handleToggleActive = async (card: Card) => {
+        if (updatingCardId) return; // Prevent multiple toggles at once
+        
+        try {
+            setUpdatingCardId(card.id);
+            const cardRef = doc(db, card.collection, card.id);
+            const newActiveStatus = !card.active;
+            
+            await updateDoc(cardRef, {
+                active: newActiveStatus
+            });
+
+            event({
+                action: 'toggle',
+                category: 'card_management',
+                label: 'card_status_toggled'
+            });
+
+            // Reload the list to get updated data
+            list.reload();
+        } catch (err) {
+            console.error("Error updating card status:", err);
+        } finally {
+            setUpdatingCardId(null);
+        }
+    };
+
+    const filteredItems = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return list.items;
+        }
+
+        const query = searchQuery.toLowerCase().trim();
+        return list.items.filter((card: Card) => {
+            // Search by name
+            const nameMatch = card.name?.toLowerCase().includes(query);
+            // Search by number (convert to string first)
+            const numberMatch = card.number?.toString().toLowerCase().includes(query);
+            // Search by collection name/category
+            const categoryMatch = card.collectionName?.toLowerCase().includes(query);
+
+            return nameMatch || numberMatch || categoryMatch;
+        });
+    }, [list.items, searchQuery]);
 
     if (!isLoaded) {
         return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
@@ -156,33 +215,70 @@ export default function EditCardsPage() {
                 {loading ? (
                     <Spinner />
                 ) : (
-                    <Table sortDescriptor={list.sortDescriptor} onSortChange={list.sort}>
-                        <TableHeader>
-                            <TableColumn key="name" allowsSorting>Name</TableColumn>
-                            <TableColumn key="number" allowsSorting>Number</TableColumn>
-                            <TableColumn key="collectionName" allowsSorting>Collection</TableColumn>
-                            <TableColumn key="actions">Actions</TableColumn>
-                        </TableHeader>
-                        <TableBody isLoading={loading} items={list.items} loadingContent={<Spinner label="Loading..." />}>
-                            {(item: Card) => (
-                                <TableRow key={item.id}>
-                                    {(columnKey) =>
-                                        <TableCell>
-                                            {columnKey === "actions" ? (
-                                                <div className="flex gap-2">
-                                                    <Button variant="bordered" color="default" onPress={() => handleEditClick(item)}>
-                                                        <EditIcon /> Edit Card
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                getKeyValue(item, columnKey)
-                                            )}
-                                        </TableCell>
-                                    }
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                    <>
+                        <div className="w-full max-w-4xl mb-4">
+                            <Input
+                                type="text"
+                                placeholder="Search cards by name, number, or category..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full"
+                                isClearable
+                                onClear={() => setSearchQuery("")}
+                            />
+                        </div>
+                        {updatingCardId && (
+                            <div className="flex items-center justify-center gap-2 mb-4 text-sm text-gray-600">
+                                <Spinner size="sm" />
+                                <span>Updating card status...</span>
+                            </div>
+                        )}
+                        <Tooltip
+                            content="💡 Click on column headers to sort the table by that column!"
+                            isOpen={showSortingTooltip}
+                            placement="bottom"
+                            color="primary"
+                            offset={10}
+                        >
+                            <div className="w-full" onMouseEnter={handleHeaderHover}>
+                                <Table sortDescriptor={list.sortDescriptor} onSortChange={list.sort} className="w-full">
+                                    <TableHeader>
+                                        <TableColumn key="name" allowsSorting>Name</TableColumn>
+                                        <TableColumn key="number" allowsSorting>Number</TableColumn>
+                                        <TableColumn key="collectionName" allowsSorting>Collection</TableColumn>
+                                        <TableColumn key="active" allowsSorting>Active</TableColumn>
+                                        <TableColumn key="actions">Actions</TableColumn>
+                                    </TableHeader>
+                            <TableBody isLoading={loading} items={filteredItems} loadingContent={<Spinner label="Loading..." />}>
+                                {(item: Card) => (
+                                    <TableRow key={item.id}>
+                                        {(columnKey) =>
+                                            <TableCell>
+                                                {columnKey === "actions" ? (
+                                                    <div className="flex gap-2">
+                                                        <Button variant="bordered" color="default" onPress={() => handleEditClick(item)}>
+                                                            <EditIcon /> Edit Card
+                                                        </Button>
+                                                    </div>
+                                                ) : columnKey === "active" ? (
+                                                    <Switch
+                                                        isSelected={item.active}
+                                                        onValueChange={() => handleToggleActive(item)}
+                                                        size="sm"
+                                                        isDisabled={updatingCardId === item.id}
+                                                    />
+                                                ) : (
+                                                    getKeyValue(item, columnKey)
+                                                )}
+                                            </TableCell>
+                                        }
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                                </Table>
+                            </div>
+                        </Tooltip>
+                    </>
                 )}
             </section>
             {/* Sticky New Card Button */}

@@ -13,6 +13,10 @@ export const siteConfig = {
       href: "/edit",
     },
     {
+      label: "Categories",
+      href: "/categories",
+    },
+    {
       label: "Changelog",
       href: "/changelog",
     },
@@ -29,6 +33,10 @@ export const siteConfig = {
     {
       label: "Edit Cards",
       href: "/edit",
+    },
+    {
+      label: "Categories",
+      href: "/categories",
     },
     {
       label: "Changelog",

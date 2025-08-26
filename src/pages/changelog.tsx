@@ -9,10 +9,81 @@ export default function Changelog() {
           {/* Timeline container */}
           <div className="relative border-l-2 border-primary/30 pl-8 ml-6 pb-6 space-y-10">
             
+            {/* Version 1.2 */}
+            <div className="relative">
+              {/* Timeline node */}
+               <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary/80 text-background shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </div>
+              
+              {/* Content */}
+              <div className="bg-card rounded-lg shadow-md p-6">
+                <div className="flex flex-wrap items-center justify-between mb-2">
+                  <h2 className="text-xl font-bold">Version 1.2</h2>
+                  <div className="flex items-center">
+                    <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                      Current
+                    </span>
+                    <span className="ml-3 text-sm text-muted-foreground">August 30, 2025</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <h3 className="text-base font-semibold flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Feature Enhancements
+                    </h3>
+                    <ul className="mt-2 space-y-1 list-disc pl-5">
+                      <li>Added search functionality to edit page with support for names, numbers, and categories (EB)</li>
+                      <li>Added Active/Inactive switches directly in the cards table for quick view and update (EB)</li>
+                      <li>Added the ability to create, update, and delete card categories (EB)</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-base font-semibold flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Bug Fixes
+                    </h3>
+                    <ul className="mt-2 space-y-1 list-disc pl-5">
+                      <li>Categories now load dynamically from Firebase instead of being hardcoded</li>
+                      <li>Fixed duplicate card issue</li>
+                    </ul>
+                  </div>
+                  
+                  
+                  <div>
+                    <h3 className="text-base font-semibold flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Minor Changes
+                    </h3>
+                    <ul className="mt-2 space-y-1 list-disc pl-5">
+                      <li>Added a tooltip to highlight table sorting</li>
+                      <li>Added spinners and loading indicators for better user feedback during operations</li>
+                      <li>Centralized Firebase configuration in <code>/src/lib/firebase.ts</code></li>
+                      <li>Implemented smart caching with invalidation for category data</li>
+                      <li>Reduced Firebase calls through caching and optimized data loading</li>
+                      <li>Enhanced tracking for category management and card toggle actions</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             {/* Version 1.1 */}
             <div className="relative">
               {/* Timeline node */}
-              <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary text-background shadow-md">
+              <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary/80 text-background shadow-md">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 20h9"></path>
                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
@@ -23,12 +94,7 @@ export default function Changelog() {
               <div className="bg-card rounded-lg shadow-md p-6">
                 <div className="flex flex-wrap items-center justify-between mb-2">
                   <h2 className="text-xl font-bold">Version 1.1</h2>
-                  <div className="flex items-center">
-                    <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                      Current
-                    </span>
-                    <span className="ml-3 text-sm text-muted-foreground">May 5, 2025</span>
-                  </div>
+                  <span className="text-sm text-muted-foreground">May 5, 2025</span>
                 </div>
                 
                 <div className="space-y-4 mt-4">
