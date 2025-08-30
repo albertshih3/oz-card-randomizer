@@ -18,6 +18,7 @@ import {
   getDoc,
   addDoc,
   collection as firestoreCollection,
+  writeBatch,
 } from "firebase/firestore";
 import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
@@ -103,6 +104,16 @@ export default function EditCardPage() {
   const handleSave = async (updatedCard: Card | null) => {
     if (!updatedCard) return;
     try {
+      // Ensure we're authenticated with Firebase before any write
+      const ensureFirebaseAuth = async () => {
+        if (!auth.currentUser) {
+          const token = await getToken({ template: "integration_firebase" });
+          await signInWithCustomToken(auth, token || "");
+        }
+      };
+
+      await ensureFirebaseAuth();
+
       if (isNew) {
         event({
           action: 'create',
@@ -123,13 +134,28 @@ export default function EditCardPage() {
           category: 'card_management',
           label: 'card_updated'
         });
-        const cardRef = doc(db, updatedCard.collection, updatedCard.id);
-        await updateDoc(cardRef, {
+        if (!cardId || !collectionId) throw new Error("Missing card identifiers.");
+
+        const data = {
           name: updatedCard.name,
           number: updatedCard.number,
           active: updatedCard.active,
           collection: updatedCard.collection,
-        });
+        };
+
+        if (updatedCard.collection === collectionId) {
+          // Same collection: simple update
+          const cardRef = doc(db, collectionId, updatedCard.id);
+          await updateDoc(cardRef, data);
+        } else {
+          // Collection changed: move document by creating in new collection (same id) and deleting old one atomically
+          const batch = writeBatch(db);
+          const oldRef = doc(db, collectionId, updatedCard.id);
+          const newRef = doc(db, updatedCard.collection, updatedCard.id);
+          batch.set(newRef, data);
+          batch.delete(oldRef);
+          await batch.commit();
+        }
       }
       navigate("/edit");
     } catch (err) {
@@ -139,6 +165,10 @@ export default function EditCardPage() {
 
   const handleDelete = async (cardToDelete: Card) => {
     try {
+      // Ensure we're authenticated with Firebase before any write
+      const token = await getToken({ template: "integration_firebase" });
+      await signInWithCustomToken(auth, token || "");
+
       event({
         action: 'delete',
         category: 'card_management',
