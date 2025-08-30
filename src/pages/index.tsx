@@ -18,19 +18,10 @@ import React from 'react';
 import { utils, writeFile } from 'xlsx';
 import { event, timing, exception } from '@/lib/gtag';
 import { db } from '@/lib/firebase';
+import { getCategories, categoriesToLegacyFormat } from '@/utils/categories';
 
-// Card Collections
-const collections = [
-    { id: "africansavanna", name: "African Savannah" },
-    { id: "californiatrail", name: "California Trail" },
-    { id: "childrenszoo", name: "Children's Zoo" },
-    { id: "tropicalrainforest", name: "Tropical Rainforest" },
-    { id: "specialedition", name: "Special Edition" },
-    { id: "booatthezoo", name: "Boo at the Zoo" },
-    { id: "arcas", name: "ARCAS" },
-    { id: "newnaturefoundation", name: "New Nature Foundation" },
-    { id: "disney", name: "Disney" },
-];
+// We'll load card categories dynamically
+type LegacyCollection = { id: string; name: string };
 
 export default function IndexPage() {
 
@@ -42,15 +33,22 @@ export default function IndexPage() {
     const [numPacks, setNumPacks] = useState(1);
     const [isExporting, setIsExporting] = useState(false);
     const [exportTrigger, setExportTrigger] = useState(false);
+    const [collections, setCollections] = useState<LegacyCollection[]>([]);
 
 
-    // Pull cards databse from Firebase
+    // Pull categories and cards database from Firebase
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
+                // Load categories from Firestore, convert to legacy format (id = collection name)
+                const categories = await getCategories();
+                const legacyCollections = categoriesToLegacyFormat(categories);
+                setCollections(legacyCollections);
+
                 const data: { [key: string]: any } = {};
-                for (const col of [...collections.map(c => c.id), 'spoonbill']) {
+                const categoryIds = [...legacyCollections.map(c => c.id), 'spoonbill'];
+                for (const col of categoryIds) {
                     const querySnapshot = await getDocs(collection(db, col));
                     data[col] = querySnapshot.docs
                         .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -115,20 +113,28 @@ export default function IndexPage() {
             return true;
         };
 
+        // First 8 cards: two from each of the first 4 categories
         for (const col of collections.slice(0, 4).map(c => c.id)) {
             if (!addCard(col) || !addCard(col)) {
                 console.warn(`Not enough cards in ${col} collection`);
             }
         }
 
-        let randomCollection;
-        let attempts = 0;
-        do {
-            randomCollection = collections[Math.floor(Math.random() * (collections.length))].id;
-            attempts++;
-        } while (!addCard(randomCollection) && attempts < 10);
+        // 9th card: from any available category with active cards
+        const eligibleCategories = collections
+            .map(c => c.id)
+            .filter(id => Array.isArray(cardsData[id]) && cardsData[id].length > 0);
 
-        if (attempts >= 10) {
+        let randomCollection: string | undefined;
+        let attempts = 0;
+        const maxAttempts = Math.max(10, eligibleCategories.length * 2);
+        while (attempts < maxAttempts) {
+            randomCollection = eligibleCategories[Math.floor(Math.random() * eligibleCategories.length)];
+            if (addCard(randomCollection)) break;
+            attempts++;
+        }
+
+        if (attempts >= maxAttempts) {
             console.warn("Failed to add a card from a random collection after 10 attempts");
         }
 
@@ -236,8 +242,9 @@ export default function IndexPage() {
     };
 
     const getCollectionName = (id: string) => {
-        const collection = collections.find(c => c.id === id);
-        return collection ? collection.name : 'Spoonbill';
+        const c = collections.find(c => c.id === id);
+        if (id === 'spoonbill') return 'Spoonbill';
+        return c ? c.name : id;
     };
 
     return (
