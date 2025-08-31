@@ -20,6 +20,21 @@ import { event, timing, exception } from '@/lib/gtag';
 import { db } from '@/lib/firebase';
 import { getCategories, categoriesToLegacyFormat } from '@/utils/categories';
 
+// Required base categories (order matters for pack generation)
+const BASE_CATEGORIES: string[] = [
+    'tropicalrainforest',
+    'childrenszoo',
+    'californiatrail',
+    'africansavanna',
+];
+
+const BASE_NAME_MAP: Record<string, string> = {
+    tropicalrainforest: 'Tropical Rainforest',
+    childrenszoo: "Children's Zoo",
+    californiatrail: 'California Trail',
+    africansavanna: 'African Savanna',
+};
+
 // We'll load card categories dynamically
 type LegacyCollection = { id: string; name: string };
 
@@ -47,7 +62,12 @@ export default function IndexPage() {
                 setCollections(legacyCollections);
 
                 const data: { [key: string]: any } = {};
-                const categoryIds = [...legacyCollections.map(c => c.id), 'spoonbill'];
+                // Ensure we always include base categories, even if not listed in Firestore categories
+                const categoryIds = Array.from(new Set([
+                    ...legacyCollections.map(c => c.id),
+                    ...BASE_CATEGORIES,
+                    'spoonbill',
+                ]));
                 for (const col of categoryIds) {
                     const querySnapshot = await getDocs(collection(db, col));
                     data[col] = querySnapshot.docs
@@ -101,7 +121,8 @@ export default function IndexPage() {
         const usedCards = new Set();
 
         const addCard = (collection: string) => {
-            const availableCards = cardsData[collection].filter((card: { id: any; }) => !usedCards.has(`${collection}-${card.id}`));
+            const source = Array.isArray(cardsData[collection]) ? cardsData[collection] : [];
+            const availableCards = source.filter((card: { id: any; }) => !usedCards.has(`${collection}-${card.id}`));
             if (availableCards.length === 0) {
                 console.warn(`No more available cards in ${collection} collection`);
                 return false;
@@ -113,17 +134,16 @@ export default function IndexPage() {
             return true;
         };
 
-        // First 8 cards: two from each of the first 4 categories
-        for (const col of collections.slice(0, 4).map(c => c.id)) {
+        // First 8 cards: two from each of the specified 4 categories (order matters)
+        for (const col of BASE_CATEGORIES) {
             if (!addCard(col) || !addCard(col)) {
                 console.warn(`Not enough cards in ${col} collection`);
             }
         }
 
-        // 9th card: from any available category with active cards
-        const eligibleCategories = collections
-            .map(c => c.id)
-            .filter(id => Array.isArray(cardsData[id]) && cardsData[id].length > 0);
+        // 9th card: from any available category with active cards (use any loaded collection except spoonbill)
+        const eligibleCategories = Object.keys(cardsData)
+            .filter(id => id !== 'spoonbill' && Array.isArray(cardsData[id]) && cardsData[id].length > 0);
 
         let randomCollection: string | undefined;
         let attempts = 0;
@@ -211,12 +231,8 @@ export default function IndexPage() {
         const sheetData = boosterPacks.map((pack, index) => {
             const row: { [key: string]: any } = { "Pack #": index + 1 };
 
-            const collections = [
-                "africansavanna", "californiatrail",
-                "childrenszoo", "tropicalrainforest",
-            ];
-
-            collections.forEach((collection) => {
+            // Use the same required base categories in the specified order for export columns
+            BASE_CATEGORIES.forEach((collection) => {
                 const cards = pack.filter((card: { collection: string; }) => card.collection === collection);
                 row[`${getCollectionName(collection)} 1`] = cards[0] ? `#${cards[0].number} - ${cards[0].name}` : "";
                 row[`${getCollectionName(collection)} 2`] = cards[1] ? `#${cards[1].number} - ${cards[1].name}` : "";
@@ -242,9 +258,11 @@ export default function IndexPage() {
     };
 
     const getCollectionName = (id: string) => {
-        const c = collections.find(c => c.id === id);
         if (id === 'spoonbill') return 'Spoonbill';
-        return c ? c.name : id;
+        const c = collections.find(c => c.id === id);
+        if (c) return c.name;
+        if (BASE_NAME_MAP[id]) return BASE_NAME_MAP[id];
+        return id;
     };
 
     return (
