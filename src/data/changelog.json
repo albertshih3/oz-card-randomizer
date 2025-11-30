@@ -1,0 +1,204 @@
+[
+  {
+    "version": "2.0.0",
+    "date": "November 30, 2025",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Global Design Revamp",
+        "type": "feat",
+        "items": [
+          "Complete visual overhaul with a modern, minimalist aesthetic and glassmorphism effects",
+          "Redesigned Home, About, Edit Dashboard, Edit Card, and Categories pages",
+          "Implemented smooth entrance animations and improved responsive layouts",
+          "Added color-coded collection badges for better visual distinction"
+        ]
+      },
+      {
+        "title": "New Features",
+        "type": "feat",
+        "items": [
+          "Added Booster Pack History: View the last 10 generated packs in an accordion layout",
+          "Restored main table view for current packs while keeping history accessible",
+          "Implemented 'Export to Excel' with improved modal interface"
+        ]
+      },
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed category duplication bug in database and UI",
+          "Resolved issue where cards were duplicated in the Edit Dashboard"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.2.3",
+    "date": "November 30, 2025",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Updates",
+        "type": "chore",
+        "items": [
+          "Adjusted wildcard generation to limit card sections\n- Added a toggle to limit the booster packs that can be put in the wildcard slot"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.2.2",
+    "date": "August 31, 2025",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Hotfixes",
+        "type": "fix",
+        "items": [
+          "Booster generation now always takes the first 8 cards from: Tropical Rainforest, Children's Zoo, California Trail, and African Savanna (in that order)",
+          "Data loading ensures these base categories are included even if they are not listed in Firestore categories",
+          "Improved resilience when a category is empty by skipping gracefully during selection",
+          "Export columns mirror the fixed ordering and display names; corrected display to \"African Savanna\""
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.2.1",
+    "date": "August 30, 2025",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Hotfixes",
+        "type": "fix",
+        "items": [
+          "Pack generation now uses all active categories for the 9th card (no longer limited to hardcoded categories)",
+          "Editing a card now correctly updates its category by moving the document between collections without errors"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.2",
+    "date": "August 30, 2025",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Feature Enhancements",
+        "type": "feat",
+        "items": [
+          "Added search functionality to edit page with support for names, numbers, and categories (EB)",
+          "Added Active/Inactive switches directly in the cards table for quick view and update (EB)",
+          "Added the ability to create, update, and delete card categories (EB)"
+        ]
+      },
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Categories now load dynamically from Firebase instead of being hardcoded",
+          "Fixed duplicate card issue"
+        ]
+      },
+      {
+        "title": "Minor Changes",
+        "type": "chore",
+        "items": [
+          "Added a tooltip to highlight table sorting",
+          "Added spinners and loading indicators for better user feedback during operations",
+          "Centralized Firebase configuration in `/src/lib/firebase.ts`",
+          "Implemented smart caching with invalidation for category data",
+          "Reduced Firebase calls through caching and optimized data loading",
+          "Enhanced tracking for category management and card toggle actions"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.1",
+    "date": "May 5, 2025",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Feature Enhancements",
+        "type": "feat",
+        "items": [
+          "Added detailed usage information to the usage (about) page",
+          "Implemented interactive timeline-based Changelog page",
+          "Improved information architecture for better user guidance"
+        ]
+      },
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed Excel sheet generation issue",
+          "Enhanced analytics tracking with Firebase and Google Analytics",
+          "Added comprehensive usage metrics collection for page views, card generation, and user interactions"
+        ]
+      },
+      {
+        "title": "Minor Changes",
+        "type": "chore",
+        "items": [
+          "Updated contact information with Oakland Zoo emails",
+          "Added tooltip explanations for key features"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0",
+    "date": "Febuary 2nd, 2025",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Major Website Revamp",
+        "type": "feat",
+        "items": [
+          "Complete UI redesign with modern card-based interface",
+          "New theme system with light/dark mode support",
+          "Responsive layout for better mobile experience",
+          "Improved navigation and user accessibility",
+          "Enhanced card editing interface for administrators"
+        ]
+      },
+      {
+        "title": "New Features",
+        "type": "feat",
+        "items": [
+          "Multi-pack generation (5, 10, 20 packs at once)",
+          "Collapsible pack cards for better organization",
+          "Card checkoff system to track pack assembly progress",
+          "Added Active/Inactive toggle to edit card page",
+          "User authentication system for card editors"
+        ]
+      },
+      {
+        "title": "Technical Improvements",
+        "type": "chore",
+        "items": [
+          "Framework update to latest version",
+          "Performance optimizations for faster load times",
+          "Improved code structure and maintainability",
+          "Added analytics for usage tracking"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "Initial Release",
+    "date": "",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Initial Release",
+        "type": "init",
+        "items": [
+          "First version of the Oakland Zoo Booster Pack Generator launched with basic functionality for random card generation and simple management interface."
+        ]
+      }
+    ]
+  }
+]

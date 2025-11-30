@@ -1,4 +1,4 @@
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export interface Category {
@@ -19,15 +19,22 @@ export const getCategories = async (): Promise<Category[]> => {
     try {
         const querySnapshot = await getDocs(collection(db, "categories"));
         const categories: Category[] = [];
+        const seenNames = new Set<string>();
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            categories.push({
-                id: doc.id,
-                name: data.name || doc.id,
-                displayName: data.displayName || data.name || doc.id,
-                isWildcardEligible: data.isWildcardEligible || false,
-            });
+            const name = data.name || doc.id;
+
+            // Deduplicate based on name
+            if (!seenNames.has(name)) {
+                seenNames.add(name);
+                categories.push({
+                    id: doc.id,
+                    name: name,
+                    displayName: data.displayName || data.name || doc.id,
+                    isWildcardEligible: data.isWildcardEligible || false,
+                });
+            }
         });
 
         // If no categories exist in Firebase, create and return the default ones
@@ -59,13 +66,15 @@ const createDefaultCategories = async (): Promise<Category[]> => {
     try {
         const newCategories: Category[] = [];
         for (const category of defaultCategories) {
-            const docRef = await addDoc(collection(db, "categories"), {
+            // Use setDoc with the category name as ID to prevent duplicates
+            await setDoc(doc(db, "categories", category.name), {
                 name: category.name,
                 displayName: category.displayName,
                 isWildcardEligible: false,
             });
+
             newCategories.push({
-                id: docRef.id,
+                id: category.name,
                 name: category.name,
                 displayName: category.displayName,
                 isWildcardEligible: false,

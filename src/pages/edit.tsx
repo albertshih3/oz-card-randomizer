@@ -18,12 +18,15 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Switch } from "@heroui/switch";
 import { Tooltip } from "@heroui/tooltip";
-import { EditIcon } from "@/components/icons";
+import { motion } from "framer-motion";
+import { Search, Plus, Edit2, AlertCircle } from "lucide-react";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
 import { db, auth } from "@/lib/firebase";
+import { CollectionBadge } from "@/components/collection-badge";
+import clsx from "clsx";
 
 interface Card {
     id: string;
@@ -92,7 +95,7 @@ export default function EditCardsPage() {
 
     useEffect(() => {
         if (!isLoaded || !userId || isAuthenticated) return;
-        
+
         const signIntoFirebase = async () => {
             try {
                 const token = await getToken({ template: "integration_firebase" });
@@ -110,12 +113,12 @@ export default function EditCardsPage() {
     useEffect(() => {
         if (!loading && list.items.length > 0) {
             const hasSeenSortingTip = localStorage.getItem('hasSeenSortingTip');
-            
+
             if (!hasSeenSortingTip) {
                 const timer = setTimeout(() => {
                     setShowSortingTooltip(true);
                 }, 1500);
-                
+
                 return () => clearTimeout(timer);
             }
         }
@@ -150,12 +153,12 @@ export default function EditCardsPage() {
 
     const handleToggleActive = async (card: Card) => {
         if (updatingCardId) return; // Prevent multiple toggles at once
-        
+
         try {
             setUpdatingCardId(card.id);
             const cardRef = doc(db, card.collection, card.id);
             const newActiveStatus = !card.active;
-            
+
             await updateDoc(cardRef, {
                 active: newActiveStatus
             });
@@ -194,15 +197,14 @@ export default function EditCardsPage() {
     }, [list.items, searchQuery]);
 
     if (!isLoaded) {
-        return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
+        return <div className="flex justify-center items-center h-screen"><Spinner size="lg" color="primary" /></div>;
     }
 
     if (!userId) {
         return (
             <DefaultLayout>
-                <div className="flex justify-center items-center h-screen">
+                <div className="flex justify-center items-center h-[80vh]">
                     <Unauthorized />
-                    <Spinner />
                 </div>
             </DefaultLayout>
         );
@@ -210,91 +212,149 @@ export default function EditCardsPage() {
 
     return (
         <DefaultLayout>
-            <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-                <h1 className="text-2xl font-bold">Edit Cards</h1>
+            <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col gap-6 py-8 md:py-12 max-w-7xl mx-auto"
+            >
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Card Management</h1>
+                        <p className="text-muted-foreground mt-1">Manage, edit, and organize your trading card collection.</p>
+                    </div>
+                    <Button
+                        color="primary"
+                        onPress={handleNewCardClick}
+                        startContent={<Plus className="w-5 h-5" />}
+                        className="font-semibold shadow-md"
+                    >
+                        New Card
+                    </Button>
+                </div>
+
                 {loading ? (
-                    <Spinner />
+                    <div className="flex justify-center py-20">
+                        <Spinner size="lg" color="primary" label="Loading cards..." />
+                    </div>
                 ) : (
-                    <>
-                        <div className="w-full max-w-4xl mb-4">
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card/50 p-4 rounded-xl border border-border/50 backdrop-blur-sm">
                             <Input
                                 type="text"
-                                placeholder="Search cards by name, number, or category..."
+                                placeholder="Search cards..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full"
+                                className="w-full sm:max-w-md"
                                 isClearable
                                 onClear={() => setSearchQuery("")}
+                                startContent={<Search className="w-4 h-4 text-muted-foreground" />}
+                                variant="bordered"
                             />
+                            {updatingCardId && (
+                                <div className="flex items-center gap-2 text-sm text-primary animate-pulse">
+                                    <Spinner size="sm" color="current" />
+                                    <span>Updating status...</span>
+                                </div>
+                            )}
                         </div>
-                        {updatingCardId && (
-                            <div className="flex items-center justify-center gap-2 mb-4 text-sm text-gray-600">
-                                <Spinner size="sm" />
-                                <span>Updating card status...</span>
-                            </div>
-                        )}
+
                         <Tooltip
-                            content="💡 Click on column headers to sort the table by that column!"
+                            content="💡 Click headers to sort!"
                             isOpen={showSortingTooltip}
-                            placement="bottom"
+                            placement="bottom-start"
                             color="primary"
-                            offset={10}
+                            offset={-10}
+                            showArrow
                         >
-                            <div className="w-full" onMouseEnter={handleHeaderHover}>
-                                <Table sortDescriptor={list.sortDescriptor} onSortChange={list.sort} className="w-full">
+                            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm" onMouseEnter={handleHeaderHover}>
+                                <Table
+                                    sortDescriptor={list.sortDescriptor}
+                                    onSortChange={list.sort}
+                                    aria-label="Cards table"
+                                    removeWrapper
+                                    classNames={{
+                                        th: "bg-muted/50 text-muted-foreground font-medium py-3",
+                                        td: "py-3 border-b border-border/50 last:border-0",
+                                    }}
+                                >
                                     <TableHeader>
-                                        <TableColumn key="name" allowsSorting>Name</TableColumn>
-                                        <TableColumn key="number" allowsSorting>Number</TableColumn>
-                                        <TableColumn key="collectionName" allowsSorting>Collection</TableColumn>
-                                        <TableColumn key="active" allowsSorting>Active</TableColumn>
-                                        <TableColumn key="actions">Actions</TableColumn>
+                                        <TableColumn key="name" allowsSorting>NAME</TableColumn>
+                                        <TableColumn key="number" allowsSorting>NUMBER</TableColumn>
+                                        <TableColumn key="collectionName" allowsSorting>COLLECTION</TableColumn>
+                                        <TableColumn key="active" allowsSorting>STATUS</TableColumn>
+                                        <TableColumn key="actions" align="end">ACTIONS</TableColumn>
                                     </TableHeader>
-                            <TableBody isLoading={loading} items={filteredItems} loadingContent={<Spinner label="Loading..." />}>
-                                {(item: Card) => (
-                                    <TableRow key={item.id}>
-                                        {(columnKey) =>
-                                            <TableCell>
-                                                {columnKey === "actions" ? (
-                                                    <div className="flex gap-2">
-                                                        <Button variant="bordered" color="default" onPress={() => handleEditClick(item)}>
-                                                            <EditIcon /> Edit Card
-                                                        </Button>
-                                                    </div>
-                                                ) : columnKey === "active" ? (
-                                                    <Switch
-                                                        isSelected={item.active}
-                                                        onValueChange={() => handleToggleActive(item)}
-                                                        size="sm"
-                                                        isDisabled={updatingCardId === item.id}
-                                                    />
-                                                ) : (
-                                                    getKeyValue(item, columnKey)
-                                                )}
-                                            </TableCell>
+                                    <TableBody
+                                        items={filteredItems}
+                                        loadingContent={<Spinner label="Loading..." />}
+                                        emptyContent={
+                                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                                <AlertCircle className="w-12 h-12 mb-4 text-default-300" />
+                                                <p className="text-lg font-medium">No cards found</p>
+                                                <p className="text-sm">Try adjusting your search query</p>
+                                            </div>
                                         }
-                                    </TableRow>
-                                )}
-                            </TableBody>
+                                    >
+                                        {(item: Card) => (
+                                            <TableRow key={item.id} className={clsx("hover:bg-muted/30 transition-colors", !item.active && "opacity-50 grayscale")}>
+                                                {(columnKey) =>
+                                                    <TableCell>
+                                                        {columnKey === "actions" ? (
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="flat"
+                                                                    color="primary"
+                                                                    onPress={() => handleEditClick(item)}
+                                                                    startContent={<Edit2 className="w-3.5 h-3.5" />}
+                                                                >
+                                                                    Edit
+                                                                </Button>
+                                                            </div>
+                                                        ) : columnKey === "active" ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <Switch
+                                                                    isSelected={item.active}
+                                                                    onValueChange={() => handleToggleActive(item)}
+                                                                    size="sm"
+                                                                    color="success"
+                                                                    isDisabled={updatingCardId === item.id}
+                                                                    thumbIcon={({ isSelected, className }) =>
+                                                                        isSelected ? (
+                                                                            <span className={className}>✓</span>
+                                                                        ) : (
+                                                                            <span className={className}>×</span>
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <span className={`text-xs font-medium ${item.active ? 'text-success' : 'text-muted-foreground'}`}>
+                                                                    {item.active ? 'Active' : 'Inactive'}
+                                                                </span>
+                                                            </div>
+                                                        ) : columnKey === "collectionName" ? (
+                                                            <CollectionBadge
+                                                                collection={item.collection}
+                                                                name={item.collectionName || item.collection}
+                                                            />
+                                                        ) : columnKey === "name" ? (
+                                                            <span className="font-medium text-foreground">
+                                                                {getKeyValue(item, columnKey)}
+                                                            </span>
+                                                        ) : (
+                                                            getKeyValue(item, columnKey)
+                                                        )}
+                                                    </TableCell>
+                                                }
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
                                 </Table>
                             </div>
                         </Tooltip>
-                    </>
+                    </div>
                 )}
-            </section>
-            {/* Sticky New Card Button */}
-            <div
-                style={{
-                    position: "fixed",
-                    bottom: "20px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    zIndex: 1000,
-                }}
-            >
-                <Button variant="solid" color="primary" onPress={handleNewCardClick}>
-                    New Card
-                </Button>
-            </div>
+            </motion.section>
         </DefaultLayout>
     );
 }

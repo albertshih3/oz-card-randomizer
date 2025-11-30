@@ -28,7 +28,7 @@ import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
 import { db, auth } from "@/lib/firebase";
-
+import { Save, Trash2, X } from "lucide-react";
 
 interface Card {
   id: string;
@@ -45,7 +45,8 @@ export default function EditCardPage() {
   const { getToken, userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const [collections, setCollections] = useState<{id: string, name: string}[]>([]);
+  const [collections, setCollections] = useState<{ id: string, name: string }[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Parse query parameters (e.g. ?cardId=...&collection=... or ?new=true)
   const searchParams = new URLSearchParams(location.search);
@@ -67,13 +68,13 @@ export default function EditCardPage() {
             id: "",
             collection: "",
             number: "",
-            active: false,
+            active: true, // Default to active for new cards
             name: "",
           });
           setLoading(false);
           return;
         }
-        
+
         if (!cardId || !collectionId) return;
 
         const token = await getToken({ template: "integration_firebase" });
@@ -97,12 +98,13 @@ export default function EditCardPage() {
         setLoading(false);
       }
     };
-    
+
     loadData();
   }, [cardId, collectionId, getToken, isNew]);
 
   const handleSave = async (updatedCard: Card | null) => {
     if (!updatedCard) return;
+    setIsSaving(true);
     try {
       // Ensure we're authenticated with Firebase before any write
       const ensureFirebaseAuth = async () => {
@@ -160,10 +162,15 @@ export default function EditCardPage() {
       navigate("/edit");
     } catch (err) {
       console.error("Error saving card:", err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (cardToDelete: Card) => {
+    if (!confirm("Are you sure you want to delete this card? This action cannot be undone.")) return;
+
+    setIsSaving(true);
     try {
       // Ensure we're authenticated with Firebase before any write
       const token = await getToken({ template: "integration_firebase" });
@@ -179,14 +186,15 @@ export default function EditCardPage() {
       navigate("/edit");
     } catch (err) {
       console.error("Error deleting card:", err);
+      setIsSaving(false);
     }
   };
 
   if (loading)
     return (
       <DefaultLayout>
-        <div className="flex items-center justify-center h-full">
-          <Spinner />
+        <div className="flex items-center justify-center h-screen">
+          <Spinner size="lg" color="primary" />
         </div>
       </DefaultLayout>
     );
@@ -196,57 +204,92 @@ export default function EditCardPage() {
       <DefaultLayout>
         <div className="flex justify-center items-center h-screen">
           <Unauthorized />
-          <Spinner />
         </div>
       </DefaultLayout>
     );
   }
 
   return (
-    // Full page container with gradient background
-    <div className="min-h-screen bg-gradient-to-r from-indigo-500 from-10% via-sky-500 via-30% to-emerald-500 to-90% flex items-center justify-center">
-      <Modal backdrop="blur" isOpen={true} onClose={() => navigate("/edit")}>
+    <div className="min-h-screen bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+      {/* Background with subtle gradient */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background opacity-50"></div>
+      </div>
+
+      <Modal
+        backdrop="blur"
+        isOpen={true}
+        onClose={() => navigate("/edit")}
+        size="lg"
+        classNames={{
+          base: "bg-card border border-border shadow-2xl",
+          header: "border-b border-border",
+          footer: "border-t border-border",
+        }}
+      >
         <ModalContent>
-          <ModalHeader>{isNew ? "Create Card" : "Edit Card"}</ModalHeader>
-          <ModalBody>
-            <div className="space-y-4">
-              <Input
-                label="Card Name"
-                value={selectedCard?.name || ""}
-                onChange={(e) =>
-                  setSelectedCard(
-                    selectedCard ? { ...selectedCard, name: e.target.value } : null
-                  )
-                }
-                className="w-full"
-              />
-              <Input
-                label="Card Number"
-                value={selectedCard?.number || ""}
-                onChange={(e) =>
-                  setSelectedCard(
-                    selectedCard ? { ...selectedCard, number: e.target.value } : null
-                  )
-                }
-                className="w-full"
-              />
+          <ModalHeader className="flex flex-col gap-1">
+            <h2 className="text-xl font-bold">{isNew ? "Create New Card" : "Edit Card Details"}</h2>
+            <p className="text-sm text-muted-foreground font-normal">
+              {isNew ? "Add a new card to the collection." : "Update the details of this card."}
+            </p>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Card Name"
+                  placeholder="e.g. African Lion"
+                  value={selectedCard?.name || ""}
+                  onChange={(e) =>
+                    setSelectedCard(
+                      selectedCard ? { ...selectedCard, name: e.target.value } : null
+                    )
+                  }
+                  variant="bordered"
+                  labelPlacement="outside"
+                  isRequired
+                />
+                <Input
+                  label="Card Number"
+                  placeholder="e.g. 42"
+                  value={selectedCard?.number || ""}
+                  onChange={(e) =>
+                    setSelectedCard(
+                      selectedCard ? { ...selectedCard, number: e.target.value } : null
+                    )
+                  }
+                  variant="bordered"
+                  labelPlacement="outside"
+                  isRequired
+                />
+              </div>
+
               <Select
-                label="Category"
-                value={selectedCard?.collection || ""}
+                label="Collection Category"
+                placeholder="Select a category"
+                selectedKeys={selectedCard?.collection ? [selectedCard.collection] : []}
                 onChange={(e) =>
                   setSelectedCard(
                     selectedCard ? { ...selectedCard, collection: e.target.value } : null
                   )
                 }
+                variant="bordered"
+                labelPlacement="outside"
+                isRequired
               >
                 {collections.map((col) => (
-                  <SelectItem key={col.id} value={col.id}>
+                  <SelectItem key={col.id}>
                     {col.name}
                   </SelectItem>
                 ))}
               </Select>
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Active Status</label>
+
+              <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">Active Status</span>
+                  <span className="text-xs text-muted-foreground">Inactive cards won't appear in packs</span>
+                </div>
                 <Switch
                   isSelected={selectedCard?.active || false}
                   onValueChange={(isSelected) =>
@@ -254,21 +297,38 @@ export default function EditCardPage() {
                       selectedCard ? { ...selectedCard, active: isSelected } : null
                     )
                   }
+                  color="success"
                 />
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
             {!isNew && selectedCard && (
-              <Button onPress={() => handleDelete(selectedCard)} variant="solid" color="danger">
+              <Button
+                onPress={() => handleDelete(selectedCard)}
+                variant="light"
+                color="danger"
+                startContent={<Trash2 className="w-4 h-4" />}
+                className="mr-auto"
+              >
                 Delete
               </Button>
             )}
-            <Button onPress={() => navigate("/edit")} variant="ghost">
+            <Button
+              onPress={() => navigate("/edit")}
+              variant="flat"
+              startContent={<X className="w-4 h-4" />}
+            >
               Cancel
             </Button>
-            <Button onPress={() => handleSave(selectedCard)} variant="solid" color="primary">
-              {isNew ? "Create" : "Save Changes"}
+            <Button
+              onPress={() => handleSave(selectedCard)}
+              color="primary"
+              isLoading={isSaving}
+              startContent={!isSaving && <Save className="w-4 h-4" />}
+              className="font-semibold"
+            >
+              {isNew ? "Create Card" : "Save Changes"}
             </Button>
           </ModalFooter>
         </ModalContent>

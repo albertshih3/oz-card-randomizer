@@ -88,7 +88,7 @@ export default function CardDialog({
                         fullWidth
                     >
                         {collections.map((collection) => (
-                            <SelectItem key={collection.id} value={collection.id}>
+                            <SelectItem key={collection.id}>
                                 {collection.name}
                             </SelectItem>
                         ))}

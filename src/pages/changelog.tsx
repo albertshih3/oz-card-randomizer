@@ -1,313 +1,149 @@
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, GitCommit, Tag, Calendar, CheckCircle2, Sparkles, Wrench } from "lucide-react";
 import DefaultLayout from "@/layouts/default";
+import changelogData from "@/data/changelog.json";
+import { ChangelogEntry, ChangelogSection } from "@/types/changelog";
+
+// Map section types to icons and colors
+const getSectionIcon = (type: string) => {
+  switch (type) {
+    case "feat":
+      return <Sparkles className="w-4 h-4 text-blue-500" />;
+    case "fix":
+      return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    case "chore":
+      return <Wrench className="w-4 h-4 text-amber-500" />;
+    case "init":
+      return <GitCommit className="w-4 h-4 text-purple-500" />;
+    default:
+      return <Tag className="w-4 h-4 text-gray-500" />;
+  }
+};
+
+const getSectionColor = (type: string) => {
+  switch (type) {
+    case "feat":
+      return "text-blue-500 bg-blue-50 dark:bg-blue-900/20";
+    case "fix":
+      return "text-green-500 bg-green-50 dark:bg-green-900/20";
+    case "chore":
+      return "text-amber-500 bg-amber-50 dark:bg-amber-900/20";
+    case "init":
+      return "text-purple-500 bg-purple-50 dark:bg-purple-900/20";
+    default:
+      return "text-gray-500 bg-gray-50 dark:bg-gray-800";
+  }
+};
 
 export default function Changelog() {
+  // Default to expanding the first (latest) version
+  const [expandedVersion, setExpandedVersion] = useState<string | null>(changelogData[0]?.version || null);
+
+  const toggleVersion = (version: string) => {
+    if (expandedVersion === version) {
+      setExpandedVersion(null);
+    } else {
+      setExpandedVersion(version);
+    }
+  };
+
   return (
     <DefaultLayout>
-      <div className="container mx-auto px-4 py-12">
-        
-        <div className="max-w-3xl mx-auto">
-          {/* Timeline container */}
-          <div className="relative border-l-2 border-primary/30 pl-8 ml-6 pb-6 space-y-10">
-            {/* Version 1.2.2 */}
-            <div className="relative">
-              {/* Timeline node */}
-               <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary/80 text-background shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-              </div>
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-bold mb-4 tracking-tight">Changelog</h1>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Stay updated with the latest improvements, features, and fixes.
+          </p>
+        </div>
 
-              {/* Content */}
-              <div className="bg-card rounded-lg shadow-md p-6">
-                <div className="flex flex-wrap items-center justify-between mb-2">
-                  <h2 className="text-xl font-bold">Version 1.2.2</h2>
-                  <div className="flex items-center">
-                    <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                      Current
-                    </span>
-                    <span className="ml-3 text-sm text-muted-foreground">August 31, 2025</span>
+        <div className="space-y-4">
+          {(changelogData as unknown as ChangelogEntry[]).map((entry: ChangelogEntry) => (
+            <motion.div
+              key={entry.version}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className={`border rounded-xl overflow-hidden transition-all duration-200 ${expandedVersion === entry.version
+                ? "border-primary/50 shadow-lg bg-card"
+                : "border-border hover:border-primary/30 bg-card/50"
+                }`}
+            >
+              <button
+                onClick={() => toggleVersion(entry.version)}
+                className="w-full flex items-center justify-between p-6 text-left focus:outline-none"
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full ${entry.isCurrent
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "bg-muted text-muted-foreground"
+                      }`}
+                  >
+                    <GitCommit className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-xl font-bold">
+                        {entry.version === "Initial Release" ? entry.version : `v${entry.version}`}
+                      </h2>
+                      {entry.isCurrent && (
+                        <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm text-muted-foreground mt-1">
+                      <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                      {entry.date || "Pending Release"}
+                    </div>
                   </div>
                 </div>
+                <ChevronDown
+                  className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${expandedVersion === entry.version ? "rotate-180" : ""
+                    }`}
+                />
+              </button>
 
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                      Hotfixes
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Booster generation now always takes the first 8 cards from: Tropical Rainforest, Children's Zoo, California Trail, and African Savanna (in that order)</li>
-                      <li>Data loading ensures these base categories are included even if they are not listed in Firestore categories</li>
-                      <li>Improved resilience when a category is empty by skipping gracefully during selection</li>
-                      <li>Export columns mirror the fixed ordering and display names; corrected display to "African Savanna"</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Version 1.2.1 */}
-            <div className="relative">
-              {/* Timeline node */}
-               <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary/80 text-background shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-              </div>
+              <AnimatePresence>
+                {expandedVersion === entry.version && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    <div className="px-6 pb-8 pt-2 border-t border-border/50">
+                      <div className="space-y-8">
+                        {entry.sections.map((section: ChangelogSection, idx: number) => (
+                          <div key={idx} className="relative pl-4">
+                            {/* Vertical line for visual hierarchy */}
+                            <div className="absolute left-0 top-2 bottom-0 w-0.5 bg-border/50 rounded-full"></div>
 
-              {/* Content */}
-              <div className="bg-card rounded-lg shadow-md p-6">
-                <div className="flex flex-wrap items-center justify-between mb-2">
-                  <h2 className="text-xl font-bold">Version 1.2.1</h2>
-                  <div className="flex items-center">
-                    <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                      Current
-                    </span>
-                    <span className="ml-3 text-sm text-muted-foreground">August 30, 2025</span>
-                  </div>
-                </div>
-
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                      Hotfixes
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Pack generation now uses all active categories for the 9th card (no longer limited to hardcoded categories)</li>
-                      <li>Editing a card now correctly updates its category by moving the document between collections without errors</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Version 1.2 */}
-            <div className="relative">
-              {/* Timeline node */}
-               <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary/80 text-background shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-              </div>
-              
-              {/* Content */}
-        <div className="bg-card rounded-lg shadow-md p-6">
-                <div className="flex flex-wrap items-center justify-between mb-2">
-                  <h2 className="text-xl font-bold">Version 1.2</h2>
-          <span className="text-sm text-muted-foreground">August 30, 2025</span>
-                </div>
-                
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Feature Enhancements
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Added search functionality to edit page with support for names, numbers, and categories (EB)</li>
-                      <li>Added Active/Inactive switches directly in the cards table for quick view and update (EB)</li>
-                      <li>Added the ability to create, update, and delete card categories (EB)</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                      Bug Fixes
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Categories now load dynamically from Firebase instead of being hardcoded</li>
-                      <li>Fixed duplicate card issue</li>
-                    </ul>
-                  </div>
-                  
-                  
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Minor Changes
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Added a tooltip to highlight table sorting</li>
-                      <li>Added spinners and loading indicators for better user feedback during operations</li>
-                      <li>Centralized Firebase configuration in <code>/src/lib/firebase.ts</code></li>
-                      <li>Implemented smart caching with invalidation for category data</li>
-                      <li>Reduced Firebase calls through caching and optimized data loading</li>
-                      <li>Enhanced tracking for category management and card toggle actions</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Version 1.1 */}
-            <div className="relative">
-              {/* Timeline node */}
-              <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary/80 text-background shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-              </div>
-              
-              {/* Content */}
-              <div className="bg-card rounded-lg shadow-md p-6">
-                <div className="flex flex-wrap items-center justify-between mb-2">
-                  <h2 className="text-xl font-bold">Version 1.1</h2>
-                  <span className="text-sm text-muted-foreground">May 5, 2025</span>
-                </div>
-                
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Feature Enhancements
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Added detailed usage information to the usage (about) page</li>
-                      <li>Implemented interactive timeline-based Changelog page</li>
-                      <li>Improved information architecture for better user guidance</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                      Bug Fixes
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Fixed Excel sheet generation issue</li>
-                      <li>Enhanced analytics tracking with Firebase and Google Analytics</li>
-                      <li>Added comprehensive usage metrics collection for page views, card generation, and user interactions</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Minor Changes
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Updated contact information with Oakland Zoo emails</li>
-                      <li>Added tooltip explanations for key features</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Version 1.0 */}
-            <div className="relative">
-              {/* Timeline node */}
-              <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-primary/80 text-background shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                </svg>
-              </div>
-              
-              {/* Content */}
-              <div className="bg-card rounded-lg shadow-md p-6">
-                <div className="flex flex-wrap items-center justify-between mb-2">
-                  <h2 className="text-xl font-bold">Version 1.0</h2>
-                  <span className="text-sm text-muted-foreground">Febuary 2nd, 2025</span>
-                </div>
-                
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Major Website Revamp
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Complete UI redesign with modern card-based interface</li>
-                      <li>New theme system with light/dark mode support</li>
-                      <li>Responsive layout for better mobile experience</li>
-                      <li>Improved navigation and user accessibility</li>
-                      <li>Enhanced card editing interface for administrators</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                      New Features
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Multi-pack generation (5, 10, 20 packs at once)</li>
-                      <li>Collapsible pack cards for better organization</li>
-                      <li>Card checkoff system to track pack assembly progress</li>
-                      <li>Added Active/Inactive toggle to edit card page</li>
-                      <li>User authentication system for card editors</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Technical Improvements
-                    </h3>
-                    <ul className="mt-2 space-y-1 list-disc pl-5">
-                      <li>Framework update to latest version</li>
-                      <li>Performance optimizations for faster load times</li>
-                      <li>Improved code structure and maintainability</li>
-                      <li>Added analytics for usage tracking</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Initial Release - for historical completeness */}
-            <div className="relative">
-              {/* Timeline node */}
-              <div className="absolute -left-[53px] flex items-center justify-center w-10 h-10 rounded-full bg-muted text-muted-foreground shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M12 8v4"></path>
-                  <path d="M12 16h.01"></path>
-                </svg>
-              </div>
-              
-              {/* Content */}
-              <div className="bg-card rounded-lg shadow-md p-6">
-                <div className="flex flex-wrap items-center justify-between mb-2">
-                  <h2 className="text-xl font-bold">Initial Release</h2>
-                  <span className="text-sm text-muted-foreground"></span>
-                </div>
-                
-                <p className="text-muted-foreground italic">
-                  First version of the Oakland Zoo Booster Pack Generator launched with basic functionality 
-                  for random card generation and simple management interface.
-                </p>
-              </div>
-            </div>
-            
-          </div>
+                            <h3 className="text-base font-semibold flex items-center mb-3">
+                              <span className={`flex items-center justify-center w-6 h-6 rounded-md mr-3 ${getSectionColor(section.type)}`}>
+                                {getSectionIcon(section.type)}
+                              </span>
+                              {section.title}
+                            </h3>
+                            <ul className="space-y-3 pl-9">
+                              {section.items.map((item, itemIdx) => (
+                                <li key={itemIdx} className="text-muted-foreground text-sm leading-relaxed relative">
+                                  <span className="absolute -left-4 top-2 w-1.5 h-1.5 rounded-full bg-border"></span>
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
         </div>
       </div>
     </DefaultLayout>

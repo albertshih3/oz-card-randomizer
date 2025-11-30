@@ -28,7 +28,8 @@ import {
     useDisclosure,
 } from "@heroui/modal";
 import { Switch } from "@heroui/switch";
-import { EditIcon } from "@/components/icons";
+import { motion } from "framer-motion";
+import { Edit2, Trash2, Plus, Tag, AlertCircle, Save, X } from "lucide-react";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
@@ -51,6 +52,7 @@ export default function CategoriesPage() {
     const [newCategoryId, setNewCategoryId] = useState("");
     const { isOpen, onOpen, onClose } = useDisclosure();
     const [isCreating, setIsCreating] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (!isLoaded || !userId) return;
@@ -92,6 +94,7 @@ export default function CategoriesPage() {
 
     const handleSave = async () => {
         if (!newCategoryName.trim() || !newCategoryId.trim()) return;
+        setIsSaving(true);
 
         try {
             if (isCreating) {
@@ -148,6 +151,8 @@ export default function CategoriesPage() {
             setEditingCategory(null);
         } catch (err) {
             console.error("Error saving category:", err);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -207,13 +212,13 @@ export default function CategoriesPage() {
     };
 
     if (!isLoaded) {
-        return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
+        return <div className="flex justify-center items-center h-screen"><Spinner size="lg" color="primary" /></div>;
     }
 
     if (!userId) {
         return (
             <DefaultLayout>
-                <div className="flex justify-center items-center h-screen">
+                <div className="flex justify-center items-center h-[80vh]">
                     <Unauthorized />
                 </div>
             </DefaultLayout>
@@ -222,51 +227,93 @@ export default function CategoriesPage() {
 
     return (
         <DefaultLayout>
-            <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-                <div className="flex justify-between items-center w-full max-w-4xl">
-                    <h1 className="text-2xl font-bold">Manage Categories</h1>
-                    <Button color="primary" onPress={handleCreate}>
-                        Create New Category
+            <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col gap-6 py-8 md:py-12 max-w-5xl mx-auto"
+            >
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Manage Categories</h1>
+                        <p className="text-muted-foreground mt-1">Create and manage card categories and collections.</p>
+                    </div>
+                    <Button
+                        color="primary"
+                        onPress={handleCreate}
+                        startContent={<Plus className="w-5 h-5" />}
+                        className="font-semibold shadow-md"
+                    >
+                        Create Category
                     </Button>
                 </div>
 
                 {loading ? (
-                    <Spinner />
+                    <div className="flex justify-center py-20">
+                        <Spinner size="lg" color="primary" label="Loading categories..." />
+                    </div>
                 ) : (
-                    <div className="w-full max-w-4xl">
-                        <Table aria-label="Categories table">
+                    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                        <Table
+                            aria-label="Categories table"
+                            removeWrapper
+                            classNames={{
+                                th: "bg-muted/50 text-muted-foreground font-medium py-3",
+                                td: "py-3 border-b border-border/50 last:border-0",
+                            }}
+                        >
                             <TableHeader>
-                                <TableColumn>Display Name</TableColumn>
+                                <TableColumn>DISPLAY NAME</TableColumn>
                                 <TableColumn>ID</TableColumn>
-                                <TableColumn>Wildcard</TableColumn>
-                                <TableColumn>Actions</TableColumn>
+                                <TableColumn>WILDCARD ELIGIBLE</TableColumn>
+                                <TableColumn align="end">ACTIONS</TableColumn>
                             </TableHeader>
-                            <TableBody>
+                            <TableBody emptyContent="No categories found">
                                 {categories.map((category) => (
-                                    <TableRow key={category.id}>
-                                        <TableCell>{category.displayName}</TableCell>
-                                        <TableCell>{category.name}</TableCell>
+                                    <TableRow key={category.id} className="hover:bg-muted/30 transition-colors">
                                         <TableCell>
-                                            <Switch
-                                                size="sm"
-                                                isSelected={category.isWildcardEligible}
-                                                onValueChange={() => handleToggleWildcard(category)}
-                                            />
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                                                    <Tag className="w-4 h-4" />
+                                                </div>
+                                                <span className="font-medium">{category.displayName}</span>
+                                            </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex gap-2">
+                                            <code className="px-2 py-1 rounded bg-muted text-muted-foreground text-xs font-mono">
+                                                {category.name}
+                                            </code>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Switch
+                                                    size="sm"
+                                                    isSelected={category.isWildcardEligible}
+                                                    onValueChange={() => handleToggleWildcard(category)}
+                                                    color="success"
+                                                />
+                                                <span className={`text-xs ${category.isWildcardEligible ? 'text-success font-medium' : 'text-muted-foreground'}`}>
+                                                    {category.isWildcardEligible ? 'Yes' : 'No'}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex justify-end gap-2">
                                                 <Button
                                                     size="sm"
-                                                    variant="bordered"
+                                                    variant="flat"
+                                                    color="primary"
                                                     onPress={() => handleEdit(category)}
+                                                    startContent={<Edit2 className="w-3.5 h-3.5" />}
                                                 >
-                                                    <EditIcon /> Edit
+                                                    Edit
                                                 </Button>
                                                 <Button
                                                     size="sm"
                                                     color="danger"
-                                                    variant="bordered"
+                                                    variant="flat"
                                                     onPress={() => handleDelete(category)}
+                                                    startContent={<Trash2 className="w-3.5 h-3.5" />}
                                                 >
                                                     Delete
                                                 </Button>
@@ -278,20 +325,35 @@ export default function CategoriesPage() {
                         </Table>
                     </div>
                 )}
-            </section>
+            </motion.section>
 
-            <Modal isOpen={isOpen} onClose={onClose}>
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                backdrop="blur"
+                classNames={{
+                    base: "bg-card border border-border shadow-2xl",
+                    header: "border-b border-border",
+                    footer: "border-t border-border",
+                }}
+            >
                 <ModalContent>
-                    <ModalHeader>
-                        {isCreating ? "Create New Category" : "Edit Category"}
+                    <ModalHeader className="flex flex-col gap-1">
+                        <h2 className="text-xl font-bold">{isCreating ? "Create New Category" : "Edit Category"}</h2>
+                        <p className="text-sm text-muted-foreground font-normal">
+                            {isCreating ? "Add a new category to organize cards." : "Update category details."}
+                        </p>
                     </ModalHeader>
-                    <ModalBody>
+                    <ModalBody className="py-6">
                         <div className="space-y-4">
                             <Input
                                 label="Display Name"
                                 placeholder="e.g., African Savannah"
                                 value={newCategoryName}
                                 onChange={(e) => setNewCategoryName(e.target.value)}
+                                variant="bordered"
+                                labelPlacement="outside"
+                                isRequired
                             />
                             <Input
                                 label="Category ID"
@@ -299,15 +361,31 @@ export default function CategoriesPage() {
                                 value={newCategoryId}
                                 onChange={(e) => setNewCategoryId(e.target.value)}
                                 description="Used internally - should be lowercase with no spaces"
+                                variant="bordered"
+                                labelPlacement="outside"
+                                isRequired
+                                startContent={<span className="text-muted-foreground text-sm">#</span>}
                             />
+                            {isCreating && (
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 text-primary text-xs">
+                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                    <p>Category ID cannot be changed once created. Choose carefully.</p>
+                                </div>
+                            )}
                         </div>
                     </ModalBody>
                     <ModalFooter>
-                        <Button variant="ghost" onPress={onClose}>
+                        <Button variant="flat" onPress={onClose} startContent={<X className="w-4 h-4" />}>
                             Cancel
                         </Button>
-                        <Button color="primary" onPress={handleSave}>
-                            {isCreating ? "Create" : "Save Changes"}
+                        <Button
+                            color="primary"
+                            onPress={handleSave}
+                            isLoading={isSaving}
+                            startContent={!isSaving && <Save className="w-4 h-4" />}
+                            className="font-semibold"
+                        >
+                            {isCreating ? "Create Category" : "Save Changes"}
                         </Button>
                     </ModalFooter>
                 </ModalContent>
