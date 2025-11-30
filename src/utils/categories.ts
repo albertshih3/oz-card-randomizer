@@ -5,6 +5,7 @@ export interface Category {
     id: string;
     name: string;
     displayName: string;
+    isWildcardEligible?: boolean;
 }
 
 // Cache categories to avoid repeated Firebase calls
@@ -25,6 +26,7 @@ export const getCategories = async (): Promise<Category[]> => {
                 id: doc.id,
                 name: data.name || doc.id,
                 displayName: data.displayName || data.name || doc.id,
+                isWildcardEligible: data.isWildcardEligible || false,
             });
         });
 
@@ -60,11 +62,13 @@ const createDefaultCategories = async (): Promise<Category[]> => {
             const docRef = await addDoc(collection(db, "categories"), {
                 name: category.name,
                 displayName: category.displayName,
+                isWildcardEligible: false,
             });
             newCategories.push({
                 id: docRef.id,
                 name: category.name,
                 displayName: category.displayName,
+                isWildcardEligible: false,
             });
         }
         cachedCategories = newCategories;
@@ -77,15 +81,15 @@ const createDefaultCategories = async (): Promise<Category[]> => {
 
 export const getDefaultCategories = (): Category[] => {
     return [
-        { id: "africansavanna", name: "africansavanna", displayName: "African Savannah" },
-        { id: "californiatrail", name: "californiatrail", displayName: "California Trail" },
-        { id: "childrenszoo", name: "childrenszoo", displayName: "Children's Zoo" },
-        { id: "tropicalrainforest", name: "tropicalrainforest", displayName: "Tropical Rainforest" },
-        { id: "specialedition", name: "specialedition", displayName: "Special Edition" },
-        { id: "booatthezoo", name: "booatthezoo", displayName: "Boo at the Zoo" },
-        { id: "arcas", name: "arcas", displayName: "ARCAS" },
-        { id: "newnaturefoundation", name: "newnaturefoundation", displayName: "New Nature Foundation" },
-        { id: "disney", name: "disney", displayName: "Disney" },
+        { id: "africansavanna", name: "africansavanna", displayName: "African Savannah", isWildcardEligible: false },
+        { id: "californiatrail", name: "californiatrail", displayName: "California Trail", isWildcardEligible: false },
+        { id: "childrenszoo", name: "childrenszoo", displayName: "Children's Zoo", isWildcardEligible: false },
+        { id: "tropicalrainforest", name: "tropicalrainforest", displayName: "Tropical Rainforest", isWildcardEligible: false },
+        { id: "specialedition", name: "specialedition", displayName: "Special Edition", isWildcardEligible: false },
+        { id: "booatthezoo", name: "booatthezoo", displayName: "Boo at the Zoo", isWildcardEligible: false },
+        { id: "arcas", name: "arcas", displayName: "ARCAS", isWildcardEligible: false },
+        { id: "newnaturefoundation", name: "newnaturefoundation", displayName: "New Nature Foundation", isWildcardEligible: false },
+        { id: "disney", name: "disney", displayName: "Disney", isWildcardEligible: false },
     ];
 };
 
@@ -98,6 +102,7 @@ export const clearCategoriesCache = (): void => {
 export const categoriesToLegacyFormat = (categories: Category[]) => {
     return categories.map(cat => ({
         id: cat.name,
-        name: cat.displayName
+        name: cat.displayName,
+        isWildcardEligible: cat.isWildcardEligible
     }));
 };

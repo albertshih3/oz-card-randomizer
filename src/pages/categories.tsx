@@ -27,6 +27,7 @@ import {
     ModalFooter,
     useDisclosure,
 } from "@heroui/modal";
+import { Switch } from "@heroui/switch";
 import { EditIcon } from "@/components/icons";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
@@ -38,6 +39,7 @@ interface Category {
     id: string;
     name: string;
     displayName: string;
+    isWildcardEligible?: boolean;
 }
 
 export default function CategoriesPage() {
@@ -128,10 +130,10 @@ export default function CategoriesPage() {
                     categories.map((cat) =>
                         cat.id === editingCategory.id
                             ? {
-                                  ...cat,
-                                  name: newCategoryId.toLowerCase().replace(/\s+/g, ""),
-                                  displayName: newCategoryName,
-                              }
+                                ...cat,
+                                name: newCategoryId.toLowerCase().replace(/\s+/g, ""),
+                                displayName: newCategoryName,
+                            }
                             : cat
                     )
                 );
@@ -163,11 +165,44 @@ export default function CategoriesPage() {
 
             await deleteDoc(doc(db, "categories", category.id));
             setCategories(categories.filter((cat) => cat.id !== category.id));
-            
+
             // Clear cache so other pages get updated categories
             clearCategoriesCache();
         } catch (err) {
             console.error("Error deleting category:", err);
+        }
+    };
+
+    const handleToggleWildcard = async (category: Category) => {
+        try {
+            const newValue = !category.isWildcardEligible;
+
+            // Optimistic update
+            setCategories(
+                categories.map((cat) =>
+                    cat.id === category.id
+                        ? { ...cat, isWildcardEligible: newValue }
+                        : cat
+                )
+            );
+
+            const categoryRef = doc(db, "categories", category.id);
+            await updateDoc(categoryRef, {
+                isWildcardEligible: newValue,
+            });
+
+            // Clear cache so other pages get updated categories
+            clearCategoriesCache();
+        } catch (err) {
+            console.error("Error updating wildcard eligibility:", err);
+            // Revert on error
+            setCategories(
+                categories.map((cat) =>
+                    cat.id === category.id
+                        ? { ...cat, isWildcardEligible: !category.isWildcardEligible }
+                        : cat
+                )
+            );
         }
     };
 
@@ -203,6 +238,7 @@ export default function CategoriesPage() {
                             <TableHeader>
                                 <TableColumn>Display Name</TableColumn>
                                 <TableColumn>ID</TableColumn>
+                                <TableColumn>Wildcard</TableColumn>
                                 <TableColumn>Actions</TableColumn>
                             </TableHeader>
                             <TableBody>
@@ -210,6 +246,13 @@ export default function CategoriesPage() {
                                     <TableRow key={category.id}>
                                         <TableCell>{category.displayName}</TableCell>
                                         <TableCell>{category.name}</TableCell>
+                                        <TableCell>
+                                            <Switch
+                                                size="sm"
+                                                isSelected={category.isWildcardEligible}
+                                                onValueChange={() => handleToggleWildcard(category)}
+                                            />
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex gap-2">
                                                 <Button

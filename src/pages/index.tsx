@@ -36,7 +36,7 @@ const BASE_NAME_MAP: Record<string, string> = {
 };
 
 // We'll load card categories dynamically
-type LegacyCollection = { id: string; name: string };
+type LegacyCollection = { id: string; name: string; isWildcardEligible?: boolean };
 
 export default function IndexPage() {
 
@@ -49,6 +49,7 @@ export default function IndexPage() {
     const [isExporting, setIsExporting] = useState(false);
     const [exportTrigger, setExportTrigger] = useState(false);
     const [collections, setCollections] = useState<LegacyCollection[]>([]);
+    const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set([]));
 
 
     // Pull categories and cards database from Firebase
@@ -141,9 +142,12 @@ export default function IndexPage() {
             }
         }
 
-        // 9th card: from any available category with active cards (use any loaded collection except spoonbill)
+        // 9th card: from specific wildcard categories
         const eligibleCategories = Object.keys(cardsData)
-            .filter(id => id !== 'spoonbill' && Array.isArray(cardsData[id]) && cardsData[id].length > 0);
+            .filter(id => {
+                const collection = collections.find(c => c.id === id);
+                return collection?.isWildcardEligible && Array.isArray(cardsData[id]) && cardsData[id].length > 0;
+            });
 
         let randomCollection: string | undefined;
         let attempts = 0;
@@ -187,6 +191,7 @@ export default function IndexPage() {
                 newPacks.push(generateBoosterPack());
             }
             setBoosterPacks(newPacks);
+            setSelectedKeys(new Set([]));
         } catch (err) {
             console.error("Error generating packs:", err);
             exception({
@@ -219,7 +224,7 @@ export default function IndexPage() {
             console.warn("No data to export");
             return;
         }
-        
+
         event({
             action: 'download',
             category: 'export',
@@ -307,6 +312,8 @@ export default function IndexPage() {
                         aria-label="Booster Pack Table"
                         color={"success"}
                         selectionMode='multiple'
+                        selectedKeys={selectedKeys}
+                        onSelectionChange={(keys) => setSelectedKeys(keys as Set<string>)}
                         classNames={{
                             table: "min-h-[400px]",
                         }}
