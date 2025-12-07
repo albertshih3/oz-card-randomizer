@@ -7,7 +7,7 @@ import { Provider } from "./provider.tsx";
 import "@/styles/globals.css";
 import { ClerkProvider } from '@clerk/clerk-react'
 
-import { Analytics } from '@vercel/analytics/next';
+import { Analytics } from '@vercel/analytics/react';
 import { initGtag } from '@/lib/gtag';
 
 // Clerk auth public key
