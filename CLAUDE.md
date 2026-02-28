@@ -10,6 +10,49 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### February 28, 2026 - Pack Generation Bug Fixes (OAK-22, OAK-23, OAK-24)
+
+**Released as v2.0.1** — `src/data/changelog.json` updated; `2.0.0` entry marked `isCurrent: false`.
+
+**Motivation**: Three separate correctness bugs in `src/pages/index.tsx` were producing malformed packs, broken Excel exports, and a silent crash path in wildcard selection.
+
+**All changes are isolated to `src/pages/index.tsx`.**
+
+#### OAK-22 — Short-circuit `||` bug in base-category card loop
+
+**Root cause**: The condition `if (!addCard(col) || !addCard(col))` used JavaScript's short-circuit evaluation: when the first `addCard(col)` returned `false`, the second call was never made. Packs were only receiving one card per base category instead of two, producing 6-card packs instead of the expected 10.
+
+**Fix**: Replaced the single compound `if` with two separate `if (!addCard(col))` statements so both draws always execute regardless of the first result.
+
+**Why this matters**: Every subsequent feature (export, display, count validation) assumed 10-card packs. 6-card packs silently corrupted downstream behavior.
+
+#### OAK-23 — Export trigger state machine race condition
+
+**Root cause**: An `exportTrigger` boolean state was set to `true` inside `handleGenerateAndExport`, then watched by a `useEffect` that called `exportToExcel()`. React batches state updates, so there was no guarantee the effect fired at the right time relative to pack generation, and `isExporting` could be left as `true` permanently if an error occurred before the effect cleaned up.
+
+**Fix**:
+- Removed `exportTrigger` state and its `useEffect`.
+- `generatePacks()` now returns `any[][]` (the generated pack data) instead of writing only to component state.
+- `handleGenerateAndExport` calls `generatePacks()` directly, passes the return value to `exportToExcel()`, and wraps the call in `try/finally` to guarantee `isExporting` resets to `false` even on error.
+- Added an early return guard at the top of `handleGenerateAndExport` to prevent double-clicks while export is in progress.
+
+**Why this matters**: The old pattern left the UI in a permanently-disabled state on any export error. The new pattern is deterministic and handles errors cleanly.
+
+#### OAK-24 — Wildcard selection passing `undefined` to `addCard`
+
+**Root cause**: The wildcard slot selected a random category from `eligibleCategories`. When `eligibleCategories` was empty (e.g., all wildcard-eligible collections had no active cards), `eligibleCategories[randomIndex]` evaluated to `undefined`, which was passed directly to `addCard`. This caused a silent failure or runtime error with no warning.
+
+**Fix**: Wrapped the wildcard selection block in an `if (eligibleCategories.length > 0)` guard. When no eligible categories exist, the wildcard slot is skipped and a `console.warn` is emitted so the condition is visible during debugging.
+
+**Why this matters**: Passing `undefined` to `addCard` is a type violation that could produce unpredictable behavior depending on how downstream code handles it. The guard makes the empty-collection case explicit and observable.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — pack structure, UI, and Firebase integration are unchanged
+
+---
+
 ### December 7, 2024 - React 19 Upgrade & Security Hardening
 
 **Motivation**: Future-proofing and security improvements for long-term maintainability.
@@ -149,7 +192,7 @@ Each collection represents a card category:
 - 1 wildcard (random from any collection)
 - 1 Spoonbill card
 
-**Implementation**: See `src/utils/categories.ts` for generation logic
+**Implementation**: See `src/pages/index.tsx` (`generateBoosterPack`, `generatePacks`)
 
 ## Build & Deployment
 

@@ -1,8 +1,24 @@
 [
   {
+    "version": "2.0.1",
+    "date": "February 28, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed pack generation producing only 6 cards instead of 10 — each base category now always contributes exactly 2 cards (OAK-22)",
+          "Fixed Excel export sometimes firing twice or not at all on rapid clicks — export now uses a direct call with a double-click guard (OAK-23)",
+          "Fixed wildcard slot crash when no eligible wildcard categories are configured — slot is now skipped gracefully with a warning (OAK-24)"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.0",
     "date": "November 30, 2025",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Global Design Revamp",
