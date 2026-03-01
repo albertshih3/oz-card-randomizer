@@ -1,8 +1,24 @@
 [
   {
-    "version": "2.0.1",
+    "version": "2.0.2",
     "date": "February 28, 2026",
     "isCurrent": true,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed broken Sign-In button on the unauthorized page — Clerk's SignInButton now correctly wraps the HeroUI Button so click events are not intercepted by react-aria (OAK-26)",
+          "Removed the close (×) button and backdrop-click dismissal from the unauthorized modal — previously left users on a blank white screen with no way to navigate (OAK-32)",
+          "Replaced invalid <Link>-inside-<Button> pattern on the Go Back button with programmatic navigation via useNavigate — fixes assistive-technology compatibility and cross-browser click behavior"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.1",
+    "date": "February 28, 2026",
+    "isCurrent": false,
     "sections": [
       {
         "title": "Bug Fixes",
@@ -205,7 +221,7 @@
   },
   {
     "version": "Initial Release",
-    "date": "",
+    "date": "2024",
     "isCurrent": false,
     "sections": [
       {
