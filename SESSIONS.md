@@ -74,7 +74,7 @@ All three bugs are fully resolved in `src/pages/index.tsx`:
 | `CLAUDE.md` | Corrected generation logic file reference from `src/utils/categories.ts` to `src/pages/index.tsx` |
 | `AGENT.md` | Created (new file) |
 | `SESSIONS.md` | Created (new file) |
-| `/Users/albertshih/.claude/projects/-Users-albertshih-Developer-oz-card-randomizer/memory/MEMORY.md` | Created (new file) |
+| `MEMORY.md` (Claude memory directory) | Created (new file) |
 
 #### Next steps
 
