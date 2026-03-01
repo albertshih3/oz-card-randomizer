@@ -1,0 +1,83 @@
+# SESSIONS.md — Oakland Zoo Booster Pack Generator
+
+Session changelog. Append a new entry at the top of the Changelog section after each work session.
+
+---
+
+## Changelog
+
+### 2026-02-28 — OAK-26/32 + Go Back Button Fix (v2.0.2)
+
+**Branch**: `development`
+
+#### What was achieved
+
+All three changes are isolated to `src/components/unauthorized.tsx`.
+
+**OAK-26 — Fixed broken Sign-In button**
+
+The original code had `<Button>` wrapping `<SignInButton>`. Clerk's `SignInButton` uses `cloneElement` to inject `onClick` onto its child. When `<Button>` was the outer element, HeroUI's react-aria `onPress` intercepted pointer events before Clerk's injected handler fired, so clicking Sign In did nothing. Fix: inverted the nesting to `<SignInButton>` wrapping `<Button>`. This matches the established pattern in `navbar.tsx`. The erroneous `onPress={onClose}` was also removed from the Sign-In button.
+
+**OAK-32 — Removed close button and backdrop-click dismissal**
+
+Previously the unauthorized modal had a `×` button and could be dismissed by clicking the backdrop. Both paths called `onClose` but left the user at `/unauthorized` with a blank white screen and no route content. Fix: added `hideCloseButton` and `isDismissable={false}` to `<Modal>`. Both props must be set together — each controls a separate dismissal mechanism.
+
+**Go Back button — replaced `<Link>`-inside-`<Button>` anti-pattern**
+
+The "Go Back" button previously wrapped a `<Link>` inside a `<Button>`, rendering as `<a>` inside `<button>` — invalid HTML that breaks assistive-technology compatibility. Fix: imported `useNavigate` from `react-router-dom`, removed the `Link` import, and replaced the nested element with `onPress={() => { onClose(); navigate("/"); }}` on the `<Button>` directly.
+
+#### Released as
+
+**v2.0.2** — `src/data/changelog.json` updated; `2.0.1` entry marked `isCurrent: false`.
+
+#### Files changed this session
+
+| File | Change |
+|---|---|
+| `src/components/unauthorized.tsx` | All three fixes applied (only file with logic changes) |
+| `src/data/changelog.json` | v2.0.2 entry added; v2.0.1 marked `isCurrent: false` |
+
+#### Next steps
+
+- Open PR from `development` to `main` for v2.0.2
+- Manual smoke test: visit an admin-protected route while logged out, verify the modal opens, verify Sign In launches Clerk flow, verify Go Back navigates to `/` and closes modal, verify clicking outside or `×` does not dismiss the modal
+
+---
+
+### 2026-02-28 — OAK-22/23/24 Bug Fix Code Review + Documentation Init
+
+**Branch**: `development`
+
+#### What was achieved
+
+1. **Code review of OAK-22, OAK-23, OAK-24 fixes** in `src/pages/index.tsx`.
+
+2. **OAK-23 follow-up fix**: Identified that `setShowModal(false)` was placed after the `try/finally` block in `handleGenerateAndExport`, meaning it would not execute if `exportToExcel` threw. Moved it inside `finally` so the modal always closes regardless of success or error.
+
+3. **CLAUDE.md documentation fix**: The "Booster Pack Generation Logic" section incorrectly pointed to `src/utils/categories.ts` as the location of generation logic. Updated to correctly reference `src/pages/index.tsx` (`generateBoosterPack`, `generatePacks`).
+
+4. **Documentation init**: Created `AGENT.md` and `SESSIONS.md` in the project root for the first time. Created `MEMORY.md` in the Claude memory directory.
+
+#### Final state of OAK-22/23/24
+
+All three bugs are fully resolved in `src/pages/index.tsx`:
+
+- **OAK-22** (6-card packs): Two separate `if (!addCard(col))` calls replace the former short-circuit `||` compound condition. Both draws always execute.
+- **OAK-23** (export race condition + stuck UI): `exportTrigger` state and its `useEffect` removed. `generatePacks()` returns `any[][]`. `handleGenerateAndExport` calls `generatePacks()` directly, passes result to `exportToExcel()`, and uses `try/finally` with both `setIsExporting(false)` and `setShowModal(false)` inside `finally`.
+- **OAK-24** (undefined wildcard category): `if (eligibleCategories.length > 0)` guard wraps wildcard selection. Empty case emits `console.warn` instead of silently passing `undefined` to `addCard`.
+
+#### Files changed this session
+
+| File | Change |
+|---|---|
+| `src/pages/index.tsx` | Moved `setShowModal(false)` inside `finally` block in `handleGenerateAndExport` |
+| `CLAUDE.md` | Corrected generation logic file reference from `src/utils/categories.ts` to `src/pages/index.tsx` |
+| `AGENT.md` | Created (new file) |
+| `SESSIONS.md` | Created (new file) |
+| `MEMORY.md` (Claude memory directory) | Created (new file) |
+
+#### Next steps
+
+- Open PR from `development` to `main` for the OAK-22/23/24 fixes
+- Manual smoke test: generate a pack and verify 10 cards appear; generate + export and verify modal closes on both success and error paths
+- Consider adding Vitest unit tests for `generateBoosterPack` to prevent regressions on pack structure

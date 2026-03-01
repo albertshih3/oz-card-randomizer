@@ -56,7 +56,6 @@ export default function IndexPage() {
     const [showModal, setShowModal] = useState(false);
     const [numPacks, setNumPacks] = useState(1);
     const [isExporting, setIsExporting] = useState(false);
-    const [exportTrigger, setExportTrigger] = useState(false);
     const [collections, setCollections] = useState<LegacyCollection[]>([]);
 
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set([]));
@@ -101,15 +100,6 @@ export default function IndexPage() {
         fetchData();
     }, []);
 
-    // Export when packs generated (spreadsheet)
-    useEffect(() => {
-        if (exportTrigger && boosterPacks.length > 0) {
-            exportToExcel(boosterPacks);
-            setIsExporting(false);  // Stop loading after export
-            setExportTrigger(false); // Reset trigger
-        }
-    }, [boosterPacks, exportTrigger]);
-
     // open modal function
     const handleOpenModal = () => {
         event({
@@ -147,8 +137,11 @@ export default function IndexPage() {
 
         // First 8 cards: two from each of the specified 4 categories (order matters)
         for (const col of BASE_CATEGORIES) {
-            if (!addCard(col) || !addCard(col)) {
-                console.warn(`Not enough cards in ${col} collection`);
+            if (!addCard(col)) {
+                console.warn(`Not enough cards in ${col} collection (card 1)`);
+            }
+            if (!addCard(col)) {
+                console.warn(`Not enough cards in ${col} collection (card 2)`);
             }
         }
 
@@ -159,17 +152,20 @@ export default function IndexPage() {
                 return collection?.isWildcardEligible && Array.isArray(cardsData[id]) && cardsData[id].length > 0;
             });
 
-        let randomCollection: string | undefined;
-        let attempts = 0;
-        const maxAttempts = Math.max(10, eligibleCategories.length * 2);
-        while (attempts < maxAttempts) {
-            randomCollection = eligibleCategories[Math.floor(Math.random() * eligibleCategories.length)];
-            if (addCard(randomCollection)) break;
-            attempts++;
-        }
-
-        if (attempts >= maxAttempts) {
-            console.warn("Failed to add a card from a random collection after 10 attempts");
+        if (eligibleCategories.length > 0) {
+            let randomCollection: string | undefined;
+            let attempts = 0;
+            const maxAttempts = Math.max(10, eligibleCategories.length * 2);
+            while (attempts < maxAttempts) {
+                randomCollection = eligibleCategories[Math.floor(Math.random() * eligibleCategories.length)];
+                if (addCard(randomCollection)) break;
+                attempts++;
+            }
+            if (attempts >= maxAttempts) {
+                console.warn("Failed to add a card from a random collection after 10 attempts");
+            }
+        } else {
+            console.warn("No wildcard-eligible categories found; wildcard slot skipped");
         }
 
         if (!addCard('spoonbill')) {
@@ -188,7 +184,8 @@ export default function IndexPage() {
     };
 
     // MORE PACKS (multiple packs)
-    const generatePacks = (count: number) => {
+    const generatePacks = (count: number): any[][] => {
+        let newPacks: any[][] = [];
         try {
             event({
                 action: 'generate',
@@ -211,7 +208,7 @@ export default function IndexPage() {
                 });
             }
 
-            const newPacks = [];
+            newPacks = [];
             for (let i = 0; i < count; i++) {
                 newPacks.push(generateBoosterPack());
             }
@@ -229,20 +226,28 @@ export default function IndexPage() {
             });
             setError("Failed to generate booster packs. Please try again.");
         }
+        return newPacks;
     };
 
     // Function to generate packs and export
     const handleGenerateAndExport = () => {
+        if (isExporting) return; // prevent double-click
         event({
             action: 'export',
             category: 'spreadsheet',
             label: 'generate_and_export',
             value: numPacks
         });
-        setIsExporting(true); // Start loading state
-        generatePacks(numPacks);
-        setExportTrigger(true); // Signal to trigger export when packs are ready
-        setShowModal(false); // Close the modal
+        setIsExporting(true);
+        try {
+            const packs = generatePacks(numPacks);
+            if (packs.length > 0) {
+                exportToExcel(packs);
+            }
+        } finally {
+            setIsExporting(false);
+            setShowModal(false);
+        }
     };
 
     // Function to export booster packs to Excel

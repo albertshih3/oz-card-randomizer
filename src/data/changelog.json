@@ -1,8 +1,56 @@
 [
   {
+    "version": "2.0.3",
+    "date": "February 28, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Admin Form Validation",
+        "type": "feat",
+        "items": [
+          "Added input validation to the Edit Card and Categories admin forms — empty names, malformed card numbers, and special-character category IDs are now rejected before reaching Firestore (OAK-30)",
+          "Inline error messages appear next to each offending field for clear, immediate feedback",
+          "Category ID field is now read-only when editing an existing category to prevent orphaning cards in Firestore"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.2",
+    "date": "February 28, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed broken Sign-In button on the unauthorized page — Clerk's SignInButton now correctly wraps the HeroUI Button so click events are not intercepted by react-aria (OAK-26)",
+          "Removed the close (×) button and backdrop-click dismissal from the unauthorized modal — previously left users on a blank white screen with no way to navigate (OAK-32)",
+          "Replaced invalid <Link>-inside-<Button> pattern on the Go Back button with programmatic navigation via useNavigate — fixes assistive-technology compatibility and cross-browser click behavior"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.1",
+    "date": "February 28, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed pack generation producing only 6 cards instead of 10 — each base category now always contributes exactly 2 cards (OAK-22)",
+          "Fixed Excel export sometimes firing twice or not at all on rapid clicks — export now uses a direct call with a double-click guard (OAK-23)",
+          "Fixed wildcard slot crash when no eligible wildcard categories are configured — slot is now skipped gracefully with a warning (OAK-24)"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.0",
     "date": "November 30, 2025",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Global Design Revamp",
@@ -80,7 +128,7 @@
     ]
   },
   {
-    "version": "1.2",
+    "version": "1.2.0",
     "date": "August 30, 2025",
     "isCurrent": false,
     "sections": [
@@ -116,7 +164,7 @@
     ]
   },
   {
-    "version": "1.1",
+    "version": "1.1.0",
     "date": "May 5, 2025",
     "isCurrent": false,
     "sections": [
@@ -149,8 +197,8 @@
     ]
   },
   {
-    "version": "1.0",
-    "date": "Febuary 2nd, 2025",
+    "version": "1.0.0",
+    "date": "February 2nd, 2025",
     "isCurrent": false,
     "sections": [
       {
@@ -189,7 +237,7 @@
   },
   {
     "version": "Initial Release",
-    "date": "",
+    "date": "2024",
     "isCurrent": false,
     "sections": [
       {

@@ -9,9 +9,10 @@ import {
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { SignInButton } from "@clerk/clerk-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Unauthorized() {
+    const navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure();
 
     const handleOpen = () => {
@@ -24,7 +25,7 @@ export default function Unauthorized() {
 
     return (
         <>
-            <Modal backdrop='blur' isOpen={isOpen} onClose={onClose}>
+            <Modal backdrop='blur' isOpen={isOpen} onClose={onClose} hideCloseButton isDismissable={false}>
                 <ModalContent>
                     {(onClose) => (
                         <>
@@ -35,12 +36,14 @@ export default function Unauthorized() {
                                 </p>
                             </ModalBody>
                             <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose}>
-                                    <Link to="/">Go Back</Link>
+                                <Button color="danger" variant="light" onPress={() => { onClose(); navigate("/"); }}>
+                                    Go Back
                                 </Button>
-                                <Button color="success" onPress={onClose}>
-                                    <SignInButton></SignInButton>
-                                </Button>
+                                <SignInButton>
+                                    <Button color="success">
+                                        Sign In
+                                    </Button>
+                                </SignInButton>
                             </ModalFooter>
                         </>
                     )}

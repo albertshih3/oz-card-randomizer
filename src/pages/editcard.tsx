@@ -28,6 +28,7 @@ import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
 import { db, auth } from "@/lib/firebase";
+import { validateCardForm, CardFormErrors } from "@/utils/validation";
 import { Save, Trash2, X } from "lucide-react";
 
 interface Card {
@@ -47,6 +48,7 @@ export default function EditCardPage() {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [collections, setCollections] = useState<{ id: string, name: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<CardFormErrors>({});
 
   // Parse query parameters (e.g. ?cardId=...&collection=... or ?new=true)
   const searchParams = new URLSearchParams(location.search);
@@ -104,6 +106,14 @@ export default function EditCardPage() {
 
   const handleSave = async (updatedCard: Card | null) => {
     if (!updatedCard) return;
+
+    const errors = validateCardForm(updatedCard);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+
     setIsSaving(true);
     try {
       // Ensure we're authenticated with Firebase before any write
@@ -186,6 +196,7 @@ export default function EditCardPage() {
       navigate("/edit");
     } catch (err) {
       console.error("Error deleting card:", err);
+    } finally {
       setIsSaving(false);
     }
   };
@@ -241,27 +252,34 @@ export default function EditCardPage() {
                   label="Card Name"
                   placeholder="e.g. African Lion"
                   value={selectedCard?.name || ""}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setSelectedCard(
                       selectedCard ? { ...selectedCard, name: e.target.value } : null
-                    )
-                  }
+                    );
+                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
                   variant="bordered"
                   labelPlacement="outside"
                   isRequired
+                  isInvalid={!!formErrors.name}
+                  errorMessage={formErrors.name}
                 />
                 <Input
                   label="Card Number"
                   placeholder="e.g. 42"
                   value={selectedCard?.number || ""}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setSelectedCard(
                       selectedCard ? { ...selectedCard, number: e.target.value } : null
-                    )
-                  }
+                    );
+                    if (formErrors.number)
+                      setFormErrors((prev) => ({ ...prev, number: undefined }));
+                  }}
                   variant="bordered"
                   labelPlacement="outside"
                   isRequired
+                  isInvalid={!!formErrors.number}
+                  errorMessage={formErrors.number}
                 />
               </div>
 
@@ -269,14 +287,18 @@ export default function EditCardPage() {
                 label="Collection Category"
                 placeholder="Select a category"
                 selectedKeys={selectedCard?.collection ? [selectedCard.collection] : []}
-                onChange={(e) =>
+                onChange={(e) => {
                   setSelectedCard(
                     selectedCard ? { ...selectedCard, collection: e.target.value } : null
-                  )
-                }
+                  );
+                  if (formErrors.collection)
+                    setFormErrors((prev) => ({ ...prev, collection: undefined }));
+                }}
                 variant="bordered"
                 labelPlacement="outside"
                 isRequired
+                isInvalid={!!formErrors.collection}
+                errorMessage={formErrors.collection}
               >
                 {collections.map((col) => (
                   <SelectItem key={col.id}>
