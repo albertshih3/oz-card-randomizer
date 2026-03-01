@@ -1,8 +1,24 @@
 [
   {
-    "version": "2.0.2",
+    "version": "2.0.3",
     "date": "February 28, 2026",
     "isCurrent": true,
+    "sections": [
+      {
+        "title": "Admin Form Validation",
+        "type": "feat",
+        "items": [
+          "Added input validation to the Edit Card and Categories admin forms — empty names, malformed card numbers, and special-character category IDs are now rejected before reaching Firestore (OAK-30)",
+          "Inline error messages appear next to each offending field for clear, immediate feedback",
+          "Category ID field is now read-only when editing an existing category to prevent orphaning cards in Firestore"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.2",
+    "date": "February 28, 2026",
+    "isCurrent": false,
     "sections": [
       {
         "title": "Bug Fixes",
@@ -112,7 +128,7 @@
     ]
   },
   {
-    "version": "1.2",
+    "version": "1.2.0",
     "date": "August 30, 2025",
     "isCurrent": false,
     "sections": [
@@ -148,7 +164,7 @@
     ]
   },
   {
-    "version": "1.1",
+    "version": "1.1.0",
     "date": "May 5, 2025",
     "isCurrent": false,
     "sections": [
@@ -181,7 +197,7 @@
     ]
   },
   {
-    "version": "1.0",
+    "version": "1.0.0",
     "date": "Febuary 2nd, 2025",
     "isCurrent": false,
     "sections": [

@@ -34,6 +34,7 @@ import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
 import { getCategories, clearCategoriesCache } from "@/utils/categories";
+import { validateCategoryForm, CategoryFormErrors } from "@/utils/validation";
 import { db, auth } from "@/lib/firebase";
 
 interface Category {
@@ -53,6 +54,7 @@ export default function CategoriesPage() {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const [isCreating, setIsCreating] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [formErrors, setFormErrors] = useState<CategoryFormErrors>({});
 
     useEffect(() => {
         if (!isLoaded || !userId) return;
@@ -81,6 +83,7 @@ export default function CategoriesPage() {
         setNewCategoryName(category.displayName);
         setNewCategoryId(category.name);
         setIsCreating(false);
+        setFormErrors({});
         onOpen();
     };
 
@@ -89,11 +92,21 @@ export default function CategoriesPage() {
         setNewCategoryName("");
         setNewCategoryId("");
         setIsCreating(true);
+        setFormErrors({});
         onOpen();
     };
 
     const handleSave = async () => {
-        if (!newCategoryName.trim() || !newCategoryId.trim()) return;
+        const errors = validateCategoryForm({
+            displayName: newCategoryName,
+            categoryId: newCategoryId,
+        });
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            return;
+        }
+        setFormErrors({});
+
         setIsSaving(true);
 
         try {
@@ -350,20 +363,33 @@ export default function CategoriesPage() {
                                 label="Display Name"
                                 placeholder="e.g., African Savannah"
                                 value={newCategoryName}
-                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onChange={(e) => {
+                                    setNewCategoryName(e.target.value);
+                                    if (formErrors.displayName)
+                                        setFormErrors((prev) => ({ ...prev, displayName: undefined }));
+                                }}
                                 variant="bordered"
                                 labelPlacement="outside"
                                 isRequired
+                                isInvalid={!!formErrors.displayName}
+                                errorMessage={formErrors.displayName}
                             />
                             <Input
                                 label="Category ID"
                                 placeholder="e.g., africansavanna"
                                 value={newCategoryId}
-                                onChange={(e) => setNewCategoryId(e.target.value)}
+                                onChange={(e) => {
+                                    setNewCategoryId(e.target.value);
+                                    if (formErrors.categoryId)
+                                        setFormErrors((prev) => ({ ...prev, categoryId: undefined }));
+                                }}
                                 description="Used internally - should be lowercase with no spaces"
                                 variant="bordered"
                                 labelPlacement="outside"
                                 isRequired
+                                isReadOnly={!isCreating}
+                                isInvalid={!!formErrors.categoryId}
+                                errorMessage={formErrors.categoryId}
                                 startContent={<span className="text-muted-foreground text-sm">#</span>}
                             />
                             {isCreating && (
