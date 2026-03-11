@@ -1,8 +1,25 @@
 [
   {
+    "version": "2.0.4",
+    "date": "March 11, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Bug Fixes & Performance",
+        "type": "fix",
+        "items": [
+          "Fixed theme hook crashing in non-browser environments — localStorage is now accessed only after confirming a browser context is available",
+          "Fixed unsafe theme value cast that allowed arbitrary strings to be applied as CSS classes on the document root — stored value is now validated before use",
+          "Eliminated redundant re-render caused by a self-referential useEffect in the theme provider — each setter now applies DOM changes directly",
+          "Stabilized theme context function references with useCallback and useMemo — components that consume the theme context no longer re-render on unrelated updates"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.3",
     "date": "February 28, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Admin Form Validation",
