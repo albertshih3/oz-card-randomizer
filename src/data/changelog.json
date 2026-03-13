@@ -1,8 +1,23 @@
 [
   {
+    "version": "2.0.5",
+    "date": "March 12, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Removed unused editcard.tsx component and ui/dialog.tsx wrapper — both had zero imports across the codebase (OAK-31)",
+          "Removed orphaned @radix-ui/react-dialog dependency that was only used by the deleted dialog.tsx"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.4",
     "date": "March 11, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Bug Fixes & Performance",
