@@ -17,7 +17,9 @@ export default function DefaultLayout({
         {children}
       </main>
       <footer className="w-full flex items-center justify-center py-6 relative z-10">
-        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Oakland Zoo. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">
+          © {new Date().getFullYear()} Oakland Zoo. All rights reserved.
+        </p>
       </footer>
     </div>
   );

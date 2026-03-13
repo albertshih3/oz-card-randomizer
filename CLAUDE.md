@@ -10,6 +10,123 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 12, 2026 - Category Cache Fix in Empty-Collection Fallback (OAK-25, v2.0.7)
+
+**Released as v2.0.7** — `src/data/changelog.json` updated; `2.0.6` entry marked `isCurrent: false`.
+
+**Motivation**: When Firestore returned an empty collection, `getCategories()` in `src/utils/categories.ts` called `createDefaultCategories()` and immediately returned its result via an early `return`. This bypassed the `cachedCategories = categories` assignment on the happy path (line 45), leaving `cachedCategories` as `null`. Every subsequent call to `getCategories()` would re-enter the fallback path instead of returning the cached value, causing redundant Firestore work and potential inconsistency.
+
+`createDefaultCategories()` does set `cachedCategories` in its own success path (line 83), but if that function encounters an error internally, it returns `getDefaultCategories()` without setting the cache — so `getCategories()` would return an uncached result with no safety net at all.
+
+**Fix**: In the empty-collection branch of `getCategories()`, replaced `return await createDefaultCategories()` with:
+
+```typescript
+cachedCategories = await createDefaultCategories();
+return cachedCategories;
+```
+
+This ensures `getCategories()` is the authoritative place for caching the fallback result, matching the happy-path pattern. It also provides a defensive safety net: if `createDefaultCategories()` falls back to its own error handler without setting the cache, `getCategories()` will still cache the result before returning.
+
+**Changes**:
+- `src/utils/categories.ts` — lines 41–43: replaced early `return await createDefaultCategories()` with the two-statement pattern above.
+- `src/data/changelog.json` — added v2.0.7 entry; marked v2.0.6 `isCurrent: false`.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — external behavior of `getCategories()` is identical; only caching correctness was improved
+
+---
+
+### March 12, 2026 - Stale Closure Fix in Firebase Sign-In Effect (OAK-27, v2.0.6)
+
+**Released as v2.0.6** — `src/data/changelog.json` updated; `2.0.5` entry marked `isCurrent: false`.
+
+**Motivation**: The `useEffect` in `src/pages/edit.tsx` (lines 104–118) called `list.reload()` directly. `list` is produced by `useAsyncList` from `@react-stately/data`, which returns a **plain object literal on every render** — both `list` and `list.reload` are new references each render, not stable. Listing `list` or `list.reload` in the dependency array would cause per-render re-subscription (at best) or an infinite re-render loop (at worst). The function was therefore omitted from the deps array, creating a stale closure: the effect captured the `list.reload` reference from the first render and would never see an updated one.
+
+**Fix**: Applied the `useRef` stable-reference pattern:
+- Added `useRef` to the React import in `src/pages/edit.tsx`.
+- Declared `const reloadRef = useRef(list.reload)` immediately after the `useAsyncList(...)` call, then updated `reloadRef.current = list.reload` on every render so the ref always holds the latest reload function.
+- Changed the call site inside the Firebase sign-in `useEffect` from `list.reload()` to `reloadRef.current()`.
+- The effect's dependency array is unchanged (`[isLoaded, userId, getToken, isAuthenticated]`). The ref read inside the effect is not a dependency because refs are stable across renders by design.
+
+**Why this matters**: Without this fix, calling `list.reload()` from a stale closure after Firebase sign-in would invoke an outdated function reference — potentially operating on the wrong closure state. The `useRef` pattern is the standard React solution for calling the always-current version of an unstable function reference from inside a `useEffect` without adding it to the dependency array.
+
+**Changes**:
+- `src/pages/edit.tsx` — added `useRef` to React import; added `reloadRef` declaration and assignment after `useAsyncList`; changed `list.reload()` → `reloadRef.current()` inside the Firebase sign-in effect.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — behavior is identical for all sign-in paths; only the reference stability was corrected
+
+---
+
+### March 12, 2026 - Dead Code Removal (OAK-31, v2.0.5)
+
+**Released as v2.0.5** — `src/data/changelog.json` updated; `2.0.4` entry marked `isCurrent: false`.
+
+**Motivation**: Two files that were no longer reachable from any import path were removed to reduce surface area and eliminate a now-unused npm dependency.
+
+**Files deleted**:
+- `src/components/editcard.tsx` — A legacy card-editing modal component. It had been fully superseded by the full-page implementation at `src/pages/editcard.tsx` and had zero remaining imports anywhere in the codebase.
+- `src/components/ui/dialog.tsx` — A Radix UI dialog wrapper created during an early design phase. The project standardized on HeroUI Modal (`@heroui/modal`) before v1.0 shipped; this file was never used in the final design and had zero imports.
+
+**Dependency removed**:
+- `@radix-ui/react-dialog` — Was imported only by `src/components/ui/dialog.tsx`. With that file deleted, the dependency served no purpose. Removed from `package.json` and `node_modules`.
+
+**Why this matters**: The project now has no Radix UI dialog dependency. All modal and dialog UI uses HeroUI `@heroui/modal` exclusively. Any future work requiring a dialog/modal should use HeroUI's `<Modal>` component, not introduce Radix UI.
+
+**Note for future agents**: If you see `@radix-ui/react-dialog` mentioned anywhere in old documentation, notes, or AI memory, treat that information as stale. The package no longer exists in this project.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — the deleted files had no active callers
+
+---
+
+### March 11, 2026 - Theme Hook Hardening (v2.0.4)
+
+**Released as v2.0.4** — `src/data/changelog.json` updated; `2.0.3` entry marked `isCurrent: false`.
+
+**Motivation**: The theme hook (`src/hooks/use-theme.ts`) had four correctness and performance issues: an unsafe `localStorage` access that would crash in non-browser environments, an unsafe type cast that allowed arbitrary strings to reach the DOM, a redundant `useEffect` causing an extra re-render on every mount, and unstable function references causing unnecessary re-renders of all theme context consumers.
+
+**Changes**:
+- `src/hooks/use-theme.ts` replaced by `src/hooks/use-theme.tsx` (extension change allows JSX in the provider component)
+- `src/main.tsx`: Import quote style normalized to double quotes for consistency
+
+#### localStorage SSR guard
+
+**Problem**: The `useState` initializer accessed `localStorage` unconditionally. In any non-browser environment (SSR, server-side rendering pipelines, tests without `jsdom`), this throws a `ReferenceError`.
+
+**Fix**: The initializer now checks `typeof window === "undefined"` first and returns `ThemeProps.light` as the safe fallback before touching `localStorage`.
+
+#### Explicit localStorage value validation
+
+**Problem**: The stored value was cast with `as Theme | null`, meaning any string previously written to `localStorage` under the `"theme"` key — including arbitrary values from third-party scripts or browser extensions — would be applied as a CSS class on `<html>`.
+
+**Fix**: Replaced the unsafe cast with an explicit conditional: `raw === ThemeProps.dark ? ThemeProps.dark : ThemeProps.light`. Only the two known-valid values are accepted; anything else defaults to light.
+
+#### Eliminated redundant mount-time useEffect double-write
+
+**Problem**: A `useEffect(() => { _setTheme(theme); }, [theme])` ran on every render, immediately writing the theme value back to state that was just read from state. This caused a redundant re-render and `localStorage` write on every mount.
+
+**Fix**: Removed the self-referential effect. Each setter (`setLightTheme`, `setDarkTheme`, `toggleTheme`) calls `applyThemeToDOM` directly when it changes the value. A single mount-only effect syncs the DOM class list on initial load (to handle values previously stored in `localStorage` from a prior session).
+
+#### Stabilized context value references
+
+**Problem**: `setLightTheme`, `setDarkTheme`, and `toggleTheme` were plain inline functions — new references on every render. The context `value` object was a new object literal on every render. Every consumer of `ThemeContext` would re-render on any `ThemeProvider` re-render, even if the theme itself had not changed.
+
+**Fix**: All three setters are wrapped in `useCallback`. The context `value` object is wrapped in `useMemo`. Consumers now only re-render when the theme actually changes.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — `useTheme()` API is identical; `ThemeProvider` wrapping pattern in `main.tsx` is unchanged
+
+---
+
 ### February 28, 2026 - Pack Generation Bug Fixes (OAK-22, OAK-23, OAK-24)
 
 **Released as v2.0.1** — `src/data/changelog.json` updated; `2.0.0` entry marked `isCurrent: false`.

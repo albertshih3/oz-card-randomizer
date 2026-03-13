@@ -13,7 +13,12 @@ import clsx from "clsx";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/clerk-react";
+import {
+  SignInButton,
+  SignedOut,
+  SignedIn,
+  UserButton,
+} from "@clerk/clerk-react";
 import { Button } from "@heroui/button";
 import { useAnalytics } from "@/hooks/use-analytics";
 
@@ -21,11 +26,11 @@ export const Navbar = () => {
   const { trackEvent } = useAnalytics();
 
   const handleNavClick = (label: string) => {
-    trackEvent('click', 'navigation', `nav_${label.toLowerCase()}`);
+    trackEvent("click", "navigation", `nav_${label.toLowerCase()}`);
   };
 
-  const handleAuthClick = (action: 'sign_in' | 'sign_out') => {
-    trackEvent('click', 'authentication', action);
+  const handleAuthClick = (action: "sign_in" | "sign_out") => {
+    trackEvent("click", "authentication", action);
   };
 
   return (
@@ -42,7 +47,11 @@ export const Navbar = () => {
             color="foreground"
             href="/"
           >
-            <img src="/csclogo.svg" alt="Booster Pack Creator" className="h-12 w-auto" />
+            <img
+              src="/csclogo.svg"
+              alt="Booster Pack Creator"
+              className="h-12 w-auto"
+            />
           </Link>
         </NavbarBrand>
         <div className="hidden md:flex gap-6 justify-start ml-12">
@@ -51,7 +60,7 @@ export const Navbar = () => {
               <Link
                 className={clsx(
                   linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium text-sm font-medium transition-colors hover:text-primary"
+                  "data-[active=true]:text-primary data-[active=true]:font-medium text-sm font-medium transition-colors hover:text-primary",
                 )}
                 color="foreground"
                 href={item.href}
@@ -78,7 +87,7 @@ export const Navbar = () => {
                 className="text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20"
                 variant="flat"
                 radius="full"
-                onPress={() => handleAuthClick('sign_in')}
+                onPress={() => handleAuthClick("sign_in")}
               >
                 Sign In
               </Button>
@@ -88,8 +97,8 @@ export const Navbar = () => {
             <UserButton
               appearance={{
                 elements: {
-                  avatarBox: "w-9 h-9 border-2 border-primary/20"
-                }
+                  avatarBox: "w-9 h-9 border-2 border-primary/20",
+                },
               }}
             />
           </SignedIn>
@@ -124,7 +133,7 @@ export const Navbar = () => {
                 className="w-full font-bold"
                 color="primary"
                 variant="shadow"
-                onPress={() => handleAuthClick('sign_in')}
+                onPress={() => handleAuthClick("sign_in")}
               >
                 Sign In
               </Button>

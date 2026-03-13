@@ -22,7 +22,8 @@ export const validateCardForm = (card: CardFormData): CardFormErrors => {
   if (!card.number.trim()) {
     errors.number = "Card number is required.";
   } else if (!/^\d+$/.test(card.number.trim())) {
-    errors.number = "Card number must be a non-negative integer (e.g., 0 or 42).";
+    errors.number =
+      "Card number must be a non-negative integer (e.g., 0 or 42).";
   }
 
   if (!card.collection) {

@@ -1,8 +1,68 @@
 [
   {
+    "version": "2.0.7",
+    "date": "March 12, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed category cache not being set when Firestore returns an empty collection — the result of the default-category fallback is now cached at the getCategories() level, preventing redundant Firestore calls and potential inconsistency on subsequent loads (OAK-25)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.6",
+    "date": "March 12, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed stale closure in the Firebase sign-in effect on the Card Management page — list.reload() now always uses the current reload reference via useRef, eliminating a potential stale-data risk (OAK-27)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.5",
+    "date": "March 12, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Removed unused editcard.tsx component and ui/dialog.tsx wrapper — both had zero imports across the codebase (OAK-31)",
+          "Removed orphaned @radix-ui/react-dialog dependency that was only used by the deleted dialog.tsx"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.4",
+    "date": "March 11, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Bug Fixes & Performance",
+        "type": "fix",
+        "items": [
+          "Fixed theme hook crashing in non-browser environments — localStorage is now accessed only after confirming a browser context is available",
+          "Fixed unsafe theme value cast that allowed arbitrary strings to be applied as CSS classes on the document root — stored value is now validated before use",
+          "Eliminated redundant re-render caused by a self-referential useEffect in the theme provider — each setter now applies DOM changes directly",
+          "Stabilized theme context function references with useCallback and useMemo — components that consume the theme context no longer re-render on unrelated updates"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.3",
     "date": "February 28, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Admin Form Validation",

@@ -6,6 +6,48 @@ Session changelog. Append a new entry at the top of the Changelog section after 
 
 ## Changelog
 
+### 2026-03-12 — OAK-31 Dead Code Removal (v2.0.5)
+
+**Branch**: `development`
+
+#### What was achieved
+
+Removed two unreachable files and their associated npm dependency to reduce codebase surface area.
+
+**Deleted files**:
+
+| File | Reason |
+|---|---|
+| `src/components/editcard.tsx` | Legacy card-editing modal with zero imports; fully superseded by `src/pages/editcard.tsx` |
+| `src/components/ui/dialog.tsx` | Radix UI dialog wrapper from an early design phase; zero imports; project standardized on HeroUI Modal before v1.0 shipped |
+
+**Dependency removed**: `@radix-ui/react-dialog` — imported only by the now-deleted `dialog.tsx`. No other file in the project uses Radix UI dialog.
+
+**Project-wide impact**: The codebase now has no Radix UI dialog dependency. All modal/dialog UI is handled exclusively by HeroUI `@heroui/modal`. The `src/components/ui/` directory exists but is now empty.
+
+#### Released as
+
+**v2.0.5** — `src/data/changelog.json` updated; `2.0.4` entry marked `isCurrent: false`.
+
+#### Files changed this session
+
+| File | Change |
+|---|---|
+| `src/components/editcard.tsx` | Deleted |
+| `src/components/ui/dialog.tsx` | Deleted |
+| `package.json` | `@radix-ui/react-dialog` dependency removed |
+| `src/data/changelog.json` | v2.0.5 entry added; v2.0.4 marked `isCurrent: false` |
+| `CLAUDE.md` | OAK-31 entry added under Recent Changes |
+| `MEMORY.md` | Lessons 22 and 23 added (HeroUI-only modal standard; empty `src/components/ui/`) |
+| `SESSIONS.md` | This entry |
+
+#### Next steps
+
+- Open PR from `development` to `main` for v2.0.5
+- Manual smoke test: verify build and lint remain clean after dependency removal; confirm all admin modal flows (edit card, create card, categories) still open and close correctly
+
+---
+
 ### 2026-02-28 — OAK-26/32 + Go Back Button Fix (v2.0.2)
 
 **Branch**: `development`
