@@ -1,8 +1,22 @@
 [
   {
-    "version": "2.0.5",
+    "version": "2.0.6",
     "date": "March 12, 2026",
     "isCurrent": true,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed stale closure in the Firebase sign-in effect on the Card Management page — list.reload() now always uses the current reload reference via useRef, eliminating a potential stale-data risk (OAK-27)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.5",
+    "date": "March 12, 2026",
+    "isCurrent": false,
     "sections": [
       {
         "title": "Maintenance",
