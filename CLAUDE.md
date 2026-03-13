@@ -10,6 +10,108 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 13, 2026 - Code Quality: Type Safety + Structural Fixes + Analytics Separation (OAK-38, OAK-39, OAK-40, v2.0.9)
+
+**Released as v2.0.9** — `src/data/changelog.json` updated; `2.0.8` entry marked `isCurrent: false`.
+
+**Motivation**: Three focused quality passes across the type system, structural constants, and analytics architecture. No behavior changes.
+
+#### OAK-38 — Type safety across the generation and export pipeline
+
+**Updated `src/types/index.ts`**:
+- Added `Card` interface — the authoritative shape for a single Firestore card document (`name: string`, `number: string`, `active: boolean`).
+- Renamed `LegacyCollection` → `Collection`. The "Legacy" qualifier was a holdover from an earlier design phase; the type is the current standard and should not be named as if it is deprecated.
+- `PackHistoryItem.cards` is now typed as `Card[]` instead of a looser shape.
+
+**Updated `src/hooks/use-booster-pack-generation.ts`** — replaced all `any[]` with `Card` / `Card[][]` throughout the hook body, function signatures, and return type.
+
+**Updated `src/hooks/use-excel-export.ts`** — replaced `any[][]` parameter type for the packs argument with `Card[][]`.
+
+**Why this matters**: The `any[]` types in the generation and export hooks meant TypeScript provided no structural guarantees for the data flowing through the most important code paths in the application. `Card[][]` makes the pack shape verifiable at compile time.
+
+#### OAK-39 — Semantic wildcard lookup and constant hardening
+
+**Problem**: `use-excel-export.ts` located the wildcard card using `pack[8]` — a positional index that silently breaks if pack slot ordering ever changes.
+
+**Fix**: Replaced `pack[8]` with `pack.find(card => !BASE_COLLECTION_IDS.includes(card.collection) && card.collection !== COLLECTION_IDS.spoonbill)`. This lookup is semantic: it finds the card that is neither a base-slot card nor the Spoonbill slot, regardless of its position in the array.
+
+**Hardened `BASE_COLLECTION_IDS` in `src/constants/collections.ts`**:
+- Changed type annotation from `as const` to `as const satisfies readonly string[]`. This asserts the value is a valid `readonly string[]` at declaration time, catching any type-narrowing regressions at the point of definition rather than at use sites.
+
+**Added load-bearing order comments** at both usage sites (`use-booster-pack-generation.ts` and `use-excel-export.ts`) stating that `BASE_COLLECTION_IDS` order controls pack slot assignment and Excel column order respectively — do not reorder.
+
+**Documented `COLLECTION_COLORS` intentional gap** in `src/constants/collections.ts`: not all collection IDs have a color entry. This is intentional — only collections that appear in the UI badge need a color. The gap is noted in a comment to prevent future agents from treating it as an oversight.
+
+#### OAK-40 — Analytics separation and magic number extraction
+
+**Extracted magic numbers** in `use-booster-pack-generation.ts` into named module-level constants declared above `useBoosterPackGeneration`:
+- `MIN_WILDCARD_ATTEMPTS = 10` — minimum number of draw attempts before the wildcard slot gives up.
+- `RETRY_MULTIPLIER = 2` — multiplier applied to scale retry attempts relative to pool size.
+
+**Made `generateBoosterPack` pure** — removed all `timing()` / analytics calls from the private inner function. `generateBoosterPack` now returns `{ pack, duration }` instead of `pack[]`. It measures its own elapsed time but delegates all reporting to the caller.
+
+**`generatePacks` accumulates total duration** across all `generateBoosterPack` calls and fires a single `timing()` call for the full batch. This is more accurate (one event per user action rather than one per pack) and keeps analytics concerns out of the core generation logic.
+
+**Removed dead `./src/hooks/**` Tailwind content path** from `tailwind.config.js`. Hook files contain no Tailwind class strings and never did; this entry was adding unnecessary glob scanning on every build.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — pack structure, Excel output format, analytics event semantics, and all UI behavior are identical
+
+---
+
+### March 13, 2026 - index.tsx Refactor: Constants + Hooks (OAK-9, OAK-7, OAK-8, v2.0.8)
+
+**Released as v2.0.8** — `src/data/changelog.json` updated; `2.0.7` entry marked `isCurrent: false`.
+
+**Motivation**: `src/pages/index.tsx` had grown to 649 lines by mixing three unrelated concerns: collection ID constants and display name maps, all booster pack generation state and logic, and Excel export state and logic. This refactor extracts each concern into its own dedicated file with zero behavior changes.
+
+#### OAK-9 — Collection constants centralized
+
+**Created `src/constants/collections.ts`** as the single source of truth for all collection-related constants:
+- `COLLECTION_IDS` — `as const` object mapping symbolic keys to Firestore collection ID strings
+- `BASE_COLLECTION_IDS` — ordered array of the four base pack collection IDs; order controls both pack slot assignment AND Excel export column order — do not reorder
+- `COLLECTION_DISPLAY_NAMES` — map from collection ID to human-readable display name
+- `COLLECTION_COLORS` — map from collection ID to Tailwind color classes (used by `collection-badge.tsx`)
+
+**Updated consumers**:
+- `src/components/collection-badge.tsx` — removed inline `colorMap`; now imports `COLLECTION_COLORS` from constants
+- `src/pages/index.tsx` — removed inline `BASE_CATEGORIES` and `BASE_NAME_MAP`; now imports from constants
+
+#### OAK-7 — Pack generation hook extracted
+
+**Created `src/hooks/use-booster-pack-generation.ts`**.
+
+The hook accepts `(cardsData, collections)` and returns `{ boosterPacks, packHistory, lastGenTime, generatePacks }`.
+
+Key design decisions:
+- `generateBoosterPack` is a private inner function — it is not part of the return value and is not callable from outside the hook. It exists solely to be called by `generatePacks`.
+- `setSelectedKeys` (the UI state that tracks which pack the user is currently viewing) stays in `src/pages/index.tsx`. It is UI state, not generation state, so it belongs in the page component.
+- `packHistory` is capped at 10 entries (the last 10 generation runs).
+
+**Updated `src/types/index.ts`** — added `LegacyCollection` and `PackHistoryItem` type definitions (previously inlined in `index.tsx`).
+
+#### OAK-8 — Excel export hook extracted
+
+**Created `src/hooks/use-excel-export.ts`**.
+
+The hook returns `{ exportToExcel, isExporting }`.
+
+Key design decisions:
+- `xlsx` is loaded via `await import("xlsx")` inside `exportToExcel` rather than as a top-level static import. This defers the 284 kB xlsx bundle until the user actually triggers an export. Main chunk dropped from 1,700 kB to 1,414 kB as a result.
+- `exportToExcel` is therefore `async`. The `handleGenerateAndExport` handler in `src/pages/index.tsx` is correspondingly `async` and `await`s the call.
+- `isExporting` state lives inside the hook. `setIsExporting(false)` is called in a `finally` block to guarantee cleanup even when `writeFile` throws.
+
+**Result**: `src/pages/index.tsx` is now 439 lines (down from 649) and contains only UI orchestration — no generation logic and no export logic.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — pack structure, Excel output format, and all UI behavior are identical
+
+---
+
 ### March 12, 2026 - Category Cache Fix in Empty-Collection Fallback (OAK-25, v2.0.7)
 
 **Released as v2.0.7** — `src/data/changelog.json` updated; `2.0.6` entry marked `isCurrent: false`.
@@ -209,7 +311,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Breaking Changes**: None - application maintains existing look and functionality
 
 **Known Warnings**:
-- Bundle size warning for main chunk (1.6MB) - consider code splitting for future optimization
+- Bundle size warning for main chunk (1.6MB at time of this entry) — reduced to ~1.4MB in v2.0.8 via dynamic xlsx import; further splitting is a future consideration
 - 11 linting warnings in `src/lib/gtag.ts` related to `any` types and `arguments` usage - Google Analytics typing limitations, non-critical
 
 ## Tech Stack
@@ -309,7 +411,7 @@ Each collection represents a card category:
 - 1 wildcard (random from any collection)
 - 1 Spoonbill card
 
-**Implementation**: See `src/pages/index.tsx` (`generateBoosterPack`, `generatePacks`)
+**Implementation**: See `src/hooks/use-booster-pack-generation.ts` (`generatePacks` is the public entry point; `generateBoosterPack` is a private inner function). The hook is consumed by `src/pages/index.tsx`.
 
 ## Build & Deployment
 
@@ -356,8 +458,8 @@ See `.env.example` for required Firebase configuration variables.
 ## Future Considerations
 
 1. **Performance**:
-   - Consider code splitting to reduce main bundle size (currently 1.6MB)
-   - Lazy load admin features
+   - Main chunk is now ~1.4MB (xlsx deferred to a separate 284 kB chunk via OAK-8 dynamic import)
+   - Further code splitting possible (lazy load admin features)
    - Optimize Firebase queries
 
 2. **Testing**:

@@ -1,8 +1,44 @@
 [
   {
+    "version": "2.0.9",
+    "date": "March 13, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added Card interface to src/types/index.ts and typed the full card pipeline — eliminates any[] throughout pack generation and Excel export hooks (OAK-38)",
+          "Renamed LegacyCollection to Collection — the 'Legacy' prefix was a holdover that no longer reflected the type's role (OAK-38)",
+          "Replaced positional pack[8] wildcard lookup in Excel export with a semantic pack.find() based on collection membership — export no longer breaks if pack slot order changes (OAK-39)",
+          "Hardened BASE_COLLECTION_IDS with as const satisfies readonly string[] — TypeScript now errors on any mutation or reorder attempt (OAK-39)",
+          "Extracted magic numbers from wildcard retry logic into named constants MIN_WILDCARD_ATTEMPTS and RETRY_MULTIPLIER; fixed stale warning message (OAK-40)",
+          "Moved analytics calls out of the private generateBoosterPack function — generation is now a pure operation; a single timing() event fires per batch in generatePacks instead of per pack (OAK-40)",
+          "Removed dead ./src/hooks/**/* content path from tailwind.config.js — hooks contain no Tailwind class strings (OAK-40)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.8",
+    "date": "March 13, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Extracted collection constants (COLLECTION_IDS, BASE_COLLECTION_IDS, COLLECTION_DISPLAY_NAMES, COLLECTION_COLORS) into src/constants/collections.ts — eliminates duplication between index.tsx and collection-badge.tsx (OAK-9)",
+          "Extracted pack generation logic into useBoosterPackGeneration hook (src/hooks/use-booster-pack-generation.ts) — separates generation state and logic from page UI orchestration (OAK-7)",
+          "Extracted Excel export into useExcelExport hook (src/hooks/use-excel-export.ts) with dynamic xlsx import — defers ~1.6 MB bundle until first export, creating a separate Vite chunk (OAK-8)"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.7",
     "date": "March 12, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Bug Fixes",
