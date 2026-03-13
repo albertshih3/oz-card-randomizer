@@ -39,7 +39,8 @@ export const getCategories = async (): Promise<Category[]> => {
 
     // If no categories exist in Firebase, create and return the default ones
     if (categories.length === 0) {
-      return await createDefaultCategories();
+      cachedCategories = await createDefaultCategories();
+      return cachedCategories;
     }
 
     cachedCategories = categories;

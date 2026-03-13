@@ -10,6 +10,34 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 12, 2026 - Category Cache Fix in Empty-Collection Fallback (OAK-25, v2.0.7)
+
+**Released as v2.0.7** — `src/data/changelog.json` updated; `2.0.6` entry marked `isCurrent: false`.
+
+**Motivation**: When Firestore returned an empty collection, `getCategories()` in `src/utils/categories.ts` called `createDefaultCategories()` and immediately returned its result via an early `return`. This bypassed the `cachedCategories = categories` assignment on the happy path (line 45), leaving `cachedCategories` as `null`. Every subsequent call to `getCategories()` would re-enter the fallback path instead of returning the cached value, causing redundant Firestore work and potential inconsistency.
+
+`createDefaultCategories()` does set `cachedCategories` in its own success path (line 83), but if that function encounters an error internally, it returns `getDefaultCategories()` without setting the cache — so `getCategories()` would return an uncached result with no safety net at all.
+
+**Fix**: In the empty-collection branch of `getCategories()`, replaced `return await createDefaultCategories()` with:
+
+```typescript
+cachedCategories = await createDefaultCategories();
+return cachedCategories;
+```
+
+This ensures `getCategories()` is the authoritative place for caching the fallback result, matching the happy-path pattern. It also provides a defensive safety net: if `createDefaultCategories()` falls back to its own error handler without setting the cache, `getCategories()` will still cache the result before returning.
+
+**Changes**:
+- `src/utils/categories.ts` — lines 41–43: replaced early `return await createDefaultCategories()` with the two-statement pattern above.
+- `src/data/changelog.json` — added v2.0.7 entry; marked v2.0.6 `isCurrent: false`.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — external behavior of `getCategories()` is identical; only caching correctness was improved
+
+---
+
 ### March 12, 2026 - Stale Closure Fix in Firebase Sign-In Effect (OAK-27, v2.0.6)
 
 **Released as v2.0.6** — `src/data/changelog.json` updated; `2.0.5` entry marked `isCurrent: false`.

@@ -1,8 +1,22 @@
 [
   {
-    "version": "2.0.6",
+    "version": "2.0.7",
     "date": "March 12, 2026",
     "isCurrent": true,
+    "sections": [
+      {
+        "title": "Bug Fixes",
+        "type": "fix",
+        "items": [
+          "Fixed category cache not being set when Firestore returns an empty collection — the result of the default-category fallback is now cached at the getCategories() level, preventing redundant Firestore calls and potential inconsistency on subsequent loads (OAK-25)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.6",
+    "date": "March 12, 2026",
+    "isCurrent": false,
     "sections": [
       {
         "title": "Bug Fixes",
