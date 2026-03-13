@@ -186,7 +186,9 @@ export const SearchIcon = (props: IconSvgProps) => (
   </svg>
 );
 
-export const EyeIcon = (props: JSX.IntrinsicAttributes & React.SVGProps<SVGSVGElement>) => {
+export const EyeIcon = (
+  props: JSX.IntrinsicAttributes & React.SVGProps<SVGSVGElement>,
+) => {
   return (
     <svg
       aria-hidden="true"
@@ -216,7 +218,9 @@ export const EyeIcon = (props: JSX.IntrinsicAttributes & React.SVGProps<SVGSVGEl
   );
 };
 
-export const DeleteIcon = (props: JSX.IntrinsicAttributes & React.SVGProps<SVGSVGElement>) => {
+export const DeleteIcon = (
+  props: JSX.IntrinsicAttributes & React.SVGProps<SVGSVGElement>,
+) => {
   return (
     <svg
       aria-hidden="true"
@@ -267,7 +271,9 @@ export const DeleteIcon = (props: JSX.IntrinsicAttributes & React.SVGProps<SVGSV
   );
 };
 
-export const EditIcon = (props: JSX.IntrinsicAttributes & React.SVGProps<SVGSVGElement>) => {
+export const EditIcon = (
+  props: JSX.IntrinsicAttributes & React.SVGProps<SVGSVGElement>,
+) => {
   return (
     <svg
       aria-hidden="true"

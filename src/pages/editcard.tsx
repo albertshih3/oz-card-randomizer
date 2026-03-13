@@ -46,7 +46,9 @@ export default function EditCardPage() {
   const { getToken, userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const [collections, setCollections] = useState<{ id: string, name: string }[]>([]);
+  const [collections, setCollections] = useState<
+    { id: string; name: string }[]
+  >([]);
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<CardFormErrors>({});
 
@@ -91,7 +93,8 @@ export default function EditCardPage() {
             number: data.number,
             active: data.active === true,
             name: data.name,
-            collectionName: legacyCollections.find((c) => c.id === collectionId)?.name,
+            collectionName: legacyCollections.find((c) => c.id === collectionId)
+              ?.name,
           });
         }
       } catch (err) {
@@ -128,9 +131,9 @@ export default function EditCardPage() {
 
       if (isNew) {
         event({
-          action: 'create',
-          category: 'card_management',
-          label: 'card_created'
+          action: "create",
+          category: "card_management",
+          label: "card_created",
         });
         // Create a new card
         const colRef = firestoreCollection(db, updatedCard.collection);
@@ -142,11 +145,12 @@ export default function EditCardPage() {
         });
       } else {
         event({
-          action: 'update',
-          category: 'card_management',
-          label: 'card_updated'
+          action: "update",
+          category: "card_management",
+          label: "card_updated",
         });
-        if (!cardId || !collectionId) throw new Error("Missing card identifiers.");
+        if (!cardId || !collectionId)
+          throw new Error("Missing card identifiers.");
 
         const data = {
           name: updatedCard.name,
@@ -178,7 +182,12 @@ export default function EditCardPage() {
   };
 
   const handleDelete = async (cardToDelete: Card) => {
-    if (!confirm("Are you sure you want to delete this card? This action cannot be undone.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this card? This action cannot be undone.",
+      )
+    )
+      return;
 
     setIsSaving(true);
     try {
@@ -187,9 +196,9 @@ export default function EditCardPage() {
       await signInWithCustomToken(auth, token || "");
 
       event({
-        action: 'delete',
-        category: 'card_management',
-        label: 'card_deleted'
+        action: "delete",
+        category: "card_management",
+        label: "card_deleted",
       });
       const cardRef = doc(db, cardToDelete.collection, cardToDelete.id);
       await deleteDoc(cardRef);
@@ -240,9 +249,13 @@ export default function EditCardPage() {
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            <h2 className="text-xl font-bold">{isNew ? "Create New Card" : "Edit Card Details"}</h2>
+            <h2 className="text-xl font-bold">
+              {isNew ? "Create New Card" : "Edit Card Details"}
+            </h2>
             <p className="text-sm text-muted-foreground font-normal">
-              {isNew ? "Add a new card to the collection." : "Update the details of this card."}
+              {isNew
+                ? "Add a new card to the collection."
+                : "Update the details of this card."}
             </p>
           </ModalHeader>
           <ModalBody className="py-6">
@@ -254,9 +267,12 @@ export default function EditCardPage() {
                   value={selectedCard?.name || ""}
                   onChange={(e) => {
                     setSelectedCard(
-                      selectedCard ? { ...selectedCard, name: e.target.value } : null
+                      selectedCard
+                        ? { ...selectedCard, name: e.target.value }
+                        : null,
                     );
-                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    if (formErrors.name)
+                      setFormErrors((prev) => ({ ...prev, name: undefined }));
                   }}
                   variant="bordered"
                   labelPlacement="outside"
@@ -270,7 +286,9 @@ export default function EditCardPage() {
                   value={selectedCard?.number || ""}
                   onChange={(e) => {
                     setSelectedCard(
-                      selectedCard ? { ...selectedCard, number: e.target.value } : null
+                      selectedCard
+                        ? { ...selectedCard, number: e.target.value }
+                        : null,
                     );
                     if (formErrors.number)
                       setFormErrors((prev) => ({ ...prev, number: undefined }));
@@ -286,13 +304,20 @@ export default function EditCardPage() {
               <Select
                 label="Collection Category"
                 placeholder="Select a category"
-                selectedKeys={selectedCard?.collection ? [selectedCard.collection] : []}
+                selectedKeys={
+                  selectedCard?.collection ? [selectedCard.collection] : []
+                }
                 onChange={(e) => {
                   setSelectedCard(
-                    selectedCard ? { ...selectedCard, collection: e.target.value } : null
+                    selectedCard
+                      ? { ...selectedCard, collection: e.target.value }
+                      : null,
                   );
                   if (formErrors.collection)
-                    setFormErrors((prev) => ({ ...prev, collection: undefined }));
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      collection: undefined,
+                    }));
                 }}
                 variant="bordered"
                 labelPlacement="outside"
@@ -301,22 +326,24 @@ export default function EditCardPage() {
                 errorMessage={formErrors.collection}
               >
                 {collections.map((col) => (
-                  <SelectItem key={col.id}>
-                    {col.name}
-                  </SelectItem>
+                  <SelectItem key={col.id}>{col.name}</SelectItem>
                 ))}
               </Select>
 
               <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium">Active Status</span>
-                  <span className="text-xs text-muted-foreground">Inactive cards won't appear in packs</span>
+                  <span className="text-xs text-muted-foreground">
+                    Inactive cards won't appear in packs
+                  </span>
                 </div>
                 <Switch
                   isSelected={selectedCard?.active || false}
                   onValueChange={(isSelected) =>
                     setSelectedCard(
-                      selectedCard ? { ...selectedCard, active: isSelected } : null
+                      selectedCard
+                        ? { ...selectedCard, active: isSelected }
+                        : null,
                     )
                   }
                   color="success"

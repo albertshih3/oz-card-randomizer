@@ -12,23 +12,28 @@ import { usePageView } from "@/hooks/use-analytics";
 
 function App() {
   usePageView();
-  
+
   useEffect(() => {
-    const hasSeenAnalyticsNotice = localStorage.getItem('hasSeenAnalyticsNotice');
-    
+    const hasSeenAnalyticsNotice = localStorage.getItem(
+      "hasSeenAnalyticsNotice",
+    );
+
     if (!hasSeenAnalyticsNotice) {
       const timer = setTimeout(() => {
-        toast.info("Analytics tracking is enabled to help understand usage patterns. No personal data is collected.", {
-          duration: 6000,
-          position: "bottom-center",
-        });
-        localStorage.setItem('hasSeenAnalyticsNotice', 'true');
+        toast.info(
+          "Analytics tracking is enabled to help understand usage patterns. No personal data is collected.",
+          {
+            duration: 6000,
+            position: "bottom-center",
+          },
+        );
+        localStorage.setItem("hasSeenAnalyticsNotice", "true");
       }, 2000);
-      
+
       return () => clearTimeout(timer);
     }
   }, []);
-  
+
   return (
     <>
       <Routes>

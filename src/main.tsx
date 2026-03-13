@@ -12,27 +12,27 @@ import { Analytics } from "@vercel/analytics/react";
 import { initGtag } from "@/lib/gtag";
 
 // Clerk auth public key
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 // Check if key exists
 if (!PUBLISHABLE_KEY) {
-	throw new Error('Add your Clerk Publishable Key to the .env.local file')
+  throw new Error("Add your Clerk Publishable Key to the .env.local file");
 }
 
 // Initialize Google Analytics
 initGtag();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-	<React.StrictMode>
-		<ThemeProvider>
-			<BrowserRouter>
-				<Provider>
-					<ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
-						<Analytics />
-						<App />
-					</ClerkProvider>
-				</Provider>
-			</BrowserRouter>
-		</ThemeProvider>
-	</React.StrictMode>,
+  <React.StrictMode>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Provider>
+          <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+            <Analytics />
+            <App />
+          </ClerkProvider>
+        </Provider>
+      </BrowserRouter>
+    </ThemeProvider>
+  </React.StrictMode>,
 );
