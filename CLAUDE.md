@@ -10,6 +10,44 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 15, 2026 - Error Boundary + Admin Page Lazy Loading (OAK-12, OAK-13)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: The application had no error boundary, meaning any uncaught render error or lazy-load failure would produce a blank white screen with no recovery path. Separately, the three admin pages (`edit.tsx`, `editcard.tsx`, `categories.tsx`) were statically imported in `App.tsx`, adding their full weight to the main bundle even for users who never visit the admin routes.
+
+#### OAK-12 — Created `src/components/error-boundary.tsx`
+
+**What was created**: A reusable React Error Boundary class component (`ErrorBoundary`) that catches uncaught JavaScript errors during rendering and displays a recovery UI instead of a blank screen.
+
+**Implementation details**:
+- `ErrorBoundary` is a class component — React requires class components for error boundaries; functional components cannot implement `getDerivedStateFromError` or `componentDidCatch`.
+- `getDerivedStateFromError` sets `{ hasError: true, error }` on the class state, triggering a re-render to the fallback UI.
+- `componentDidCatch` logs the error and `componentStack` to `console.error` with an `[ErrorBoundary]` prefix for easy filtering.
+- `handleReset` is defined as an arrow function class field rather than a bound method, avoiding the `this` binding footgun.
+- `ErrorFallback` (private functional component, not exported) renders: `AlertTriangle` icon (HeroUI warning color), "Something went wrong" heading, error message in `<code>`, and a "Reload page" `<Button>` that calls `onReset()` then `window.location.reload()`.
+- Only `ErrorBoundary` is exported (named export). `ErrorFallback` is file-private.
+
+**Why this matters**: Without an error boundary, a single render error in any route — including a failed lazy `import()` — crashes the entire React tree and leaves the user with a blank page and no recovery option. The boundary catches the error, shows a useful message, and gives the user a reload path.
+
+#### OAK-13 — Converted admin page imports to `React.lazy()` in `App.tsx`
+
+**What changed in `src/App.tsx`**:
+- Converted `EditPage`, `EditCardPage`, and `CategoriesPage` from static imports to `React.lazy()` calls.
+- Added `Suspense` with a full-screen centered `Spinner` fallback (extracted as `SuspenseFallback` constant above the component to avoid recreating the JSX on every render).
+- Wrapped `<Routes>` in `<ErrorBoundary>` (outer) then `<Suspense>` (inner). `<Toaster />` remains outside both wrappers so toast notifications are never blocked by boundary or suspension state.
+
+**Bundle impact**: Main chunk reduced from ~1,414 kB to ~1,289 kB. The three admin pages now load in separate chunks fetched only when a user first navigates to an admin route.
+
+**Nesting order matters**: `ErrorBoundary` must be the outer wrapper, `Suspense` must be inner. A `Suspense` that has not yet resolved its lazy import throws a Promise; if the `ErrorBoundary` were inside `Suspense`, it could not catch lazy-load failures.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Breaking Changes: None — all routes behave identically; admin pages load on first navigation
+
+---
+
 ### March 15, 2026 - Code Quality: Firestore Type Boundary, Sort Stability, and Constant Consistency (OAK-41–OAK-47)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry. These are code smell corrections identified before the next release.
@@ -554,8 +592,8 @@ See `.env.example` for required Firebase configuration variables.
 ## Future Considerations
 
 1. **Performance**:
-   - Main chunk is now ~1.4MB (xlsx deferred to a separate 284 kB chunk via OAK-8 dynamic import)
-   - Further code splitting possible (lazy load admin features)
+   - Main chunk is now ~1.3MB (xlsx deferred via OAK-8; admin pages lazy-loaded via OAK-13)
+   - ~~Further code splitting possible (lazy load admin features)~~ — Done in OAK-13
    - Optimize Firebase queries
 
 2. **Testing**:
