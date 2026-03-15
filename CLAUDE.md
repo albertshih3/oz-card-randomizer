@@ -10,6 +10,60 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 15, 2026 - Magic Number Extraction + Three-Tier Logging Strategy (OAK-14, OAK-15)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: Two related hardening passes on the generation pipeline. OAK-14 completes the constant extraction work begun in OAK-40 by moving the remaining magic numbers and hardcoded collection ID strings out of `use-booster-pack-generation.ts` and `index.tsx` into a new dedicated constants file. OAK-15 formalizes an explicit three-tier logging strategy for generation failures so that recoverable slot warnings stay out of analytics while true pack-level failures surface in Google Analytics via `exception()`.
+
+#### OAK-14 — Extract magic numbers and collection ID strings in generation pipeline
+
+**New file created**: `src/constants/generation.ts`
+- `MIN_WILDCARD_ATTEMPTS = 10` — minimum draw attempts before the wildcard slot gives up
+- `RETRY_MULTIPLIER = 2` — multiplier applied to scale retry attempts relative to pool size
+- `PACK_HISTORY_LIMIT = 10` — maximum number of generation runs retained in pack history
+- `MAX_PACKS_PER_EXPORT = 1000` — upper bound on packs per export, enforced as the `max` attribute on the packs input
+
+No default export. All four are named exports, matching the pattern in `src/constants/collections.ts`.
+
+**Modified `src/hooks/use-booster-pack-generation.ts`**:
+- Replaced the two module-level `const` declarations (`MIN_WILDCARD_ATTEMPTS`, `RETRY_MULTIPLIER`) with imports from `@/constants/generation`
+- Added `COLLECTION_IDS` to the `@/constants/collections` import
+- Added `PACK_HISTORY_LIMIT` import from `@/constants/generation`
+- Replaced hardcoded `"spoonbill"` with `COLLECTION_IDS.SPOONBILL`
+- Replaced `.slice(0, 10)` with `.slice(0, PACK_HISTORY_LIMIT)`
+
+**Modified `src/pages/index.tsx`**:
+- Added `COLLECTION_IDS` to the collections import
+- Added new `@/constants/generation` import for `MAX_PACKS_PER_EXPORT` and `PACK_HISTORY_LIMIT`
+- Replaced hardcoded `"spoonbill"` in the `categoryIds` set with `COLLECTION_IDS.SPOONBILL`
+- Removed the redundant `if (id === "spoonbill") return "Spoonbill";` special-case from `getCollectionName` — already covered by the `COLLECTION_DISPLAY_NAMES` map
+- Updated Pack History heading to use `PACK_HISTORY_LIMIT`
+- Updated `max` attribute on packs input to `MAX_PACKS_PER_EXPORT.toString()`
+
+**Why this matters**: After OAK-40 extracted `MIN_WILDCARD_ATTEMPTS` and `RETRY_MULTIPLIER` into module-level constants, those constants were still defined inline in the hook file rather than in the shared constants layer. Centralizing them in `src/constants/generation.ts` gives every consumer a single import path and makes tuning values discoverable without reading hook internals. The `"spoonbill"` string literals were the last remaining hardcoded collection ID references — now eliminated in alignment with OAK-46.
+
+#### OAK-15 — Three-tier logging strategy in `generateBoosterPack`
+
+**Modified `src/hooks/use-booster-pack-generation.ts`**:
+- Added a JSDoc comment block before `generateBoosterPack` documenting the three-tier logging strategy:
+  - **Tier 1** — slot-draw-level warnings: `console.warn` only. These are too granular and too recoverable to report to GA (e.g., a single draw attempt failing before a successful retry).
+  - **Tier 2** — pack-level slot failures: `console.warn` + `exception({ fatal: false })`. The pack completes but a slot was left unfilled or filled via fallback. Surfaced in GA so patterns are detectable over time.
+  - **Tier 3** — unexpected errors in `generatePacks` try/catch: `console.error` + `exception({ fatal: false })`. Indicates a programming error or unhandled edge case.
+- Added `exception({ fatal: false })` calls to the two Tier-2 warning sites that previously had only `console.warn`:
+  1. Wildcard slot unfilled after `maxAttempts` attempts
+  2. No wildcard-eligible categories found (wildcard slot skipped entirely)
+- The spoonbill slot failure site also received an `exception()` call under the same Tier-2 classification.
+
+**Why this matters**: Before OAK-15, all generation warnings went only to `console.warn`, making pack-level failures invisible in production analytics. The three-tier model is now explicit in code comments so future contributors understand exactly which failure severity warrants GA reporting versus local logging only.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Breaking Changes: None — pack structure, Excel output, and all UI behavior are identical
+
+---
+
 ### March 15, 2026 - Error Boundary + Admin Page Lazy Loading (OAK-12, OAK-13)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.

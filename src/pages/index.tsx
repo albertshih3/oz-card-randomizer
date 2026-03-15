@@ -25,8 +25,13 @@ import { db } from "@/lib/firebase";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
 import {
   BASE_COLLECTION_IDS,
+  COLLECTION_IDS,
   COLLECTION_DISPLAY_NAMES,
 } from "@/constants/collections";
+import {
+  MAX_PACKS_PER_EXPORT,
+  PACK_HISTORY_LIMIT,
+} from "@/constants/generation";
 import {
   Sparkles,
   FileSpreadsheet,
@@ -70,7 +75,7 @@ export default function IndexPage() {
           new Set([
             ...legacyCollections.map((c) => c.id),
             ...BASE_COLLECTION_IDS,
-            "spoonbill",
+            COLLECTION_IDS.SPOONBILL,
           ]),
         );
         for (const col of categoryIds) {
@@ -129,7 +134,6 @@ export default function IndexPage() {
   };
 
   const getCollectionName = (id: string) => {
-    if (id === "spoonbill") return "Spoonbill";
     const c = collections.find((c) => c.id === id);
     if (c) return c.name;
     if (COLLECTION_DISPLAY_NAMES[id]) return COLLECTION_DISPLAY_NAMES[id];
@@ -274,7 +278,7 @@ export default function IndexPage() {
               <div className="space-y-6">
                 <div className="flex items-center gap-2 text-xl font-bold text-foreground/80">
                   <History className="w-5 h-5" />
-                  <h2>Pack History (Last 10)</h2>
+                  <h2>Pack History (Last {PACK_HISTORY_LIMIT})</h2>
                 </div>
 
                 <div className="space-y-4">
@@ -404,7 +408,7 @@ export default function IndexPage() {
               label="Number of Packs"
               placeholder="e.g. 50"
               min="1"
-              max="1000"
+              max={MAX_PACKS_PER_EXPORT.toString()}
               value={numPacks.toString()}
               onChange={(e) => setNumPacks(Number(e.target.value))}
               variant="bordered"

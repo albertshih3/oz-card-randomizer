@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { event, timing, exception } from "@/lib/gtag";
-import { BASE_COLLECTION_IDS } from "@/constants/collections";
+import { BASE_COLLECTION_IDS, COLLECTION_IDS } from "@/constants/collections";
+import {
+  MIN_WILDCARD_ATTEMPTS,
+  RETRY_MULTIPLIER,
+  PACK_HISTORY_LIMIT,
+} from "@/constants/generation";
 import type { Card, Collection, PackHistoryItem } from "@/types/index";
-
-/** Minimum wildcard draw attempts regardless of eligible pool size. */
-const MIN_WILDCARD_ATTEMPTS = 10;
-/** Attempts per eligible category before giving up on wildcard slot. */
-const RETRY_MULTIPLIER = 2;
 
 export function useBoosterPackGeneration(
   cardsData: { [key: string]: Card[] },
@@ -16,6 +16,22 @@ export function useBoosterPackGeneration(
   const [packHistory, setPackHistory] = useState<PackHistoryItem[]>([]);
   const [lastGenTime, setLastGenTime] = useState<Date | null>(null);
 
+  /**
+   * Logging strategy for generateBoosterPack:
+   *
+   * Tier 1 — slot-draw-level warnings (addCard returns false for a single draw attempt):
+   *   console.warn only. These are low-level transient conditions the draw loop handles
+   *   by retrying or moving on. Not reported to GA — too granular and recoverable.
+   *
+   * Tier 2 — pack-level slot failures (a required pack slot could not be filled):
+   *   console.warn + exception({ fatal: false }). These conditions mean the generated
+   *   pack is structurally incomplete and should be surfaced in GA analytics.
+   *   Applies to: wildcard slot exhausted after all attempts, no wildcard-eligible
+   *   categories exist, spoonbill slot empty.
+   *
+   * Tier 3 — unexpected errors (caught by generatePacks try/catch):
+   *   console.error + exception({ fatal: false }). Already handled in generatePacks.
+   */
   const generateBoosterPack = () => {
     const startTime = performance.now();
     const pack: Card[] = [];
@@ -78,15 +94,29 @@ export function useBoosterPackGeneration(
         console.warn(
           `Failed to add a card from a random collection after ${maxAttempts} attempts`,
         );
+        exception({
+          description: `Wildcard slot unfilled after ${maxAttempts} attempts`,
+          fatal: false,
+        });
       }
     } else {
       console.warn(
         "No wildcard-eligible categories found; wildcard slot skipped",
       );
+      exception({
+        description:
+          "Wildcard slot skipped: no wildcard-eligible categories found",
+        fatal: false,
+      });
     }
 
-    if (!addCard("spoonbill")) {
+    if (!addCard(COLLECTION_IDS.SPOONBILL)) {
       console.warn("Not enough cards in spoonbill collection");
+      exception({
+        description:
+          "Spoonbill slot unfilled: no available cards in spoonbill collection",
+        fatal: false,
+      });
     }
 
     const endTime = performance.now();
@@ -112,7 +142,10 @@ export function useBoosterPackGeneration(
         }));
 
         setPackHistory((prev) => {
-          const updated = [...historyItems, ...prev].slice(0, 10);
+          const updated = [...historyItems, ...prev].slice(
+            0,
+            PACK_HISTORY_LIMIT,
+          );
           return updated;
         });
       }
