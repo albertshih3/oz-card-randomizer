@@ -10,6 +10,7 @@ export interface Card {
   number: string;
   collection: string;
   active: boolean;
+  collectionName?: string;
 }
 
 export type Collection = {

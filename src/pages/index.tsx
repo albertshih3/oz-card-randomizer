@@ -38,11 +38,11 @@ import {
 import { CollectionBadge } from "@/components/collection-badge";
 import { useBoosterPackGeneration } from "@/hooks/use-booster-pack-generation";
 import { useExcelExport } from "@/hooks/use-excel-export";
-import type { Collection } from "@/types/index";
+import type { Card, Collection } from "@/types/index";
 
 export default function IndexPage() {
   const [expandedPackId, setExpandedPackId] = useState<string | null>(null);
-  const [cardsData, setCardsData] = useState<{ [key: string]: any }>({});
+  const [cardsData, setCardsData] = useState<{ [key: string]: Card[] }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -64,7 +64,7 @@ export default function IndexPage() {
         const legacyCollections = categoriesToLegacyFormat(categories);
         setCollections(legacyCollections);
 
-        const data: { [key: string]: any } = {};
+        const data: { [key: string]: Card[] } = {};
         // Ensure we always include base categories, even if not listed in Firestore categories
         const categoryIds = Array.from(
           new Set([
@@ -76,10 +76,10 @@ export default function IndexPage() {
         for (const col of categoryIds) {
           const querySnapshot = await getDocs(collection(db, col));
           data[col] = querySnapshot.docs
-            .map((doc) => ({ id: doc.id, ...doc.data() }))
-            .filter(
-              (card: { id: string; active?: boolean }) => card.active !== false,
-            ); // Consider cards active if 'active' is true or null/undefined
+            .map(
+              (doc) => ({ id: doc.id, collection: col, ...doc.data() }) as Card,
+            )
+            .filter((card) => card.active !== false); // Consider cards active if 'active' is true or null/undefined
         }
         setCardsData(data);
         setLoading(false);
@@ -110,6 +110,7 @@ export default function IndexPage() {
   // Function to generate packs and export
   const handleGenerateAndExport = async () => {
     if (isExporting) return;
+    if (!numPacks || numPacks < 1) return;
     event({
       action: "export",
       category: "spreadsheet",

@@ -55,7 +55,9 @@ export function useExcelExport() {
           ? `#${wildcard.number} - ${wildcard.name}`
           : "";
 
-        const spoonbill = pack.find((card) => card.collection === "spoonbill");
+        const spoonbill = pack.find(
+          (card) => card.collection === COLLECTION_IDS.SPOONBILL,
+        );
         row["Spoonbill"] = spoonbill
           ? `#${spoonbill.number} - ${spoonbill.name}`
           : "";

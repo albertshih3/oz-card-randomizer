@@ -1,8 +1,24 @@
 [
   {
+    "version": "2.0.10",
+    "date": "March 15, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Removed duplicate local Card interfaces from edit.tsx and editcard.tsx — both pages now import the canonical Card type from src/types/index.ts (OAK-10)",
+          "Added collectionName? to the canonical Card interface in src/types/index.ts to cover the field used by admin pages (OAK-10)",
+          "Replaced { [key: string]: any } cardsData state in index.tsx with { [key: string]: Card[] } — completes the any→Card[] migration across the primary data path (OAK-11)"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.9",
     "date": "March 13, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Maintenance",

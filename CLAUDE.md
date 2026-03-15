@@ -10,6 +10,101 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 15, 2026 - Code Quality: Firestore Type Boundary, Sort Stability, and Constant Consistency (OAK-41–OAK-47)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry. These are code smell corrections identified before the next release.
+
+**Motivation**: A post-v2.0.10 review identified seven code smells: a missing `collection` field at the Firestore data boundary, a silent no-op on cleared/zero pack count input, a sort comparator with a falsy-zero bug, a redundant O(N) lookup inside a load loop, collection being written as a document field rather than used only as a path, one remaining hardcoded collection ID string, and a stale reference to that same string in the OAK-39 CLAUDE.md entry.
+
+#### OAK-41 (CS-01) — Set `collection` field before spread at the Firestore boundary
+
+**Problem**: `src/pages/index.tsx` constructed card objects as `{ id: doc.id, ...doc.data() }` before adding `as Card`. If a Firestore document happened to store a `collection` field, the spread would set it to whatever the document contained. If no `collection` field existed in the document, the object would have `collection: undefined` — an invisible type violation since TypeScript would accept the `as Card` cast regardless.
+
+**Fix**: Changed the map call to `{ id: doc.id, collection: col, ...doc.data() }`. Placing `collection: col` before the spread ensures the authoritative value (the Firestore collection path used to fetch the document) is always present and cannot be overwritten by document content.
+
+**Why this matters**: `collection` is used downstream by the generation hook and the export hook to determine pack slot assignment and Excel column placement. An undefined or stale `collection` value would silently corrupt pack structure.
+
+#### OAK-42 (CS-02) — Guard against zero/empty pack count in `handleGenerateAndExport`
+
+**Problem**: `handleGenerateAndExport` in `src/pages/index.tsx` had no guard on the `numPacks` value. If the user cleared the input field (leaving `numPacks` as `NaN` or `0`), the function would call `generatePacks(0)` and `exportToExcel([])` — a silent no-op that produced an empty file with no user feedback.
+
+**Fix**: Added `if (!numPacks || numPacks < 1) return;` at the top of `handleGenerateAndExport`, immediately after the `isExporting` guard. This short-circuits before any analytics events or async calls are made.
+
+#### OAK-43 (CS-03) — Fix sort comparator falsy-zero bug in `edit.tsx`
+
+**Problem**: The `async sort` comparator in `src/pages/edit.tsx` used `parseInt(first) || first` to normalize values. When a card had number `"0"`, `parseInt("0")` returns `0`, which is falsy — so the expression fell back to the raw string `"0"` instead of the parsed integer `0`. This caused card `#0` to sort as a string rather than a number.
+
+**Fix**: Replaced the falsy-coalescing pattern with an explicit `isNaN` check: `!isNaN(parsedFirst) ? parsedFirst : (first as string)`. Also replaced the ternary `normFirst < normSecond ? -1 : normFirst > normSecond ? 1 : /* missing 0 */` with an explicit three-branch form that returns `0` for equal values, preventing the comparator from returning `undefined` on ties.
+
+#### OAK-44 (CS-04) — Eliminate O(N) `legacyCollections.find(...)` inside load loop
+
+**Problem**: The card load loop in `src/pages/edit.tsx` called `legacyCollections.find(c => c.id === colObj.id)` for every card in every collection to obtain the collection's display name. Since the loop iterates over `colObj` — the collection object itself — the `.find()` was redundant: `colObj.name` holds the display name directly.
+
+**Fix**: Replaced `legacyCollections.find(c => c.id === colObj.id)?.name` with `colObj.name`. This is O(1) rather than O(N) and reads the value from the variable already in scope.
+
+#### OAK-45 (CS-05) — Do not write `collection` as a Firestore document field
+
+**Problem**: `src/pages/editcard.tsx` included `collection: updatedCard.collection` in the data objects passed to `addDoc` (new card path) and `updateDoc`/`batch.set` (edit and move paths). The collection identifier is the Firestore collection path — it is not a field that belongs inside the document. Writing it as a field would cause Firestore documents to contain a redundant `collection` property that could diverge from the actual path over time.
+
+**Fix**: Removed `collection: updatedCard.collection` from all three write payloads. The write payloads now contain only `{ name, number, active }`. The collection path is encoded in the document reference (`doc(db, collectionId, cardId)`), not in the document body.
+
+**Why this matters**: The `collection` field on the `Card` type is a client-side concern — it is populated by the fetch layer from the query path (OAK-41) and used for display and routing. It should never round-trip into Firestore.
+
+#### OAK-46 (CS-06) — Replace hardcoded `"spoonbill"` string in `use-excel-export.ts`
+
+**Problem**: `src/hooks/use-excel-export.ts` used the string literal `"spoonbill"` in one place — the `pack.find()` call for locating the Spoonbill card — while the rest of the file already used `COLLECTION_IDS.SPOONBILL`.
+
+**Fix**: Replaced the hardcoded `"spoonbill"` with `COLLECTION_IDS.SPOONBILL`. All collection ID references in the file now go through the constants object.
+
+#### OAK-47 (CS-07) — Correct `COLLECTION_IDS.spoonbill` → `COLLECTION_IDS.SPOONBILL` in CLAUDE.md
+
+**Problem**: The OAK-39 section of this file referenced `COLLECTION_IDS.spoonbill` (lowercase). The actual key in `src/constants/collections.ts` is `COLLECTION_IDS.SPOONBILL` (uppercase).
+
+**Fix**: Updated the reference in the OAK-39 section above.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Breaking Changes: None — all fixes are correctness or clarity improvements with identical runtime behavior for valid inputs
+
+---
+
+### March 15, 2026 - Type Consolidation: Duplicate Interface Removal + any→Card[] Migration (OAK-10, OAK-11, v2.0.10)
+
+**Released as v2.0.10** — `src/data/changelog.json` updated; `2.0.9` entry marked `isCurrent: false`.
+
+**Motivation**: Two admin pages (`edit.tsx` and `editcard.tsx`) each defined a local `Card` interface that duplicated the canonical one in `src/types/index.ts`. Separately, `src/pages/index.tsx` still used `{ [key: string]: any }` for its `cardsData` state even after the hooks it feeds were fully typed in v2.0.9. These two issues were resolved together as a clean-up pass.
+
+#### OAK-10 — Remove duplicate local Card interfaces
+
+**Problem**: `src/pages/edit.tsx` (lines 31–38) and `src/pages/editcard.tsx` (lines 34–41) each defined their own `Card` interface locally. These duplicates were structurally identical to the canonical `Card` in `src/types/index.ts` but did not include `collectionName?`, creating a silent divergence risk as the type evolves.
+
+**Fix**:
+- Added `collectionName?: string` to the canonical `Card` interface in `src/types/index.ts`. This optional field is used by the admin pages to display which collection a card belongs to alongside the card data.
+- Removed the local `Card` interface from `src/pages/edit.tsx`; added `import type { Card } from "@/types/index"` after the `clsx` import.
+- Removed the local `Card` interface from `src/pages/editcard.tsx`; added `import type { Card } from "@/types/index"` after the `lucide-react` import.
+
+**Why this matters**: Having three definitions of `Card` — one canonical, two local — means a field added to the canonical type (like `collectionName?`) is invisible to files using their own local copy. A single authoritative definition in `src/types/index.ts` ensures every consumer sees every field.
+
+#### OAK-11 — Replace remaining `any` types in index.tsx
+
+**Problem**: `src/pages/index.tsx` used `useState<{ [key: string]: any }>({})` for `cardsData` and `const data: { [key: string]: any } = {}` in `fetchData`. These were holdovers from before the hooks were typed; the hooks themselves now accept `Card[][]` (v2.0.9), but the page-level state feeding them remained untyped.
+
+**Fix**:
+- Updated import in `src/pages/index.tsx`: `import type { Collection }` → `import type { Card, Collection }`.
+- Changed `useState<{ [key: string]: any }>({})` → `useState<{ [key: string]: Card[] }>({})`.
+- Changed `const data: { [key: string]: any } = {}` → `const data: { [key: string]: Card[] } = {}`.
+- Added `as Card` assertion in the `.map()` call that constructs card objects from Firestore snapshots; removed a redundant inline filter type annotation that was no longer needed.
+
+**Why this matters**: `cardsData` is the data source passed into `useBoosterPackGeneration`. With `{ [key: string]: Card[] }`, TypeScript can now verify the entire data flow from Firestore fetch through pack generation end-to-end. The last meaningful `any` in the primary data path is eliminated.
+
+**Verification Results**:
+- Build: Successful
+- Lint: Clean
+- Breaking Changes: None — pack structure, Excel output, and all UI behavior are identical
+
+---
+
 ### March 13, 2026 - Code Quality: Type Safety + Structural Fixes + Analytics Separation (OAK-38, OAK-39, OAK-40, v2.0.9)
 
 **Released as v2.0.9** — `src/data/changelog.json` updated; `2.0.8` entry marked `isCurrent: false`.
@@ -33,7 +128,7 @@ Web application for generating randomized trading card booster packs for Oakland
 
 **Problem**: `use-excel-export.ts` located the wildcard card using `pack[8]` — a positional index that silently breaks if pack slot ordering ever changes.
 
-**Fix**: Replaced `pack[8]` with `pack.find(card => !BASE_COLLECTION_IDS.includes(card.collection) && card.collection !== COLLECTION_IDS.spoonbill)`. This lookup is semantic: it finds the card that is neither a base-slot card nor the Spoonbill slot, regardless of its position in the array.
+**Fix**: Replaced `pack[8]` with `pack.find(card => !BASE_COLLECTION_IDS.includes(card.collection) && card.collection !== COLLECTION_IDS.SPOONBILL)`. This lookup is semantic: it finds the card that is neither a base-slot card nor the Spoonbill slot, regardless of its position in the array.
 
 **Hardened `BASE_COLLECTION_IDS` in `src/constants/collections.ts`**:
 - Changed type annotation from `as const` to `as const satisfies readonly string[]`. This asserts the value is a valid `readonly string[]` at declaration time, catching any type-narrowing regressions at the point of definition rather than at use sites.
@@ -395,9 +490,10 @@ Each collection represents a card category:
 **Card Schema**:
 ```typescript
 {
-  name: string;      // Display name
-  number: string;    // Card identifier
-  active: boolean;   // Whether card appears in generator
+  name: string;             // Display name
+  number: string;           // Card identifier
+  active: boolean;          // Whether card appears in generator
+  collectionName?: string;  // Human-readable collection name (populated by admin pages)
 }
 ```
 
