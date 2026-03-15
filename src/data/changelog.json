@@ -1,8 +1,23 @@
 [
   {
-    "version": "2.0.10",
+    "version": "2.0.11",
     "date": "March 15, 2026",
     "isCurrent": true,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added ErrorBoundary component — catches uncaught render errors and lazy-load failures, showing a recovery UI with error details and a reload button instead of a blank screen (OAK-12)",
+          "Converted admin page imports (EditPage, EditCardPage, CategoriesPage) to React.lazy() with a Suspense spinner fallback — main bundle reduced from ~1,414 kB to ~1,289 kB (OAK-13)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.10",
+    "date": "March 15, 2026",
+    "isCurrent": false,
     "sections": [
       {
         "title": "Maintenance",
