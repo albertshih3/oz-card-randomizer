@@ -8,11 +8,11 @@
     "build": "tsc && vite build",
     "lint": "eslint -c .eslintrc.json ./src/**/**/*.{ts,tsx} --fix",
     "preview": "vite preview",
-    "update-changelog": "node scripts/update-changelog.js"
+    "update-changelog": "node scripts/update-changelog.js",
+    "prepare": "husky"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.57.0",
-    "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "@heroui/button": "2.2.27",
     "@heroui/chip": "^2.2.22",
     "@heroui/code": "2.2.21",
@@ -68,6 +68,8 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-unused-imports": "4.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "postcss": "8.5.6",
     "prettier": "3.7.3",
     "tailwindcss": "^3.4.18",
@@ -75,5 +77,15 @@
     "vite": "^5.4.21",
     "vite-plugin-radar": "^0.10.1",
     "vite-tsconfig-paths": "^5.1.4"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint -c .eslintrc.json --fix",
+      "bash -c 'tsc --noEmit'"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   }
 }

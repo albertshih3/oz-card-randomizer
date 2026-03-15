@@ -244,7 +244,7 @@ export default function IndexPage() {
                         No packs generated yet
                       </p>
                       <p className="text-sm">
-                        Click "Generate Pack" to get started
+                        Click &quot;Generate Pack&quot; to get started
                       </p>
                     </div>
                   }

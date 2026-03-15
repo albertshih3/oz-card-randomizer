@@ -15,13 +15,9 @@ export default function Unauthorized() {
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const handleOpen = () => {
-    onOpen();
-  };
-
   useEffect(() => {
-    handleOpen();
-  }, []);
+    onOpen();
+  }, [onOpen]);
 
   return (
     <>
@@ -38,8 +34,8 @@ export default function Unauthorized() {
               <ModalHeader className="flex flex-col gap-1">Whoops!</ModalHeader>
               <ModalBody>
                 <p>
-                  It seems as if you aren't logged in! In order to access this
-                  page you must be logged in to your account.
+                  It seems as if you aren&apos;t logged in! In order to access
+                  this page you must be logged in to your account.
                 </p>
               </ModalBody>
               <ModalFooter>

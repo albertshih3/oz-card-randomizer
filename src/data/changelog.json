@@ -11,7 +11,9 @@
           "Added ErrorBoundary component — catches uncaught render errors and lazy-load failures, showing a recovery UI with error details and a reload button instead of a blank screen (OAK-12)",
           "Converted admin page imports (EditPage, EditCardPage, CategoriesPage) to React.lazy() with a Suspense spinner fallback — main bundle reduced from ~1,414 kB to ~1,289 kB (OAK-13)",
           "Extracted pack generation tuning constants (MIN_WILDCARD_ATTEMPTS, RETRY_MULTIPLIER, PACK_HISTORY_LIMIT, MAX_PACKS_PER_EXPORT) into src/constants/generation.ts; replaced all remaining hardcoded \"spoonbill\" strings with COLLECTION_IDS.SPOONBILL; removed redundant getCollectionName special-case (OAK-14)",
-          "Added three-tier logging strategy to generateBoosterPack; Tier-2 pack-level slot failures now also fire exception({ fatal: false }) to surface in GA analytics (OAK-15)"
+          "Added three-tier logging strategy to generateBoosterPack; Tier-2 pack-level slot failures now also fire exception({ fatal: false }) to surface in GA analytics (OAK-15)",
+          "Removed @firebasegen/default-connector file: dependency and deleted dataconnect/ and dataconnect-generated/ scaffold directories — were never used and had zero imports in src/ (OAK-19)",
+          "Added Husky v9 + lint-staged pre-commit hook — automatically runs ESLint (auto-fix) on staged .ts/.tsx files and a full tsc --noEmit type-check on every commit (OAK-20)"
         ]
       }
     ]

@@ -324,7 +324,7 @@ export default function EditCardPage() {
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium">Active Status</span>
                   <span className="text-xs text-muted-foreground">
-                    Inactive cards won't appear in packs
+                    Inactive cards won&apos;t appear in packs
                   </span>
                 </div>
                 <Switch

@@ -29,7 +29,7 @@ export function useExcelExport() {
 
       // Construct sheet data
       const sheetData = packs.map((pack, index) => {
-        const row: { [key: string]: any } = { "Pack #": index + 1 };
+        const row: Record<string, string | number> = { "Pack #": index + 1 };
 
         // Order is load-bearing: controls pack slot assignment (cards 1–8) and Excel column order.
         // Defined in src/constants/collections.ts — do NOT reorder.

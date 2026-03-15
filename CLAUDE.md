@@ -10,6 +10,60 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 15, 2026 - Firebase Data Connect Scaffold Removal + Pre-commit Hook (OAK-19, OAK-20)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-19 removes two never-developed Firebase Data Connect scaffold directories that were entirely commented-out boilerplate referencing a Cloud SQL instance that does not exist for this application. OAK-20 adds an automated pre-commit quality gate so ESLint and TypeScript errors are caught locally before code reaches CI.
+
+#### OAK-19 — Remove Firebase Data Connect scaffold directories
+
+**Deleted**:
+
+- `dataconnect/` — Firebase Data Connect directory created by the Firebase CLI during initial project setup. All GQL schema and mutation files inside were entirely commented out. No files in `src/` imported anything from it.
+- `dataconnect-generated/` — Auto-generated TypeScript SDK for the above connector. Never imported anywhere in `src/`.
+
+**Modified `package.json`**:
+
+- Removed `"@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector"` from `dependencies`. This was the only reference to the generated SDK.
+- `package-lock.json` was regenerated to reflect the removal.
+
+**Why**: The Data Connect scaffold referenced a PostgreSQL Cloud SQL instance that does not exist for this application. Retaining the directories created the impression that Firebase Data Connect was an active data source, when the actual data layer is plain Firestore. Zero `src/` files were touched.
+
+#### OAK-20 — Add Husky v9 + lint-staged pre-commit hook
+
+**New devDependencies** (added to `package.json`):
+
+- `husky ^9.x`
+- `lint-staged ^16.x`
+
+**Modified `package.json`**:
+
+- Added `"prepare": "husky"` to the `scripts` block. This script runs automatically on `npm install` in a fresh checkout, ensuring the hook is wired without a separate manual step.
+- Added `"lint-staged"` config block:
+  ```json
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint -c .eslintrc.json --fix",
+      "bash -c 'tsc --noEmit'"
+    ]
+  }
+  ```
+
+**New file**: `.husky/pre-commit` — contains only `npx lint-staged`. No shebang line (Husky v9 does not require one). File is executable.
+
+**Husky v9 wiring**: Husky v9 uses `git config core.hooksPath .husky/_` instead of symlinking into `.git/hooks/`. The `.husky/_/` directory is created by `npm run prepare` (or `npm install`) and must not be manually edited.
+
+**Why `bash -c 'tsc --noEmit'`**: lint-staged appends staged file paths as arguments to each command it runs. Wrapping the `tsc` invocation in `bash -c '...'` prevents lint-staged from injecting file paths into the `tsc` call. Without the wrapper, `tsc path/to/file.ts` would run a per-file type-check without `tsconfig.json`, producing misleading errors. The wrapper ensures `tsc --noEmit` always runs as a full-project type-check driven by `tsconfig.json`.
+
+**Verification Results**:
+
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Breaking Changes: None — no `src/` files were modified
+
+---
+
 ### March 15, 2026 - Magic Number Extraction + Three-Tier Logging Strategy (OAK-14, OAK-15)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
@@ -19,6 +73,7 @@ Web application for generating randomized trading card booster packs for Oakland
 #### OAK-14 — Extract magic numbers and collection ID strings in generation pipeline
 
 **New file created**: `src/constants/generation.ts`
+
 - `MIN_WILDCARD_ATTEMPTS = 10` — minimum draw attempts before the wildcard slot gives up
 - `RETRY_MULTIPLIER = 2` — multiplier applied to scale retry attempts relative to pool size
 - `PACK_HISTORY_LIMIT = 10` — maximum number of generation runs retained in pack history
@@ -27,6 +82,7 @@ Web application for generating randomized trading card booster packs for Oakland
 No default export. All four are named exports, matching the pattern in `src/constants/collections.ts`.
 
 **Modified `src/hooks/use-booster-pack-generation.ts`**:
+
 - Replaced the two module-level `const` declarations (`MIN_WILDCARD_ATTEMPTS`, `RETRY_MULTIPLIER`) with imports from `@/constants/generation`
 - Added `COLLECTION_IDS` to the `@/constants/collections` import
 - Added `PACK_HISTORY_LIMIT` import from `@/constants/generation`
@@ -34,6 +90,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 - Replaced `.slice(0, 10)` with `.slice(0, PACK_HISTORY_LIMIT)`
 
 **Modified `src/pages/index.tsx`**:
+
 - Added `COLLECTION_IDS` to the collections import
 - Added new `@/constants/generation` import for `MAX_PACKS_PER_EXPORT` and `PACK_HISTORY_LIMIT`
 - Replaced hardcoded `"spoonbill"` in the `categoryIds` set with `COLLECTION_IDS.SPOONBILL`
@@ -46,6 +103,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 #### OAK-15 — Three-tier logging strategy in `generateBoosterPack`
 
 **Modified `src/hooks/use-booster-pack-generation.ts`**:
+
 - Added a JSDoc comment block before `generateBoosterPack` documenting the three-tier logging strategy:
   - **Tier 1** — slot-draw-level warnings: `console.warn` only. These are too granular and too recoverable to report to GA (e.g., a single draw attempt failing before a successful retry).
   - **Tier 2** — pack-level slot failures: `console.warn` + `exception({ fatal: false })`. The pack completes but a slot was left unfilled or filled via fallback. Surfaced in GA so patterns are detectable over time.
@@ -58,6 +116,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **Why this matters**: Before OAK-15, all generation warnings went only to `console.warn`, making pack-level failures invisible in production analytics. The three-tier model is now explicit in code comments so future contributors understand exactly which failure severity warrants GA reporting versus local logging only.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean (same pre-existing baseline — no new warnings introduced)
 - Breaking Changes: None — pack structure, Excel output, and all UI behavior are identical
@@ -75,6 +134,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **What was created**: A reusable React Error Boundary class component (`ErrorBoundary`) that catches uncaught JavaScript errors during rendering and displays a recovery UI instead of a blank screen.
 
 **Implementation details**:
+
 - `ErrorBoundary` is a class component — React requires class components for error boundaries; functional components cannot implement `getDerivedStateFromError` or `componentDidCatch`.
 - `getDerivedStateFromError` sets `{ hasError: true, error }` on the class state, triggering a re-render to the fallback UI.
 - `componentDidCatch` logs the error and `componentStack` to `console.error` with an `[ErrorBoundary]` prefix for easy filtering.
@@ -87,6 +147,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 #### OAK-13 — Converted admin page imports to `React.lazy()` in `App.tsx`
 
 **What changed in `src/App.tsx`**:
+
 - Converted `EditPage`, `EditCardPage`, and `CategoriesPage` from static imports to `React.lazy()` calls.
 - Added `Suspense` with a full-screen centered `Spinner` fallback (extracted as `SuspenseFallback` constant above the component to avoid recreating the JSX on every render).
 - Wrapped `<Routes>` in `<ErrorBoundary>` (outer) then `<Suspense>` (inner). `<Toaster />` remains outside both wrappers so toast notifications are never blocked by boundary or suspension state.
@@ -96,6 +157,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **Nesting order matters**: `ErrorBoundary` must be the outer wrapper, `Suspense` must be inner. A `Suspense` that has not yet resolved its lazy import throws a Promise; if the `ErrorBoundary` were inside `Suspense`, it could not catch lazy-load failures.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean (same pre-existing baseline — no new warnings introduced)
 - Breaking Changes: None — all routes behave identically; admin pages load on first navigation
@@ -155,6 +217,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **Fix**: Updated the reference in the OAK-39 section above.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean (same pre-existing baseline — no new warnings introduced)
 - Breaking Changes: None — all fixes are correctness or clarity improvements with identical runtime behavior for valid inputs
@@ -172,6 +235,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **Problem**: `src/pages/edit.tsx` (lines 31–38) and `src/pages/editcard.tsx` (lines 34–41) each defined their own `Card` interface locally. These duplicates were structurally identical to the canonical `Card` in `src/types/index.ts` but did not include `collectionName?`, creating a silent divergence risk as the type evolves.
 
 **Fix**:
+
 - Added `collectionName?: string` to the canonical `Card` interface in `src/types/index.ts`. This optional field is used by the admin pages to display which collection a card belongs to alongside the card data.
 - Removed the local `Card` interface from `src/pages/edit.tsx`; added `import type { Card } from "@/types/index"` after the `clsx` import.
 - Removed the local `Card` interface from `src/pages/editcard.tsx`; added `import type { Card } from "@/types/index"` after the `lucide-react` import.
@@ -183,6 +247,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **Problem**: `src/pages/index.tsx` used `useState<{ [key: string]: any }>({})` for `cardsData` and `const data: { [key: string]: any } = {}` in `fetchData`. These were holdovers from before the hooks were typed; the hooks themselves now accept `Card[][]` (v2.0.9), but the page-level state feeding them remained untyped.
 
 **Fix**:
+
 - Updated import in `src/pages/index.tsx`: `import type { Collection }` → `import type { Card, Collection }`.
 - Changed `useState<{ [key: string]: any }>({})` → `useState<{ [key: string]: Card[] }>({})`.
 - Changed `const data: { [key: string]: any } = {}` → `const data: { [key: string]: Card[] } = {}`.
@@ -191,6 +256,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **Why this matters**: `cardsData` is the data source passed into `useBoosterPackGeneration`. With `{ [key: string]: Card[] }`, TypeScript can now verify the entire data flow from Firestore fetch through pack generation end-to-end. The last meaningful `any` in the primary data path is eliminated.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — pack structure, Excel output, and all UI behavior are identical
@@ -206,6 +272,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 #### OAK-38 — Type safety across the generation and export pipeline
 
 **Updated `src/types/index.ts`**:
+
 - Added `Card` interface — the authoritative shape for a single Firestore card document (`name: string`, `number: string`, `active: boolean`).
 - Renamed `LegacyCollection` → `Collection`. The "Legacy" qualifier was a holdover from an earlier design phase; the type is the current standard and should not be named as if it is deprecated.
 - `PackHistoryItem.cards` is now typed as `Card[]` instead of a looser shape.
@@ -223,6 +290,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 **Fix**: Replaced `pack[8]` with `pack.find(card => !BASE_COLLECTION_IDS.includes(card.collection) && card.collection !== COLLECTION_IDS.SPOONBILL)`. This lookup is semantic: it finds the card that is neither a base-slot card nor the Spoonbill slot, regardless of its position in the array.
 
 **Hardened `BASE_COLLECTION_IDS` in `src/constants/collections.ts`**:
+
 - Changed type annotation from `as const` to `as const satisfies readonly string[]`. This asserts the value is a valid `readonly string[]` at declaration time, catching any type-narrowing regressions at the point of definition rather than at use sites.
 
 **Added load-bearing order comments** at both usage sites (`use-booster-pack-generation.ts` and `use-excel-export.ts`) stating that `BASE_COLLECTION_IDS` order controls pack slot assignment and Excel column order respectively — do not reorder.
@@ -232,6 +300,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 #### OAK-40 — Analytics separation and magic number extraction
 
 **Extracted magic numbers** in `use-booster-pack-generation.ts` into named module-level constants declared above `useBoosterPackGeneration`:
+
 - `MIN_WILDCARD_ATTEMPTS = 10` — minimum number of draw attempts before the wildcard slot gives up.
 - `RETRY_MULTIPLIER = 2` — multiplier applied to scale retry attempts relative to pool size.
 
@@ -239,9 +308,10 @@ No default export. All four are named exports, matching the pattern in `src/cons
 
 **`generatePacks` accumulates total duration** across all `generateBoosterPack` calls and fires a single `timing()` call for the full batch. This is more accurate (one event per user action rather than one per pack) and keeps analytics concerns out of the core generation logic.
 
-**Removed dead `./src/hooks/**` Tailwind content path** from `tailwind.config.js`. Hook files contain no Tailwind class strings and never did; this entry was adding unnecessary glob scanning on every build.
+**Removed dead `./src/hooks/**`Tailwind content path** from`tailwind.config.js`. Hook files contain no Tailwind class strings and never did; this entry was adding unnecessary glob scanning on every build.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — pack structure, Excel output format, analytics event semantics, and all UI behavior are identical
@@ -257,12 +327,14 @@ No default export. All four are named exports, matching the pattern in `src/cons
 #### OAK-9 — Collection constants centralized
 
 **Created `src/constants/collections.ts`** as the single source of truth for all collection-related constants:
+
 - `COLLECTION_IDS` — `as const` object mapping symbolic keys to Firestore collection ID strings
 - `BASE_COLLECTION_IDS` — ordered array of the four base pack collection IDs; order controls both pack slot assignment AND Excel export column order — do not reorder
 - `COLLECTION_DISPLAY_NAMES` — map from collection ID to human-readable display name
 - `COLLECTION_COLORS` — map from collection ID to Tailwind color classes (used by `collection-badge.tsx`)
 
 **Updated consumers**:
+
 - `src/components/collection-badge.tsx` — removed inline `colorMap`; now imports `COLLECTION_COLORS` from constants
 - `src/pages/index.tsx` — removed inline `BASE_CATEGORIES` and `BASE_NAME_MAP`; now imports from constants
 
@@ -273,6 +345,7 @@ No default export. All four are named exports, matching the pattern in `src/cons
 The hook accepts `(cardsData, collections)` and returns `{ boosterPacks, packHistory, lastGenTime, generatePacks }`.
 
 Key design decisions:
+
 - `generateBoosterPack` is a private inner function — it is not part of the return value and is not callable from outside the hook. It exists solely to be called by `generatePacks`.
 - `setSelectedKeys` (the UI state that tracks which pack the user is currently viewing) stays in `src/pages/index.tsx`. It is UI state, not generation state, so it belongs in the page component.
 - `packHistory` is capped at 10 entries (the last 10 generation runs).
@@ -286,6 +359,7 @@ Key design decisions:
 The hook returns `{ exportToExcel, isExporting }`.
 
 Key design decisions:
+
 - `xlsx` is loaded via `await import("xlsx")` inside `exportToExcel` rather than as a top-level static import. This defers the 284 kB xlsx bundle until the user actually triggers an export. Main chunk dropped from 1,700 kB to 1,414 kB as a result.
 - `exportToExcel` is therefore `async`. The `handleGenerateAndExport` handler in `src/pages/index.tsx` is correspondingly `async` and `await`s the call.
 - `isExporting` state lives inside the hook. `setIsExporting(false)` is called in a `finally` block to guarantee cleanup even when `writeFile` throws.
@@ -293,6 +367,7 @@ Key design decisions:
 **Result**: `src/pages/index.tsx` is now 439 lines (down from 649) and contains only UI orchestration — no generation logic and no export logic.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — pack structure, Excel output format, and all UI behavior are identical
@@ -317,10 +392,12 @@ return cachedCategories;
 This ensures `getCategories()` is the authoritative place for caching the fallback result, matching the happy-path pattern. It also provides a defensive safety net: if `createDefaultCategories()` falls back to its own error handler without setting the cache, `getCategories()` will still cache the result before returning.
 
 **Changes**:
+
 - `src/utils/categories.ts` — lines 41–43: replaced early `return await createDefaultCategories()` with the two-statement pattern above.
 - `src/data/changelog.json` — added v2.0.7 entry; marked v2.0.6 `isCurrent: false`.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — external behavior of `getCategories()` is identical; only caching correctness was improved
@@ -334,6 +411,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Motivation**: The `useEffect` in `src/pages/edit.tsx` (lines 104–118) called `list.reload()` directly. `list` is produced by `useAsyncList` from `@react-stately/data`, which returns a **plain object literal on every render** — both `list` and `list.reload` are new references each render, not stable. Listing `list` or `list.reload` in the dependency array would cause per-render re-subscription (at best) or an infinite re-render loop (at worst). The function was therefore omitted from the deps array, creating a stale closure: the effect captured the `list.reload` reference from the first render and would never see an updated one.
 
 **Fix**: Applied the `useRef` stable-reference pattern:
+
 - Added `useRef` to the React import in `src/pages/edit.tsx`.
 - Declared `const reloadRef = useRef(list.reload)` immediately after the `useAsyncList(...)` call, then updated `reloadRef.current = list.reload` on every render so the ref always holds the latest reload function.
 - Changed the call site inside the Firebase sign-in `useEffect` from `list.reload()` to `reloadRef.current()`.
@@ -342,9 +420,11 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Why this matters**: Without this fix, calling `list.reload()` from a stale closure after Firebase sign-in would invoke an outdated function reference — potentially operating on the wrong closure state. The `useRef` pattern is the standard React solution for calling the always-current version of an unstable function reference from inside a `useEffect` without adding it to the dependency array.
 
 **Changes**:
+
 - `src/pages/edit.tsx` — added `useRef` to React import; added `reloadRef` declaration and assignment after `useAsyncList`; changed `list.reload()` → `reloadRef.current()` inside the Firebase sign-in effect.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — behavior is identical for all sign-in paths; only the reference stability was corrected
@@ -358,10 +438,12 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Motivation**: Two files that were no longer reachable from any import path were removed to reduce surface area and eliminate a now-unused npm dependency.
 
 **Files deleted**:
+
 - `src/components/editcard.tsx` — A legacy card-editing modal component. It had been fully superseded by the full-page implementation at `src/pages/editcard.tsx` and had zero remaining imports anywhere in the codebase.
 - `src/components/ui/dialog.tsx` — A Radix UI dialog wrapper created during an early design phase. The project standardized on HeroUI Modal (`@heroui/modal`) before v1.0 shipped; this file was never used in the final design and had zero imports.
 
 **Dependency removed**:
+
 - `@radix-ui/react-dialog` — Was imported only by `src/components/ui/dialog.tsx`. With that file deleted, the dependency served no purpose. Removed from `package.json` and `node_modules`.
 
 **Why this matters**: The project now has no Radix UI dialog dependency. All modal and dialog UI uses HeroUI `@heroui/modal` exclusively. Any future work requiring a dialog/modal should use HeroUI's `<Modal>` component, not introduce Radix UI.
@@ -369,6 +451,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Note for future agents**: If you see `@radix-ui/react-dialog` mentioned anywhere in old documentation, notes, or AI memory, treat that information as stale. The package no longer exists in this project.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — the deleted files had no active callers
@@ -382,6 +465,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Motivation**: The theme hook (`src/hooks/use-theme.ts`) had four correctness and performance issues: an unsafe `localStorage` access that would crash in non-browser environments, an unsafe type cast that allowed arbitrary strings to reach the DOM, a redundant `useEffect` causing an extra re-render on every mount, and unstable function references causing unnecessary re-renders of all theme context consumers.
 
 **Changes**:
+
 - `src/hooks/use-theme.ts` replaced by `src/hooks/use-theme.tsx` (extension change allows JSX in the provider component)
 - `src/main.tsx`: Import quote style normalized to double quotes for consistency
 
@@ -410,6 +494,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Fix**: All three setters are wrapped in `useCallback`. The context `value` object is wrapped in `useMemo`. Consumers now only re-render when the theme actually changes.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — `useTheme()` API is identical; `ThemeProvider` wrapping pattern in `main.tsx` is unchanged
@@ -437,6 +522,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Root cause**: An `exportTrigger` boolean state was set to `true` inside `handleGenerateAndExport`, then watched by a `useEffect` that called `exportToExcel()`. React batches state updates, so there was no guarantee the effect fired at the right time relative to pack generation, and `isExporting` could be left as `true` permanently if an error occurred before the effect cleaned up.
 
 **Fix**:
+
 - Removed `exportTrigger` state and its `useEffect`.
 - `generatePacks()` now returns `any[][]` (the generated pack data) instead of writing only to component state.
 - `handleGenerateAndExport` calls `generatePacks()` directly, passes the return value to `exportToExcel()`, and wraps the call in `try/finally` to guarantee `isExporting` resets to `false` even on error.
@@ -453,6 +539,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Why this matters**: Passing `undefined` to `addCard` is a type violation that could produce unpredictable behavior depending on how downstream code handles it. The guard makes the empty-collection case explicit and observable.
 
 **Verification Results**:
+
 - Build: Successful
 - Lint: Clean
 - Breaking Changes: None — pack structure, UI, and Firebase integration are unchanged
@@ -464,6 +551,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Motivation**: Future-proofing and security improvements for long-term maintainability.
 
 **Changes Made**:
+
 1. **React Ecosystem Upgrade**:
    - Upgraded `react` from 18.3.1 to 19.0.0
    - Upgraded `react-dom` from 18.3.1 to 19.0.0
@@ -490,6 +578,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
      - `react/react-in-jsx-scope`: off (not needed with new JSX transform)
 
 **Verification Results**:
+
 - ✅ Build: Successful (2.84s production build)
 - ✅ Lint: Passing (11 warnings in gtag.ts - pre-existing, non-blocking)
 - ✅ Dependencies: All compatible with React 19
@@ -498,6 +587,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 **Breaking Changes**: None - application maintains existing look and functionality
 
 **Known Warnings**:
+
 - Bundle size warning for main chunk (1.6MB at time of this entry) — reduced to ~1.4MB in v2.0.8 via dynamic xlsx import; further splitting is a future consideration
 - 11 linting warnings in `src/lib/gtag.ts` related to `any` types and `arguments` usage - Google Analytics typing limitations, non-critical
 
@@ -516,23 +606,27 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 ## Architecture Patterns
 
 ### Component Structure
+
 - UI components in `src/components/ui/` - reusable primitives
 - Feature components at `src/components/` level
 - Page components in `src/pages/`
 - Layouts in `src/layouts/`
 
 ### State Management
+
 - React hooks for local state
 - Firebase real-time subscriptions for card data
 - No global state management library (Redux/Zustand) - kept simple intentionally
 
 ### Data Flow
+
 1. Cards stored in Firebase Firestore collections (one per zoo area)
 2. Real-time listeners fetch active cards on page load
 3. Generation logic uses weighted random selection
 4. Export feature uses xlsx library for Excel generation
 
 ### Styling Approach
+
 - Tailwind CSS utility-first
 - HeroUI components for complex UI patterns
 - Dark mode support via HeroUI theme system
@@ -541,24 +635,28 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 ## Code Conventions
 
 ### TypeScript
+
 - Strict mode enabled
 - Explicit return types preferred for public functions
 - Use type definitions in `src/types/`
 - Avoid `any` where possible (currently used in gtag.ts due to Google Analytics SDK limitations)
 
 ### React Patterns
+
 - Functional components only
 - Hooks for side effects and state
 - Props destructuring in component signatures
 - Early returns for loading/error states
 
 ### File Naming
+
 - Components: PascalCase (e.g., `EditCard.tsx`)
 - Utilities: kebab-case (e.g., `use-analytics.ts`)
 - Types: kebab-case (e.g., `changelog.ts`)
 - Pages: kebab-case (e.g., `index.tsx`)
 
 ### Import Organization
+
 1. External dependencies (React, libraries)
 2. Internal components
 3. Hooks and utilities
@@ -568,6 +666,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 ## Firebase Collections
 
 Each collection represents a card category:
+
 - `africansavanna`
 - `californiatrail`
 - `childrenszoo`
@@ -580,6 +679,7 @@ Each collection represents a card category:
 - `spoonbill`
 
 **Card Schema**:
+
 ```typescript
 {
   name: string;             // Display name
@@ -592,6 +692,7 @@ Each collection represents a card category:
 ## Booster Pack Generation Logic
 
 **Standard Pack** (10 cards total):
+
 - 2 cards from African Savannah
 - 2 cards from California Trail
 - 2 cards from Children's Zoo
@@ -604,43 +705,51 @@ Each collection represents a card category:
 ## Build & Deployment
 
 **Development**:
+
 ```bash
 npm run dev          # Start dev server (Vite)
 ```
 
 **Production**:
+
 ```bash
 npm run build        # TypeScript compile + Vite build
 npm run preview      # Preview production build
 ```
 
 **Linting**:
+
 ```bash
 npm run lint         # ESLint with auto-fix
 ```
 
 **Deployment**:
+
 - Automatic via Vercel on push to main branch
 - Preview deployments for PRs
 
 ## Important Notes
 
 ### No Test Suite
+
 - Currently no automated tests configured
 - Manual testing required for changes
 - Consider adding Vitest + React Testing Library in future
 
 ### Analytics
+
 - Dual tracking: Vercel Analytics + Google Analytics
 - Analytics code in `src/lib/gtag.ts` and `src/hooks/use-analytics.ts`
 - Page views and events tracked for usage insights
 
 ### Authentication
+
 - Clerk used ONLY for admin card management
 - Public card generation requires no auth
 - Admin access controlled by Clerk dashboard
 
 ### Environment Variables
+
 See `.env.example` for required Firebase configuration variables.
 
 ## Future Considerations

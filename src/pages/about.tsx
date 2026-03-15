@@ -194,8 +194,8 @@ export default function DocsPage() {
           <div className="space-y-6">
             <p className="text-foreground/90">
               <span className="font-medium text-foreground">Access:</span> Click
-              the "Edit" button in the top right of the screen. You will need to
-              log in. Email{" "}
+              the &quot;Edit&quot; button in the top right of the screen. You
+              will need to log in. Email{" "}
               <a
                 href="mailto:ashih@oaklandzoo.org"
                 className="text-primary hover:underline font-medium"
@@ -225,7 +225,7 @@ export default function DocsPage() {
               <div className="bg-muted/30 p-6 rounded-xl border border-border/50">
                 <h3 className="font-semibold mb-3 text-lg">Adding Cards</h3>
                 <p className="mb-3 text-muted-foreground">
-                  Click the blue plus button to add a card. You'll need:
+                  Click the blue plus button to add a card. You&apos;ll need:
                 </p>
                 <ul className="space-y-2">
                   {[
