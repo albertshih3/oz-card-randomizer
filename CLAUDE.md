@@ -10,6 +10,90 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 15, 2026 - First Automated Test Suite (OAK-16, OAK-17, OAK-18)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: The project had no automated test coverage. All verification was manual. OAK-16 installs and configures Vitest + React Testing Library. OAK-17 adds 28 unit tests for the pack generation hook. OAK-18 adds 23 unit tests for the categories utility. The pre-commit hook is extended to run the full test suite before every commit.
+
+#### OAK-16 — Vitest + React Testing Library setup
+
+**New devDependencies** (added to `package.json`):
+
+- `vitest` — test runner
+- `@vitest/coverage-v8` — code coverage via V8
+- `jsdom` — browser environment simulation for React component tests
+- `@testing-library/react` — `renderHook` and `act()` for hook testing
+- `@testing-library/user-event` — user interaction simulation
+- `@testing-library/jest-dom` — custom DOM matchers (e.g., `toBeInTheDocument`)
+- `@testing-library/dom` — underlying DOM testing utilities
+
+**New file: `vitest.config.ts`** (project root):
+
+- Separate from `vite.config.ts` intentionally — `VitePluginRadar` (Google Analytics) must not run in the test environment.
+- Includes `react()` and `tsconfigPaths()` plugins.
+- `globals: true` — `describe`, `it`, `expect`, `vi` are available in every test file without per-file imports.
+- `environment: "jsdom"` — simulates a browser DOM.
+- `setupFiles: ["src/test/setup.ts"]` — runs before each test suite.
+- Coverage provider: `v8`; covers `src/hooks/**` and `src/utils/**`, excludes `src/test/**`.
+
+**New file: `src/test/setup.ts`** — imports `@testing-library/jest-dom` to register its matchers globally.
+
+**New file: `src/test/smoke.test.tsx`** — 1 smoke test verifying React + jsdom + jest-dom render correctly together.
+
+**Modified `tsconfig.json`**: Added `"types": ["vitest/globals"]` to `compilerOptions` so TypeScript recognizes `describe`/`it`/`expect`/`vi` as globals without per-file type imports.
+
+**Modified `package.json` scripts**:
+
+- `"test": "vitest"` — watch mode for development
+- `"test:run": "vitest run"` — single-pass run for CI and pre-commit
+
+**Modified `.husky/pre-commit`**: Added `npm run test:run` as a second step after `npx lint-staged`. Both must pass for a commit to proceed.
+
+#### OAK-17 — Unit tests for `use-booster-pack-generation.ts`
+
+**New file: `src/test/hooks/use-booster-pack-generation.test.ts`** — 28 tests.
+
+**Coverage areas**:
+
+- Pack structure: 10 cards total per pack, 2 cards from each base collection, 1 wildcard, 1 spoonbill
+- No-duplicate invariant: no card appears twice within a single pack
+- Wildcard selection: drawn from an eligible (non-base, non-spoonbill) collection; skipped with `console.warn` + `exception()` when no eligible categories exist; `exception()` called on slot failures
+- Edge cases: empty collections, undersized collections
+- Multi-pack generation: correct count and structure across N packs
+- Pack history: starts empty, archives previous packs, capped at `PACK_HISTORY_LIMIT`, unique IDs per run, timestamps present
+- State updates: `boosterPacks` and `lastGenTime` reflect each `generatePacks` call
+- Analytics: `event()` and `timing()` call counts per generation run
+
+**Mocking pattern**: `vi.mock("@/lib/gtag", ...)` stubs all analytics functions. `renderHook` + `act()` from `@testing-library/react` drive hook state transitions.
+
+#### OAK-18 — Unit tests for `utils/categories.ts`
+
+**New file: `src/test/utils/categories.test.ts`** — 23 tests.
+
+**Coverage areas**:
+
+- `getCategories()`: Firestore data mapping, `name`/`displayName` field fallbacks, deduplication, `isWildcardEligible` defaulting to `false`
+- Cache behavior: second call returns cached result without hitting Firestore; `clearCategoriesCache()` forces a fresh fetch
+- Empty-Firestore fallback: `setDoc` called 9 times (one per default category); returned categories match defaults
+- Error handling: `getDocs` throws → returns defaults without re-throwing
+- `getDefaultCategories()`: returns 9 categories, expected IDs, all `isWildcardEligible: false`, pure function (no side effects)
+- `categoriesToLegacyFormat()`: correctly maps `Category[]` to `Collection[]`
+- `clearCategoriesCache()`: confirmed to force a fresh Firestore call on next `getCategories()` invocation
+
+**Mocking pattern**: `vi.mock("firebase/firestore", ...)` and `vi.mock("@/lib/firebase", () => ({ db: {} }))` prevent `initializeApp` from running during test import. Always include the firebase mock when importing any module that transitively touches `@/lib/firebase`.
+
+**Total: 52 tests across all three files, all passing.**
+
+**Verification Results**:
+
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Tests: 52 passing, 0 failing
+- Breaking Changes: None — test infrastructure does not affect production bundle or runtime behavior
+
+---
+
 ### March 15, 2026 - Firebase Data Connect Scaffold Removal + Pre-commit Hook (OAK-19, OAK-20)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
@@ -582,7 +666,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 - ✅ Build: Successful (2.84s production build)
 - ✅ Lint: Passing (11 warnings in gtag.ts - pre-existing, non-blocking)
 - ✅ Dependencies: All compatible with React 19
-- ⚠️ No test suite currently configured (npm test script not present)
+- ⚠️ No test suite configured at this point (added in OAK-16)
 
 **Breaking Changes**: None - application maintains existing look and functionality
 
@@ -723,6 +807,20 @@ npm run preview      # Preview production build
 npm run lint         # ESLint with auto-fix
 ```
 
+**Testing**:
+
+```bash
+npm run test         # Vitest in watch mode (development)
+npm run test:run     # Vitest run-once (CI / pre-commit)
+```
+
+Test files live under `src/test/`:
+
+- `src/test/setup.ts` — global setup (jest-dom matchers)
+- `src/test/smoke.test.tsx` — smoke test (1 test)
+- `src/test/hooks/use-booster-pack-generation.test.ts` — hook tests (28 tests)
+- `src/test/utils/categories.test.ts` — utility tests (23 tests)
+
 **Deployment**:
 
 - Automatic via Vercel on push to main branch
@@ -730,11 +828,16 @@ npm run lint         # ESLint with auto-fix
 
 ## Important Notes
 
-### No Test Suite
+### Test Suite
 
-- Currently no automated tests configured
-- Manual testing required for changes
-- Consider adding Vitest + React Testing Library in future
+Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026). **52 tests, all passing.**
+
+- **Runner**: Vitest with jsdom + React Testing Library (`@testing-library/react`)
+- **Config**: `vitest.config.ts` at project root — separate from `vite.config.ts` so `VitePluginRadar` (GA) never runs in test env
+- **Globals**: `globals: true` in vitest config + `"types": ["vitest/globals"]` in `tsconfig.json` — no per-file imports needed for `describe`/`it`/`expect`/`vi`
+- **Pre-commit**: `.husky/pre-commit` runs `npm run test:run` after `npx lint-staged`; both must pass for a commit to proceed
+- **Firebase mocking**: Any test file that transitively imports `@/lib/firebase` must use `vi.mock("@/lib/firebase", () => ({ db: {} }))` at the top level to prevent `initializeApp` from running
+- **Coverage**: `@vitest/coverage-v8` is installed but no coverage thresholds are enforced yet
 
 ### Analytics
 
@@ -760,9 +863,10 @@ See `.env.example` for required Firebase configuration variables.
    - Optimize Firebase queries
 
 2. **Testing**:
-   - Add unit tests for generation logic
-   - Add integration tests for Firebase operations
-   - Add E2E tests for critical user flows
+   - ~~Add unit tests for generation logic~~ — Done in OAK-17
+   - ~~Add integration tests for Firebase operations~~ — Unit tests with Firebase mocking done in OAK-18
+   - Add E2E tests for critical user flows (not yet done)
+   - Enforce coverage thresholds via `@vitest/coverage-v8`
 
 3. **Features**:
    - Consider adding pack history/tracking

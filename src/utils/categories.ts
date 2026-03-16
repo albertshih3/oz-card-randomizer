@@ -47,7 +47,8 @@ export const getCategories = async (): Promise<Category[]> => {
     return categories;
   } catch (err) {
     console.error("Error fetching categories:", err);
-    return getDefaultCategories();
+    cachedCategories = getDefaultCategories();
+    return cachedCategories;
   }
 };
 

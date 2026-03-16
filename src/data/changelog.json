@@ -1,8 +1,24 @@
 [
   {
-    "version": "2.0.11",
+    "version": "2.0.12",
     "date": "March 15, 2026",
     "isCurrent": true,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added Vitest + React Testing Library test infrastructure — vitest.config.ts, src/test/setup.ts, and test scripts (npm run test, npm run test:run); pre-commit hook now runs the full test suite before every commit (OAK-16)",
+          "Added 28 unit tests for useBoosterPackGeneration hook — covers pack card counts, no-duplicate invariants, wildcard selection logic, empty/undersized collection handling, pack history capping, state updates, and analytics call counts (OAK-17)",
+          "Added 23 unit tests for utils/categories.ts — covers Firestore data mapping, in-memory cache behavior, empty-Firestore fallback with setDoc seeding, error handling, getDefaultCategories purity, and categoriesToLegacyFormat conversion (OAK-18)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.11",
+    "date": "March 15, 2026",
+    "isCurrent": false,
     "sections": [
       {
         "title": "Maintenance",
