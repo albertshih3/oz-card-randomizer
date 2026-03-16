@@ -10,6 +10,156 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 16, 2026 - Code Review Fixes (OAK-63–OAK-68)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: Six targeted fixes identified during a post-OAK-50 code review. OAK-63 adds a `label` prop to `M3Spinner`. OAK-64 moves component keyframes into `globals.css` to eliminate inline `<style>` tags. OAK-65 adds the `/admin` redirect so authenticated users are sent to `/edit` when they click the Admin nav link. OAK-66 completes the M3 duration token scale in Tailwind. OAK-67 delivers an M3-styled 404 page and wires the catch-all route. OAK-68 fixes a React key anti-pattern in the mobile navbar.
+
+#### OAK-63 — M3Spinner `label` prop
+
+**Modified `src/components/m3/spinner.tsx`**:
+
+- Added optional `label?: string` prop to `M3Spinner`.
+- When `label` is provided, the SVG is wrapped in a flex column `<div>` with a `<p>` element below it rendering the label text.
+- When `label` is absent, the component renders the SVG alone (unchanged behavior).
+
+**Updated consumers**:
+
+- `src/pages/categories.tsx` — now uses `<M3Spinner label="Loading categories..." />`.
+- `src/pages/edit.tsx` — both spinner instances now use `<M3Spinner label="Loading" />`.
+
+**Modified `src/test/components/m3/spinner.test.tsx`**: Added 1 test — "renders label text when label prop is provided". Test count is now **62** (was 61).
+
+#### OAK-64 — Keyframes moved to globals.css
+
+**Modified `src/styles/globals.css`**:
+
+- `@keyframes m3-spinner-rotate`, `@keyframes m3-spinner-arc`, `@keyframes m3-linear-1`, `@keyframes m3-linear-2`, and their associated class rules are now defined here, not inside component files.
+
+**Modified `src/components/m3/spinner.tsx`** and **`src/components/m3/linear-progress.tsx`**:
+
+- Removed the inline `<style>` JSX tags from both files. Animation styles are now sourced from `globals.css`.
+
+**Why this matters**: Inline `<style>` tags inside component JSX create one style block per mounted component instance. Moving keyframes to `globals.css` ensures they are declared exactly once, avoids specificity surprises, and keeps component files free of style strings.
+
+#### OAK-65 — `/admin` redirect
+
+**Modified `src/App.tsx`**:
+
+- Added `<Route path="/admin" element={<Navigate to="/edit" replace />} />` so authenticated users who click the "Admin" nav link (which points to `/admin`) are immediately redirected to `/edit`.
+- The `Navigate` component is imported from `react-router-dom`.
+
+#### OAK-66 — Complete M3 duration token scale
+
+**Modified `tailwind.config.js`**:
+
+- `transitionDuration` in `theme.extend` now has the full M3 duration scale: `short1`–`short4`, `medium1`–`medium4`, `long1`–`long4`, `extra-long1`–`extra-long4`.
+- The `emphasized` easing entry has a comment explaining it is a CSS approximation of M3's compound easing curve (which cannot be expressed as a single cubic-bezier).
+
+#### OAK-67 — M3 expressive 404 page
+
+**New file: `src/pages/not-found.tsx`**:
+
+- Named export: `NotFoundPage`
+- Framer Motion entrance animation: fade + translate-up with `emphasized-decelerate` easing.
+- Large "404" numeral styled with `var(--md-sys-color-primary)`.
+- "Page not found" heading, body copy, and a HeroUI `<Button>` that navigates to `/` via `useNavigate`.
+
+**Modified `src/App.tsx`**:
+
+- Added `<Route path="*" element={<NotFoundPage />} />` as the last route (catch-all). This handles all undefined paths, including `/sign-in` pending OAK-53.
+- Removed the note about `/sign-in` hitting the 404 page — it now hits `NotFoundPage` intentionally via this catch-all.
+
+#### OAK-68 — Mobile nav key fix
+
+**Modified `src/components/navbar.tsx`**:
+
+- Mobile menu items now use `key={item.href}` instead of `key={\`${item}-${index}\`}`. Using a stable, unique value (`href`) as the key is correct React practice. The previous pattern stringified the object reference and appended an index, producing unstable keys.
+
+**Verification Results**:
+
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Tests: 62 passing, 0 failing
+- Breaking Changes: None — `/admin` now redirects to `/edit` (previously hit the old 404); all other routes unchanged
+
+---
+
+### March 16, 2026 - M3 Design Tokens, Primitive Components, and Navbar Auth-Gating (OAK-48, OAK-49, OAK-50, v3.0.0)
+
+**Released as v3.0.0** — `src/data/changelog.json` updated; `2.0.10` entry marked `isCurrent: false`.
+
+**Motivation**: Three coordinated changes that begin the Material Design 3 (M3) migration. OAK-48 lays the token foundation (color, motion, elevation) in CSS and Tailwind. OAK-49 introduces the first M3 primitive components and replaces `@heroui/spinner` usage across the app. OAK-50 restructures the navbar to hide admin links behind Clerk auth and replaces the `SignInButton` modal pattern with direct navigation.
+
+#### OAK-48 — M3 color tokens, elevation system, and motion tokens
+
+**Modified `src/styles/globals.css`**:
+
+- Added M3 CSS custom properties (`--md-sys-color-*`) under `:root` (light theme) and `.dark` (dark theme). These token names follow the Material Design 3 spec exactly and are consumed by M3 components via `var(--md-sys-color-*)`.
+
+**Modified `tailwind.config.js`**:
+
+- Added `transitionTimingFunction` to `theme.extend` with M3 easing curve tokens (e.g., `emphasized`, `emphasized-decelerate`, `emphasized-accelerate`, `standard`, `standard-decelerate`, `standard-accelerate`).
+- Added `transitionDuration` to `theme.extend` with the complete M3 duration scale: `short1`–`short4`, `medium1`–`medium4`, `long1`–`long4`, `extra-long1`–`extra-long4` (completed in OAK-66).
+- Added `boxShadow` to `theme.extend` with M3 elevation tokens (`elevation-1` through `elevation-5`).
+- `theme.extend` now has 5 keys: `borderRadius`, `colors`, `transitionTimingFunction`, `transitionDuration`, `boxShadow`.
+
+**Why this matters**: M3 tokens must be defined in one place (CSS custom properties) and surfaced via Tailwind utilities. Components reference the tokens, not hardcoded values, so theme changes propagate automatically.
+
+#### OAK-49 — M3 primitive components
+
+**New file: `src/components/m3/spinner.tsx`**:
+
+- Named export: `M3Spinner`
+- SVG-based spinner. Keyframes (`m3-spinner-rotate`, `m3-spinner-arc`) are defined in `src/styles/globals.css` (moved from inline `<style>` in OAK-64).
+- Props: `size` (`"sm"` | `"md"` | `"lg"`, defaults to `"md"`), `className` (string, optional), `label` (string, optional). When `label` is provided, the SVG is wrapped in a flex column `<div>` with a `<p>` below it. Color defaults to `var(--md-sys-color-primary)` via the SVG `stroke` attribute.
+- No runtime dependency on `@heroui/spinner`.
+
+**New file: `src/components/m3/linear-progress.tsx`**:
+
+- Named export: `LinearProgress`
+- Props: `visible: boolean` controls opacity (never unmounts — avoids layout shift). Uses a CSS opacity transition so the indicator fades in/out rather than appearing/disappearing abruptly.
+- Keyframes (`m3-linear-1`, `m3-linear-2`) and their class rules are defined in `src/styles/globals.css` (moved from inline `<style>` in OAK-64). The component file no longer contains a `<style>` tag.
+
+**New file: `src/components/m3/bottom-sheet.tsx`**:
+
+- Named export: `BottomSheet`
+- Framer Motion drag-to-dismiss: dragging down by 100px or more dismisses the sheet. Uses `dragConstraints`, `dragElastic`, and `onDragEnd` to implement the threshold.
+
+**Modified `src/App.tsx`, `src/pages/edit.tsx`, `src/pages/editcard.tsx`, `src/pages/categories.tsx`**:
+
+- Replaced `@heroui/spinner` `<Spinner>` import and usage with `<M3Spinner>` from `src/components/m3/spinner.tsx` in all four files.
+- Do NOT re-introduce `@heroui/spinner` imports in these files.
+
+**New file: `src/test/components/m3/spinner.test.tsx`** — 5 unit tests for `M3Spinner` (renders without crashing, applies size classes, accepts className override, renders SVG element, renders label text when label prop is provided). The 5th test was added in OAK-63.
+
+**Test count**: 62 total (52 original + 5 M3Spinner + 5 Navbar from OAK-50).
+
+#### OAK-50 — Navbar auth-gating
+
+**Modified `src/config/site.ts`**:
+
+- Removed `Edit Cards` and `Categories` from both `siteConfig.navItems` and `siteConfig.navMenuItems`. These links are now rendered conditionally in the navbar component, not statically in the site config.
+
+**Modified `src/components/navbar.tsx`** (desktop + mobile nav):
+
+- Added an auth-gated `Admin` link using Clerk's `<SignedIn>` wrapper — the link is only rendered when a user is authenticated. Points to `/admin`.
+- Replaced the `<SignInButton>` modal pattern with `navigate("/sign-in")` via `useNavigate`. `SignInButton` is no longer imported from `@clerk/clerk-react` in this file.
+
+**New file: `src/test/components/navbar.test.tsx`** — 5 unit tests for navbar auth-gating behavior.
+
+**Important**: The `/sign-in` route does not exist yet. It is planned for OAK-53. Until OAK-53 ships, navigating to `/sign-in` will hit `NotFoundPage` via the catch-all route added in OAK-67.
+
+**Verification Results**:
+
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Tests: 62 passing, 0 failing (62nd test added in OAK-63)
+- Breaking Changes: None for authenticated users; unauthenticated users will no longer see `Edit Cards` or `Categories` nav links (they were inaccessible behind Clerk auth anyway)
+
+---
+
 ### March 15, 2026 - First Automated Test Suite (OAK-16, OAK-17, OAK-18)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
@@ -820,6 +970,8 @@ Test files live under `src/test/`:
 - `src/test/smoke.test.tsx` — smoke test (1 test)
 - `src/test/hooks/use-booster-pack-generation.test.ts` — hook tests (28 tests)
 - `src/test/utils/categories.test.ts` — utility tests (23 tests)
+- `src/test/components/m3/spinner.test.tsx` — M3Spinner component tests (5 tests)
+- `src/test/components/navbar.test.tsx` — navbar auth-gating tests (5 tests)
 
 **Deployment**:
 
@@ -830,7 +982,7 @@ Test files live under `src/test/`:
 
 ### Test Suite
 
-Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026). **52 tests, all passing.**
+Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026) and extended through OAK-63. **62 tests, all passing.**
 
 - **Runner**: Vitest with jsdom + React Testing Library (`@testing-library/react`)
 - **Config**: `vitest.config.ts` at project root — separate from `vite.config.ts` so `VitePluginRadar` (GA) never runs in test env

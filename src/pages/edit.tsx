@@ -4,7 +4,7 @@ import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
 import { useAsyncList } from "@react-stately/data";
-import { Spinner } from "@heroui/spinner";
+import { M3Spinner } from "@/components/m3/spinner";
 import {
   Table,
   TableHeader,
@@ -203,7 +203,7 @@ export default function EditCardsPage() {
   if (!isLoaded) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" color="primary" />
+        <M3Spinner size="lg" label="Loading" />
       </div>
     );
   }
@@ -247,7 +247,7 @@ export default function EditCardsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <Spinner size="lg" color="primary" label="Loading cards..." />
+            <M3Spinner size="lg" label="Loading" />
           </div>
         ) : (
           <div className="space-y-4">
@@ -267,7 +267,7 @@ export default function EditCardsPage() {
               />
               {updatingCardId && (
                 <div className="flex items-center gap-2 text-sm text-primary animate-pulse">
-                  <Spinner size="sm" color="current" />
+                  <M3Spinner size="sm" />
                   <span>Updating status...</span>
                 </div>
               )}
@@ -314,7 +314,7 @@ export default function EditCardsPage() {
                   </TableHeader>
                   <TableBody
                     items={filteredItems}
-                    loadingContent={<Spinner label="Loading..." />}
+                    loadingContent={<M3Spinner />}
                     emptyContent={
                       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                         <AlertCircle className="w-12 h-12 mb-4 text-default-300" />

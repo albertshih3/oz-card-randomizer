@@ -1,8 +1,43 @@
 [
   {
+    "version": "3.0.0",
+    "date": "March 16, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Design System",
+        "type": "feat",
+        "items": [
+          "Introduced Material Design 3 (M3) color system — added --md-sys-color-* CSS custom properties for all M3 color roles (primary, secondary, tertiary, surface, outline, background, error) in both light and dark themes (OAK-48)",
+          "Added M3 motion tokens to Tailwind — standard, emphasized, and accelerate/decelerate easing curves; short/medium/long duration scale; elevation shadow levels 0–5 (OAK-48)",
+          "New M3Spinner component (src/components/m3/spinner.tsx) — SVG circular indeterminate progress with dual CSS animations matching M3 spec; replaces HeroUI Spinner in all Suspense fallbacks and admin pages (OAK-49)",
+          "New LinearProgress component (src/components/m3/linear-progress.tsx) — M3 horizontal indeterminate progress bar with two-bar animation pattern (OAK-49)",
+          "New BottomSheet component (src/components/m3/bottom-sheet.tsx) — Framer Motion draggable sheet with spring physics, backdrop fade, and drag-to-dismiss at 100px threshold (OAK-49)"
+        ]
+      },
+      {
+        "title": "Navigation",
+        "type": "feat",
+        "items": [
+          "Admin-only nav links (Edit Cards, Categories) are now hidden from the public nav — all users see only Home, Changelog, and Usage (OAK-50)",
+          "Added auth-gated Admin link in both desktop and mobile nav — visible only when signed in (OAK-50)",
+          "Sign In button now navigates to /sign-in route instead of opening a Clerk modal — uses programmatic navigation via useNavigate (OAK-50)"
+        ]
+      },
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added 4 unit tests for M3Spinner — render, aria-label, and size attribute checks (OAK-49)",
+          "Added 5 unit tests for Navbar auth-gating — Admin link visibility, removed links, public link presence (OAK-50)"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.12",
     "date": "March 15, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Maintenance",

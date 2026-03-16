@@ -29,6 +29,38 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    /* --- M3 Color System (light) --- */
+    /* Primary */
+    --md-sys-color-primary: #6750a4;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-primary-container: #eaddff;
+    --md-sys-color-on-primary-container: #21005d;
+    /* Secondary */
+    --md-sys-color-secondary: #625b71;
+    --md-sys-color-on-secondary: #ffffff;
+    --md-sys-color-secondary-container: #e8def8;
+    --md-sys-color-on-secondary-container: #1d192b;
+    /* Tertiary */
+    --md-sys-color-tertiary: #7d5260;
+    --md-sys-color-on-tertiary: #ffffff;
+    --md-sys-color-tertiary-container: #ffd8e4;
+    --md-sys-color-on-tertiary-container: #31111d;
+    /* Surface */
+    --md-sys-color-surface: #fef7ff;
+    --md-sys-color-surface-variant: #e7e0ec;
+    --md-sys-color-on-surface: #1c1b1f;
+    --md-sys-color-on-surface-variant: #49454f;
+    /* Outline */
+    --md-sys-color-outline: #79747e;
+    --md-sys-color-outline-variant: #cac4d0;
+    /* Background */
+    --md-sys-color-background: #fef7ff;
+    --md-sys-color-on-background: #1c1b1f;
+    /* Error */
+    --md-sys-color-error: #b3261e;
+    --md-sys-color-on-error: #ffffff;
+    --md-sys-color-error-container: #f9dedc;
+    --md-sys-color-on-error-container: #410e0b;
   }
 
   .dark {
@@ -56,6 +88,38 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    /* --- M3 Color System (dark) --- */
+    /* Primary */
+    --md-sys-color-primary: #d0bcff;
+    --md-sys-color-on-primary: #381e72;
+    --md-sys-color-primary-container: #4f378b;
+    --md-sys-color-on-primary-container: #eaddff;
+    /* Secondary */
+    --md-sys-color-secondary: #ccc2dc;
+    --md-sys-color-on-secondary: #332d41;
+    --md-sys-color-secondary-container: #4a4458;
+    --md-sys-color-on-secondary-container: #e8def8;
+    /* Tertiary */
+    --md-sys-color-tertiary: #efb8c8;
+    --md-sys-color-on-tertiary: #492532;
+    --md-sys-color-tertiary-container: #633b48;
+    --md-sys-color-on-tertiary-container: #ffd8e4;
+    /* Surface */
+    --md-sys-color-surface: #1c1b1f;
+    --md-sys-color-surface-variant: #49454f;
+    --md-sys-color-on-surface: #e6e1e5;
+    --md-sys-color-on-surface-variant: #cac4d0;
+    /* Outline */
+    --md-sys-color-outline: #938f99;
+    --md-sys-color-outline-variant: #49454f;
+    /* Background */
+    --md-sys-color-background: #1c1b1f;
+    --md-sys-color-on-background: #e6e1e5;
+    /* Error */
+    --md-sys-color-error: #f2b8b5;
+    --md-sys-color-on-error: #601410;
+    --md-sys-color-error-container: #8c1d18;
+    --md-sys-color-on-error-container: #f9dedc;
   }
 }
 
@@ -66,4 +130,86 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* --- M3 Keyframes --- */
+
+/* M3Spinner: outer SVG rotation */
+@keyframes m3-spinner-rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* M3Spinner: stroke-dashoffset arc animation */
+@keyframes m3-spinner-arc {
+  0% {
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 89.5, 200;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 89.5, 200;
+    stroke-dashoffset: -124;
+  }
+}
+
+.m3-spinner-rotate {
+  animation: m3-spinner-rotate 1.4s linear infinite;
+  transform-origin: center;
+}
+
+.m3-spinner-arc {
+  animation: m3-spinner-arc 1.4s ease-in-out infinite;
+}
+
+/* LinearProgress: first bar animation */
+@keyframes m3-linear-1 {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -90%;
+  }
+  100% {
+    left: 100%;
+    right: -90%;
+  }
+}
+
+/* LinearProgress: second bar animation */
+@keyframes m3-linear-2 {
+  0% {
+    left: -200%;
+    right: 100%;
+  }
+  60% {
+    left: 107%;
+    right: -8%;
+  }
+  100% {
+    left: 107%;
+    right: -8%;
+  }
+}
+
+.m3-linear-bar1 {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: auto;
+  animation: m3-linear-1 2.1s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
+}
+
+.m3-linear-bar2 {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: auto;
+  animation: m3-linear-2 2.1s cubic-bezier(0.165, 0.84, 0.44, 1) 1.15s infinite;
 }

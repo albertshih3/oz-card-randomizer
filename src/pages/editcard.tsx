@@ -22,7 +22,7 @@ import {
 } from "firebase/firestore";
 import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
-import { Spinner } from "@heroui/spinner";
+import { M3Spinner } from "@/components/m3/spinner";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
@@ -204,7 +204,7 @@ export default function EditCardPage() {
     return (
       <DefaultLayout>
         <div className="flex items-center justify-center h-screen">
-          <Spinner size="lg" color="primary" />
+          <M3Spinner size="lg" />
         </div>
       </DefaultLayout>
     );

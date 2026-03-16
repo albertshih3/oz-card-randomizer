@@ -10,20 +10,17 @@ import {
 } from "@heroui/navbar";
 import { link as linkStyles } from "@heroui/theme";
 import clsx from "clsx";
+import { useNavigate } from "react-router-dom";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import {
-  SignInButton,
-  SignedOut,
-  SignedIn,
-  UserButton,
-} from "@clerk/clerk-react";
+import { SignedOut, SignedIn, UserButton } from "@clerk/clerk-react";
 import { Button } from "@heroui/button";
 import { useAnalytics } from "@/hooks/use-analytics";
 
 export const Navbar = () => {
   const { trackEvent } = useAnalytics();
+  const navigate = useNavigate();
 
   const handleNavClick = (label: string) => {
     trackEvent("click", "navigation", `nav_${label.toLowerCase()}`);
@@ -70,6 +67,21 @@ export const Navbar = () => {
               </Link>
             </NavbarItem>
           ))}
+          <SignedIn>
+            <NavbarItem>
+              <Link
+                className={clsx(
+                  linkStyles({ color: "foreground" }),
+                  "data-[active=true]:text-primary data-[active=true]:font-medium text-sm font-medium transition-colors hover:text-primary",
+                )}
+                color="foreground"
+                href="/admin"
+                onPress={() => handleNavClick("Admin")}
+              >
+                Admin
+              </Link>
+            </NavbarItem>
+          </SignedIn>
         </div>
       </NavbarContent>
 
@@ -82,16 +94,17 @@ export const Navbar = () => {
         </NavbarItem>
         <NavbarItem className="hidden md:flex">
           <SignedOut>
-            <SignInButton>
-              <Button
-                className="text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20"
-                variant="flat"
-                radius="full"
-                onPress={() => handleAuthClick("sign_in")}
-              >
-                Sign In
-              </Button>
-            </SignInButton>
+            <Button
+              className="text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20"
+              variant="flat"
+              radius="full"
+              onPress={() => {
+                handleAuthClick("sign_in");
+                navigate("/sign-in");
+              }}
+            >
+              Sign In
+            </Button>
           </SignedOut>
           <SignedIn>
             <UserButton
@@ -112,8 +125,8 @@ export const Navbar = () => {
 
       <NavbarMenu>
         <div className="mx-4 mt-6 flex flex-col gap-4">
-          {siteConfig.navMenuItems.map((item, index) => (
-            <NavbarMenuItem key={`${item}-${index}`}>
+          {siteConfig.navMenuItems.map((item) => (
+            <NavbarMenuItem key={item.href}>
               <Link
                 color="foreground"
                 href={item.href}
@@ -125,19 +138,33 @@ export const Navbar = () => {
               </Link>
             </NavbarMenuItem>
           ))}
+          <SignedIn>
+            <NavbarMenuItem>
+              <Link
+                color="foreground"
+                href="/admin"
+                size="lg"
+                className="font-medium"
+                onPress={() => handleNavClick("Admin")}
+              >
+                Admin
+              </Link>
+            </NavbarMenuItem>
+          </SignedIn>
         </div>
         <div className="mx-4 mt-6 flex flex-col gap-2">
           <SignedOut>
-            <SignInButton>
-              <Button
-                className="w-full font-bold"
-                color="primary"
-                variant="shadow"
-                onPress={() => handleAuthClick("sign_in")}
-              >
-                Sign In
-              </Button>
-            </SignInButton>
+            <Button
+              className="w-full font-bold"
+              color="primary"
+              variant="shadow"
+              onPress={() => {
+                handleAuthClick("sign_in");
+                navigate("/sign-in");
+              }}
+            >
+              Sign In
+            </Button>
           </SignedOut>
           <SignedIn>
             <div className="flex items-center gap-4 p-2">

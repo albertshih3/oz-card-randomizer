@@ -8,7 +8,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { signInWithCustomToken } from "firebase/auth";
-import { Spinner } from "@heroui/spinner";
+import { M3Spinner } from "@/components/m3/spinner";
 import {
   Table,
   TableHeader,
@@ -230,7 +230,7 @@ export default function CategoriesPage() {
   if (!isLoaded) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" color="primary" />
+        <M3Spinner size="lg" />
       </div>
     );
   }
@@ -274,7 +274,7 @@ export default function CategoriesPage() {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <Spinner size="lg" color="primary" label="Loading categories..." />
+            <M3Spinner size="lg" label="Loading categories..." />
           </div>
         ) : (
           <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">

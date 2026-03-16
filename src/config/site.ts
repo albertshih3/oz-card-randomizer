@@ -10,14 +10,6 @@ export const siteConfig = {
       href: "/",
     },
     {
-      label: "Edit Cards",
-      href: "/edit",
-    },
-    {
-      label: "Categories",
-      href: "/categories",
-    },
-    {
       label: "Changelog",
       href: "/changelog",
     },
@@ -30,14 +22,6 @@ export const siteConfig = {
     {
       label: "Home",
       href: "/",
-    },
-    {
-      label: "Edit Cards",
-      href: "/edit",
-    },
-    {
-      label: "Categories",
-      href: "/categories",
     },
     {
       label: "Changelog",
