@@ -213,3 +213,23 @@
   width: auto;
   animation: m3-linear-2 2.1s cubic-bezier(0.165, 0.84, 0.44, 1) 1.15s infinite;
 }
+
+/* Sign-in page: force transparent backgrounds on HeroUI Input internals.
+   classNames prop cannot override HeroUI's internal specificity reliably,
+   so we scope these overrides to the sign-in-page root class. */
+.sign-in-page [data-slot="input-wrapper"],
+.sign-in-page [data-slot="inner-wrapper"] {
+  background-color: transparent !important;
+}
+
+.sign-in-page [data-slot="input-wrapper"] input {
+  background-color: transparent !important;
+}
+
+/* Suppress autofill background (Chrome/Safari yellow or white tint) */
+.sign-in-page input:-webkit-autofill,
+.sign-in-page input:-webkit-autofill:hover,
+.sign-in-page input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

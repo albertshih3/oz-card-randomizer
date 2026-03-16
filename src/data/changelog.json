@@ -1,8 +1,32 @@
 [
   {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "date": "March 16, 2026",
     "isCurrent": true,
+    "sections": [
+      {
+        "title": "Authentication",
+        "type": "feat",
+        "items": [
+          "Added custom M3-styled sign-in page at /sign-in — replaces Clerk's hosted UI with a brand-consistent form using M3 elevation, color tokens, and HeroUI inputs (OAK-51)",
+          "Inline forgot-password flow on the sign-in page — multi-step email → verification code → new password, all animated with Framer Motion horizontal slide transitions using M3 emphasized-decelerate easing (OAK-52)",
+          "Sign-in page auto-redirects authenticated users to /admin and shows M3Spinner while Clerk SDK initializes (OAK-51)",
+          "ClerkProvider now configured with signInUrl=\"/sign-in\" so Clerk's internal redirects (e.g., RedirectToSignIn) point to the custom page (OAK-51)"
+        ]
+      },
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added 9 unit tests for SignInPage in src/test/pages/sign-in.test.tsx — covers field rendering, auth redirect, Clerk error display, successful sign-in, forgot-password panel transitions, reset code submission, and back-navigation (OAK-51, OAK-52)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "3.0.0",
+    "date": "March 16, 2026",
+    "isCurrent": false,
     "sections": [
       {
         "title": "Design System",

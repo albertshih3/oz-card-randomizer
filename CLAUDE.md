@@ -10,6 +10,183 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 16, 2026 - Custom Sign-In Page and Inline Forgot-Password Flow (OAK-51, OAK-52)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-50 wired the navbar to navigate to `/sign-in` via `useNavigate`, but that route did not exist — it fell through to `NotFoundPage`. OAK-51 implements the actual sign-in page at `/sign-in` using Clerk v5 hooks. OAK-52 extends it with an inline forgot-password flow that completes the full password-reset cycle without leaving the page.
+
+#### OAK-51 — Custom sign-in page at `/sign-in`
+
+**New file: `src/pages/sign-in.tsx`**:
+
+- Default export: `SignInPage`
+- Auth-guard: `useEffect` watches `isLoaded` + `isSignedIn` from `useAuth`; redirects to `/admin` (with `replace: true`) when already authenticated.
+- Uses `useAuth` and `useSignIn` from `@clerk/clerk-react` (Clerk v5 — no subpath imports).
+- Sign-in flow: `signIn.create({ strategy: "password", identifier, password })` → on `status === "complete"`, calls `setActive({ session: result.createdSessionId })` then `navigate("/admin")`.
+- `extractClerkError(err: unknown): string` — structural type-guard at module scope. Checks for `err.errors[0].longMessage` via duck-typing. Does NOT import `isClerkAPIResponseError` from `@clerk/clerk-react/errors` because that subpath import has not been verified to work with this Vite config.
+- Lazy-loaded via `React.lazy()` in `App.tsx`.
+
+**New file: `src/test/pages/sign-in.test.tsx`** — 9 tests across two describe blocks:
+
+- `"SignInPage — OAK-51"` (4 tests): renders fields, redirects when already authenticated, shows Clerk error on failure, navigates to `/admin` on success.
+- `"SignInPage — OAK-52"` (5 tests): forgot-password panel transition, email submit transitions to code view, correct code + new password completes reset, "Back to Sign In" from forgot-email view, "Back to Sign In" from forgot-code view.
+
+**Test mock strategy**:
+
+- `framer-motion` IS mocked — `AnimatePresence` renders children synchronously; `motion.div` strips animation props and renders a plain `<div>`. This is required because jsdom has no animation engine.
+- `@heroui/button` and `@heroui/input` ARE mocked as plain HTML elements (`<button>` and `<input>`) to avoid HeroUI's react-aria internals in tests.
+- `@clerk/clerk-react`, `react-router-dom`, and `@/components/m3/spinner` are also mocked.
+- `vi.clearAllMocks()` is called in `beforeEach` alongside manual mock reset to prevent state leakage between tests.
+
+**Modified `src/App.tsx`**:
+
+- Added `const SignInPage = React.lazy(() => import("@/pages/sign-in"))`.
+- Added `<Route path="/sign-in" element={<SignInPage />} />` between the `/admin` redirect and the catch-all `*` route.
+- The `/sign-in` route is no longer served by `NotFoundPage` via the catch-all.
+
+**Modified `src/main.tsx`**:
+
+- Added `signInUrl="/sign-in"` prop to `<ClerkProvider>`. This tells Clerk's SDK to redirect to the custom sign-in page instead of Clerk's hosted UI when unauthenticated access is detected.
+
+**Test count**: 71 total (was 62; 9 new tests added).
+
+#### OAK-52 — Inline forgot-password flow
+
+All changes are inside `src/pages/sign-in.tsx`.
+
+**`ViewState` discriminated union** (8 variants):
+
+- `{ view: "idle" }` — initial state, sign-in form shown
+- `{ view: "loading" }` — async operation in progress
+- `{ view: "error"; message: string }` — sign-in failure
+- `{ view: "forgot-email" }` — forgot-password email input panel
+- `{ view: "forgot-email-error"; message: string }` — reset code send failure
+- `{ view: "forgot-code" }` — verification code + new password panel
+- `{ view: "forgot-code-error"; message: string }` — code verification or reset failure
+- `{ view: "forgot-success" }` — success state; auto-transitions to `idle` after 3 seconds
+
+**`PanelKey`** (4 variants): `"sign-in"` | `"forgot-email"` | `"forgot-code"` | `"forgot-success"`
+
+**`getPanelKey(view)`**: Maps view states to panel keys. The `"loading"` state never changes the panel — it inherits the key of the panel that was active when the async operation started.
+
+**Animation**: `xDirection` state (`1 | -1`) tracks the slide direction. Forward navigation sets `xDirection = 1`; "Back to Sign In" sets `xDirection = -1`. `AnimatePresence mode="wait" initial={false}` with `custom={xDirection}` on both `AnimatePresence` and `motion.div`; variants use `custom` to compute `x: dir * 40` (enter) and `x: dir * -40` (exit).
+
+**Clerk forgot-password API sequence**:
+
+1. `signIn.create({ strategy: "reset_password_email_code", identifier: forgotEmail })` — triggers the reset email
+2. `signIn.attemptFirstFactor({ strategy: "reset_password_email_code", code })` — validates the code
+3. `signIn.resetPassword({ password: newPassword, signOutOfOtherSessions: true })` — sets the new password and signs out other sessions
+
+**`forgot-success` auto-transition**: `setTimeout(() => setState({ view: "idle" }), 3000)` is set immediately after `setActive` resolves. In practice, the auth guard fires first (because `isSignedIn` becomes `true` after `setActive`) and redirects to `/admin` before the 3-second timer fires.
+
+**Verification Results**:
+
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Tests: 71 passing, 0 failing
+- Breaking Changes: None — `/sign-in` previously hit `NotFoundPage`; it now serves the sign-in form. All other routes unchanged.
+
+**Note**: `unauthorized.tsx` still uses `<SignInButton>` from `@clerk/clerk-react` for its own modal sign-in. Migrating it to navigate to `/sign-in` instead is a future follow-up task.
+
+---
+
+### March 16, 2026 - Sign-In Page Post-Code-Review Hardening (OAK-51/52 follow-up)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: Six bugs were identified during a code review of the OAK-51/52 sign-in page implementation. All changes are confined to `src/pages/sign-in.tsx` and `src/test/pages/sign-in.test.tsx`.
+
+#### Fix 1 — `setTimeout` race condition in `handleVerifyCodeAndReset`
+
+**Problem**: `setActive()` was called before showing the `"forgot-success"` panel. Because `setActive` resolves the Clerk session immediately, the auth-guard `useEffect` (which watches `isSignedIn`) fired and redirected to `/admin` before the success panel ever rendered. Users never saw the confirmation screen.
+
+**Fix**: Show the `"forgot-success"` panel first via `setState({ view: "forgot-success" })`, then call `setActive` and `navigate("/admin")` inside a `setTimeout` with a 3-second delay:
+
+```typescript
+setState({ view: "forgot-success" });
+const id = setTimeout(async () => {
+  await setActive({ session: result.createdSessionId });
+  navigate("/admin");
+}, 3000);
+successTimeoutRef.current = id;
+```
+
+The timeout ID is stored in `successTimeoutRef` (a `useRef<ReturnType<typeof setTimeout> | null>`) so it can be cleared on unmount. A `useEffect` return function calls `clearTimeout(successTimeoutRef.current)` to prevent a state update on an unmounted component if the user navigates away before 3 seconds elapse.
+
+**Why `useRef` for the timeout ID**: State would cause an extra re-render on assignment. A ref is the correct container for a mutable value that does not affect rendering.
+
+#### Fix 2 — Misleading loading text on Sign In button
+
+**Problem**: The Sign In button displayed "Signing in…" while loading, even when loading was triggered by clicking "Send me a sign-in code" (a different action). The conditional text was based on `isLoading` state, which is shared across all async operations on the page.
+
+**Fix**: Removed the conditional text. The button always displays "Sign In". The `isLoading` spinner next to the button already communicates the loading state without needing a text change.
+
+#### Fix 3 — `role="alert"` added to `ErrorBanner`
+
+**Problem**: Error messages appeared dynamically in the DOM but were not announced by screen readers because the container lacked an ARIA live region.
+
+**Fix**: Added `role="alert"` to the `ErrorBanner` component's root element. `role="alert"` implies `aria-live="assertive"` and `aria-atomic="true"`, so screen readers announce the error text immediately when it appears.
+
+#### Fix 4 — Sub-flow state cleared on "Back to Sign In"
+
+**Problem**: `handleBackToSignIn` only reset the `ViewState` to `{ view: "idle" }`. The sub-flow field values (`emailCode`, `code`, `newPassword`, `showNewPassword`) were not cleared. Re-entering a sub-flow would show stale values from the previous attempt.
+
+**Fix**: `handleBackToSignIn` now also resets all four sub-flow state fields:
+
+```typescript
+setEmailCode("");
+setCode("");
+setNewPassword("");
+setShowNewPassword(false);
+```
+
+#### Fix 5 — "or" divider visual bug on glassmorphic card
+
+**Problem**: The previous implementation used an absolutely-positioned element overlaying the border line with a background color to "mask" the line behind the "or" text. On the glassmorphic card, the transparent/translucent background caused the border line to bleed through the text regardless of what color was used for the mask.
+
+**Fix**: Replaced the overlay approach with a flex-row layout:
+
+```tsx
+<div className="flex items-center gap-3">
+  <div className="h-px flex-1 bg-current opacity-20" />
+  <span className="text-sm opacity-50">or</span>
+  <div className="h-px flex-1 bg-current opacity-20" />
+</div>
+```
+
+Two `<div>` elements act as the border lines and grow to fill available space via `flex-1`. No masking or absolute positioning required. Works correctly on any background, including glassmorphic surfaces.
+
+#### Fix 6 — Test updated for async success flow
+
+**Problem**: The `"submitting correct code and new password completes reset"` test asserted synchronous behavior but `setActive` is now called inside a `setTimeout`. The test would pass before `setActive` was called, making the assertion vacuous.
+
+**Fix**: The test now uses Vitest's fake timer API:
+
+```typescript
+vi.useFakeTimers();
+try {
+  // ... trigger the form submission ...
+  await act(async () => {
+    await vi.runAllTimersAsync();
+  });
+  expect(mockSetActive).toHaveBeenCalledWith({ session: "test-session" });
+} finally {
+  vi.useRealTimers();
+}
+```
+
+`vi.useFakeTimers()` + `vi.runAllTimersAsync()` inside `act()` flushes both the `setTimeout` callback and its internal `await setActive(...)` call before the assertion runs. See `memory/feedback_testing_timers.md` for the canonical pattern.
+
+**Verification Results**:
+
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Tests: 71 passing, 0 failing (test count unchanged — existing test updated, no new tests added)
+- Breaking Changes: None
+
+---
+
 ### March 16, 2026 - Code Review Fixes (OAK-63–OAK-68)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.

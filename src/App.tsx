@@ -13,6 +13,7 @@ const EditPage = React.lazy(() => import("@/pages/edit"));
 const EditCardPage = React.lazy(() => import("@/pages/editcard"));
 const CategoriesPage = React.lazy(() => import("@/pages/categories"));
 const NotFoundPage = React.lazy(() => import("@/pages/not-found"));
+const SignInPage = React.lazy(() => import("@/pages/sign-in"));
 
 const SuspenseFallback = (
   <div className="flex justify-center items-center h-screen">
@@ -56,6 +57,7 @@ function App() {
             <Route element={<EditCardPage />} path="/editcard" />
             <Route element={<CategoriesPage />} path="/categories" />
             <Route path="/admin" element={<Navigate to="/edit" replace />} />
+            <Route path="/sign-in" element={<SignInPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
