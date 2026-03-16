@@ -6,6 +6,38 @@ Session changelog. Append a new entry at the top of the Changelog section after 
 
 ## Changelog
 
+### 2026-03-15 — OAK-16/17/18 First Automated Test Suite (documentation update)
+
+**Branch**: `development`
+
+#### What was achieved
+
+Documented the test suite introduced by OAK-16, OAK-17, and OAK-18. No code changes this session — documentation only.
+
+**OAK-16 — Vitest + React Testing Library setup**: Installed vitest, @vitest/coverage-v8, jsdom, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, @testing-library/dom. Created `vitest.config.ts` (separate from `vite.config.ts` to keep GA plugin out of test env). Created `src/test/setup.ts`. Added `test` and `test:run` scripts. Added `"types": ["vitest/globals"]` to tsconfig. Extended `.husky/pre-commit` to run `npm run test:run` after lint-staged.
+
+**OAK-17 — Hook unit tests**: Created `src/test/hooks/use-booster-pack-generation.test.ts` with 28 tests covering pack structure (10 cards, 2 per base collection, 1 wildcard, 1 spoonbill), no-duplicate invariants, empty/undersized collection handling, pack history behavior, and analytics call counts.
+
+**OAK-18 — Utility unit tests**: Created `src/test/utils/categories.test.ts` with 23 tests covering Firestore data mapping, cache behavior, empty-Firestore fallback (setDoc x9), error handling, `getDefaultCategories()`, and `categoriesToLegacyFormat()`. Firebase fully mocked with `vi.mock`.
+
+**Total test count: 52, all passing.**
+
+#### Documentation changes this session
+
+| File                       | Change                                                                                                                                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CLAUDE.md`                | Replaced "No Test Suite" Important Note with "Test Suite" section. Added Testing commands block to Build & Deployment. Struck through completed Future Considerations testing items. Updated React 19 verification footnote.                                                   |
+| `MEMORY.md` (project file) | Updated gotcha #9 from "no test suite" to current state. Updated Known Issues entry. Added new file entries for vitest config and test files to Critical File Locations table. Added gotchas #37, #38, #39 (Firebase mocking pattern, vitest config separation, globals mode). |
+| `SESSIONS.md`              | This entry                                                                                                                                                                                                                                                                     |
+
+#### Next steps
+
+- Open PR from `development` to `main` covering OAK-12 through OAK-20 + OAK-16/17/18
+- Consider enforcing coverage thresholds via `@vitest/coverage-v8` as the test suite grows
+- Add E2E tests for critical user flows (generation + export path) — no framework chosen yet
+
+---
+
 ### 2026-03-12 — OAK-31 Dead Code Removal (v2.0.5)
 
 **Branch**: `development`
@@ -16,9 +48,9 @@ Removed two unreachable files and their associated npm dependency to reduce code
 
 **Deleted files**:
 
-| File | Reason |
-|---|---|
-| `src/components/editcard.tsx` | Legacy card-editing modal with zero imports; fully superseded by `src/pages/editcard.tsx` |
+| File                           | Reason                                                                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `src/components/editcard.tsx`  | Legacy card-editing modal with zero imports; fully superseded by `src/pages/editcard.tsx`                                  |
 | `src/components/ui/dialog.tsx` | Radix UI dialog wrapper from an early design phase; zero imports; project standardized on HeroUI Modal before v1.0 shipped |
 
 **Dependency removed**: `@radix-ui/react-dialog` — imported only by the now-deleted `dialog.tsx`. No other file in the project uses Radix UI dialog.
@@ -31,15 +63,15 @@ Removed two unreachable files and their associated npm dependency to reduce code
 
 #### Files changed this session
 
-| File | Change |
-|---|---|
-| `src/components/editcard.tsx` | Deleted |
-| `src/components/ui/dialog.tsx` | Deleted |
-| `package.json` | `@radix-ui/react-dialog` dependency removed |
-| `src/data/changelog.json` | v2.0.5 entry added; v2.0.4 marked `isCurrent: false` |
-| `CLAUDE.md` | OAK-31 entry added under Recent Changes |
-| `MEMORY.md` | Lessons 22 and 23 added (HeroUI-only modal standard; empty `src/components/ui/`) |
-| `SESSIONS.md` | This entry |
+| File                           | Change                                                                           |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| `src/components/editcard.tsx`  | Deleted                                                                          |
+| `src/components/ui/dialog.tsx` | Deleted                                                                          |
+| `package.json`                 | `@radix-ui/react-dialog` dependency removed                                      |
+| `src/data/changelog.json`      | v2.0.5 entry added; v2.0.4 marked `isCurrent: false`                             |
+| `CLAUDE.md`                    | OAK-31 entry added under Recent Changes                                          |
+| `MEMORY.md`                    | Lessons 22 and 23 added (HeroUI-only modal standard; empty `src/components/ui/`) |
+| `SESSIONS.md`                  | This entry                                                                       |
 
 #### Next steps
 
@@ -74,10 +106,10 @@ The "Go Back" button previously wrapped a `<Link>` inside a `<Button>`, renderin
 
 #### Files changed this session
 
-| File | Change |
-|---|---|
+| File                              | Change                                                 |
+| --------------------------------- | ------------------------------------------------------ |
 | `src/components/unauthorized.tsx` | All three fixes applied (only file with logic changes) |
-| `src/data/changelog.json` | v2.0.2 entry added; v2.0.1 marked `isCurrent: false` |
+| `src/data/changelog.json`         | v2.0.2 entry added; v2.0.1 marked `isCurrent: false`   |
 
 #### Next steps
 
@@ -110,13 +142,13 @@ All three bugs are fully resolved in `src/pages/index.tsx`:
 
 #### Files changed this session
 
-| File | Change |
-|---|---|
-| `src/pages/index.tsx` | Moved `setShowModal(false)` inside `finally` block in `handleGenerateAndExport` |
-| `CLAUDE.md` | Corrected generation logic file reference from `src/utils/categories.ts` to `src/pages/index.tsx` |
-| `AGENT.md` | Created (new file) |
-| `SESSIONS.md` | Created (new file) |
-| `MEMORY.md` (Claude memory directory) | Created (new file) |
+| File                                  | Change                                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/pages/index.tsx`                 | Moved `setShowModal(false)` inside `finally` block in `handleGenerateAndExport`                   |
+| `CLAUDE.md`                           | Corrected generation logic file reference from `src/utils/categories.ts` to `src/pages/index.tsx` |
+| `AGENT.md`                            | Created (new file)                                                                                |
+| `SESSIONS.md`                         | Created (new file)                                                                                |
+| `MEMORY.md` (Claude memory directory) | Created (new file)                                                                                |
 
 #### Next steps
 

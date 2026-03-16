@@ -30,15 +30,7 @@ import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
 import { db, auth } from "@/lib/firebase";
 import { validateCardForm, CardFormErrors } from "@/utils/validation";
 import { Save, Trash2, X } from "lucide-react";
-
-interface Card {
-  id: string;
-  collection: string;
-  number: string;
-  active: boolean;
-  name: string;
-  collectionName?: string;
-}
+import type { Card } from "@/types/index";
 
 export default function EditCardPage() {
   const location = useLocation();
@@ -141,7 +133,6 @@ export default function EditCardPage() {
           name: updatedCard.name,
           number: updatedCard.number,
           active: updatedCard.active,
-          collection: updatedCard.collection,
         });
       } else {
         event({
@@ -156,7 +147,6 @@ export default function EditCardPage() {
           name: updatedCard.name,
           number: updatedCard.number,
           active: updatedCard.active,
-          collection: updatedCard.collection,
         };
 
         if (updatedCard.collection === collectionId) {
@@ -334,7 +324,7 @@ export default function EditCardPage() {
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium">Active Status</span>
                   <span className="text-xs text-muted-foreground">
-                    Inactive cards won't appear in packs
+                    Inactive cards won&apos;t appear in packs
                   </span>
                 </div>
                 <Switch

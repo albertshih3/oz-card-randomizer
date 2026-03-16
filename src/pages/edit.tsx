@@ -27,15 +27,7 @@ import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
 import { db, auth } from "@/lib/firebase";
 import { CollectionBadge } from "@/components/collection-badge";
 import clsx from "clsx";
-
-interface Card {
-  id: string;
-  collection: string;
-  number: string;
-  active: boolean;
-  name: string;
-  collectionName?: string;
-}
+import type { Card } from "@/types/index";
 
 export default function EditCardsPage() {
   const { isLoaded, userId, getToken } = useAuth();
@@ -64,8 +56,7 @@ export default function EditCardsPage() {
               number: data.number,
               active: data.active === true,
               name: data.name,
-              collectionName: legacyCollections.find((c) => c.id === colObj.id)
-                ?.name,
+              collectionName: colObj.name,
             });
           });
         }
@@ -84,11 +75,16 @@ export default function EditCardsPage() {
           let second = b[sortDescriptor.column as keyof Card];
           if (first === undefined) first = "";
           if (second === undefined) second = "";
+          const parsedFirst = parseInt(first as string, 10);
+          const parsedSecond = parseInt(second as string, 10);
+          const normFirst = !isNaN(parsedFirst)
+            ? parsedFirst
+            : (first as string);
+          const normSecond = !isNaN(parsedSecond)
+            ? parsedSecond
+            : (second as string);
           let cmp =
-            (parseInt(first as string) || first) <
-            (parseInt(second as string) || second)
-              ? -1
-              : 1;
+            normFirst < normSecond ? -1 : normFirst > normSecond ? 1 : 0;
           if (sortDescriptor.direction === "descending") {
             cmp *= -1;
           }

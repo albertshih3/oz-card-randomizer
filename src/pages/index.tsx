@@ -20,10 +20,18 @@ import {
   TableCell,
 } from "@heroui/table";
 import { Skeleton } from "@heroui/skeleton";
-import { utils, writeFile } from "xlsx";
-import { event, timing, exception } from "@/lib/gtag";
+import { event, exception } from "@/lib/gtag";
 import { db } from "@/lib/firebase";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
+import {
+  BASE_COLLECTION_IDS,
+  COLLECTION_IDS,
+  COLLECTION_DISPLAY_NAMES,
+} from "@/constants/collections";
+import {
+  MAX_PACKS_PER_EXPORT,
+  PACK_HISTORY_LIMIT,
+} from "@/constants/generation";
 import {
   Sparkles,
   FileSpreadsheet,
@@ -33,49 +41,23 @@ import {
   Clock,
 } from "lucide-react";
 import { CollectionBadge } from "@/components/collection-badge";
-
-// Required base categories (order matters for pack generation)
-const BASE_CATEGORIES: string[] = [
-  "tropicalrainforest",
-  "childrenszoo",
-  "californiatrail",
-  "africansavanna",
-];
-
-const BASE_NAME_MAP: Record<string, string> = {
-  tropicalrainforest: "Tropical Rainforest",
-  childrenszoo: "Children's Zoo",
-  californiatrail: "California Trail",
-  africansavanna: "African Savanna",
-};
-
-// We'll load card categories dynamically
-type LegacyCollection = {
-  id: string;
-  name: string;
-  isWildcardEligible?: boolean;
-};
-
-type PackHistoryItem = {
-  id: string;
-  timestamp: Date;
-  cards: any[];
-};
+import { useBoosterPackGeneration } from "@/hooks/use-booster-pack-generation";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import type { Card, Collection } from "@/types/index";
 
 export default function IndexPage() {
-  const [boosterPacks, setBoosterPacks] = useState<any[][]>([]); // Keeps track of current generation for export
-  const [packHistory, setPackHistory] = useState<PackHistoryItem[]>([]); // Keeps track of last 10 packs for display
   const [expandedPackId, setExpandedPackId] = useState<string | null>(null);
-  const [cardsData, setCardsData] = useState<{ [key: string]: any }>({});
+  const [cardsData, setCardsData] = useState<{ [key: string]: Card[] }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [numPacks, setNumPacks] = useState(1);
-  const [isExporting, setIsExporting] = useState(false);
-  const [collections, setCollections] = useState<LegacyCollection[]>([]);
-
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set([]));
-  const [lastGenTime, setLastGenTime] = useState<Date | null>(null);
+
+  const { boosterPacks, packHistory, lastGenTime, generatePacks } =
+    useBoosterPackGeneration(cardsData, collections);
+  const { exportToExcel, isExporting } = useExcelExport();
 
   // Pull categories and cards database from Firebase
   useEffect(() => {
@@ -87,22 +69,22 @@ export default function IndexPage() {
         const legacyCollections = categoriesToLegacyFormat(categories);
         setCollections(legacyCollections);
 
-        const data: { [key: string]: any } = {};
+        const data: { [key: string]: Card[] } = {};
         // Ensure we always include base categories, even if not listed in Firestore categories
         const categoryIds = Array.from(
           new Set([
             ...legacyCollections.map((c) => c.id),
-            ...BASE_CATEGORIES,
-            "spoonbill",
+            ...BASE_COLLECTION_IDS,
+            COLLECTION_IDS.SPOONBILL,
           ]),
         );
         for (const col of categoryIds) {
           const querySnapshot = await getDocs(collection(db, col));
           data[col] = querySnapshot.docs
-            .map((doc) => ({ id: doc.id, ...doc.data() }))
-            .filter(
-              (card: { id: string; active?: boolean }) => card.active !== false,
-            ); // Consider cards active if 'active' is true or null/undefined
+            .map(
+              (doc) => ({ id: doc.id, collection: col, ...doc.data() }) as Card,
+            )
+            .filter((card) => card.active !== false); // Consider cards active if 'active' is true or null/undefined
         }
         setCardsData(data);
         setLoading(false);
@@ -130,220 +112,31 @@ export default function IndexPage() {
     setShowModal(true);
   };
 
-  // Generate boosterpack
-  const generateBoosterPack = () => {
-    const startTime = performance.now();
-    event({
-      action: "generate",
-      category: "booster_pack",
-      label: "single_pack",
-    });
-    const pack: any[] = [];
-    const usedCards = new Set();
-
-    const addCard = (collection: string) => {
-      const source = Array.isArray(cardsData[collection])
-        ? cardsData[collection]
-        : [];
-      const availableCards = source.filter(
-        (card: { id: any }) => !usedCards.has(`${collection}-${card.id}`),
-      );
-      if (availableCards.length === 0) {
-        console.warn(`No more available cards in ${collection} collection`);
-        return false;
-      }
-
-      const card =
-        availableCards[Math.floor(Math.random() * availableCards.length)];
-      pack.push({ ...card, collection });
-      usedCards.add(`${collection}-${card.id}`);
-      return true;
-    };
-
-    // First 8 cards: two from each of the specified 4 categories (order matters)
-    for (const col of BASE_CATEGORIES) {
-      if (!addCard(col)) {
-        console.warn(`Not enough cards in ${col} collection (card 1)`);
-      }
-      if (!addCard(col)) {
-        console.warn(`Not enough cards in ${col} collection (card 2)`);
-      }
-    }
-
-    // 9th card: from specific wildcard categories
-    const eligibleCategories = Object.keys(cardsData).filter((id) => {
-      const collection = collections.find((c) => c.id === id);
-      return (
-        collection?.isWildcardEligible &&
-        Array.isArray(cardsData[id]) &&
-        cardsData[id].length > 0
-      );
-    });
-
-    if (eligibleCategories.length > 0) {
-      let randomCollection: string | undefined;
-      let attempts = 0;
-      const maxAttempts = Math.max(10, eligibleCategories.length * 2);
-      while (attempts < maxAttempts) {
-        randomCollection =
-          eligibleCategories[
-            Math.floor(Math.random() * eligibleCategories.length)
-          ];
-        if (addCard(randomCollection)) break;
-        attempts++;
-      }
-      if (attempts >= maxAttempts) {
-        console.warn(
-          "Failed to add a card from a random collection after 10 attempts",
-        );
-      }
-    } else {
-      console.warn(
-        "No wildcard-eligible categories found; wildcard slot skipped",
-      );
-    }
-
-    if (!addCard("spoonbill")) {
-      console.warn("Not enough cards in spoonbill collection");
-    }
-
-    const endTime = performance.now();
-    timing({
-      name: "pack_generation",
-      value: Math.round(endTime - startTime),
-      category: "performance",
-      label: "single_pack",
-    });
-
-    return pack;
-  };
-
-  // MORE PACKS (multiple packs)
-  const generatePacks = (count: number): any[][] => {
-    let newPacks: any[][] = [];
-    try {
-      event({
-        action: "generate",
-        category: "booster_pack",
-        label: "multiple_packs",
-        value: count,
-      });
-
-      // Archive current packs to history if they exist
-      if (boosterPacks.length > 0) {
-        const historyItems: PackHistoryItem[] = boosterPacks.map((pack) => ({
-          id: crypto.randomUUID(),
-          timestamp: lastGenTime || new Date(), // Use lastGenTime for archived packs
-          cards: pack,
-        }));
-
-        setPackHistory((prev) => {
-          const updated = [...historyItems, ...prev].slice(0, 10);
-          return updated;
-        });
-      }
-
-      newPacks = [];
-      for (let i = 0; i < count; i++) {
-        newPacks.push(generateBoosterPack());
-      }
-
-      // Update current generation
-      setBoosterPacks(newPacks);
-      setLastGenTime(new Date());
-      setSelectedKeys(new Set([]));
-    } catch (err) {
-      console.error("Error generating packs:", err);
-      exception({
-        description: `Failed to generate booster packs: ${err}`,
-        fatal: false,
-      });
-      setError("Failed to generate booster packs. Please try again.");
-    }
-    return newPacks;
-  };
-
   // Function to generate packs and export
-  const handleGenerateAndExport = () => {
-    if (isExporting) return; // prevent double-click
+  const handleGenerateAndExport = async () => {
+    if (isExporting) return;
+    if (!numPacks || numPacks < 1) return;
     event({
       action: "export",
       category: "spreadsheet",
       label: "generate_and_export",
       value: numPacks,
     });
-    setIsExporting(true);
     try {
       const packs = generatePacks(numPacks);
+      setSelectedKeys(new Set([]));
       if (packs.length > 0) {
-        exportToExcel(packs);
+        await exportToExcel(packs);
       }
     } finally {
-      setIsExporting(false);
       setShowModal(false);
     }
   };
 
-  // Function to export booster packs to Excel
-  const exportToExcel = (boosterPacks: any[]) => {
-    if (!boosterPacks.length) {
-      console.warn("No data to export");
-      return;
-    }
-
-    event({
-      action: "download",
-      category: "export",
-      label: "excel_export",
-      value: boosterPacks.length,
-    });
-
-    // Construct sheet data
-    const sheetData = boosterPacks.map((pack, index) => {
-      const row: { [key: string]: any } = { "Pack #": index + 1 };
-
-      // Use the same required base categories in the specified order for export columns
-      BASE_CATEGORIES.forEach((collection) => {
-        const cards = pack.filter(
-          (card: { collection: string }) => card.collection === collection,
-        );
-        row[`${getCollectionName(collection)} 1`] = cards[0]
-          ? `#${cards[0].number} - ${cards[0].name}`
-          : "";
-        row[`${getCollectionName(collection)} 2`] = cards[1]
-          ? `#${cards[1].number} - ${cards[1].name}`
-          : "";
-      });
-
-      const wildcard = pack[8];
-      row["Wildcard"] = wildcard
-        ? `#${wildcard.number} - ${wildcard.name}`
-        : "";
-
-      const spoonbill = pack.find(
-        (card: { collection: string }) => card.collection === "spoonbill",
-      );
-      row["Spoonbill"] = spoonbill
-        ? `#${spoonbill.number} - ${spoonbill.name}`
-        : "";
-
-      return row;
-    });
-
-    // Create worksheet and workbook
-    const ws = utils.json_to_sheet(sheetData);
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, "Booster Packs");
-
-    // Export file
-    writeFile(wb, "BoosterPacks.xlsx");
-  };
-
   const getCollectionName = (id: string) => {
-    if (id === "spoonbill") return "Spoonbill";
     const c = collections.find((c) => c.id === id);
     if (c) return c.name;
-    if (BASE_NAME_MAP[id]) return BASE_NAME_MAP[id];
+    if (COLLECTION_DISPLAY_NAMES[id]) return COLLECTION_DISPLAY_NAMES[id];
     return id;
   };
 
@@ -370,7 +163,10 @@ export default function IndexPage() {
               isLoading={loading}
               color="primary"
               variant="shadow"
-              onPress={() => generatePacks(1)}
+              onPress={() => {
+                generatePacks(1);
+                setSelectedKeys(new Set([]));
+              }}
               size="lg"
               className="font-semibold w-full sm:w-auto"
               startContent={!loading && <PackageOpen className="w-5 h-5" />}
@@ -448,7 +244,7 @@ export default function IndexPage() {
                         No packs generated yet
                       </p>
                       <p className="text-sm">
-                        Click "Generate Pack" to get started
+                        Click &quot;Generate Pack&quot; to get started
                       </p>
                     </div>
                   }
@@ -482,7 +278,7 @@ export default function IndexPage() {
               <div className="space-y-6">
                 <div className="flex items-center gap-2 text-xl font-bold text-foreground/80">
                   <History className="w-5 h-5" />
-                  <h2>Pack History (Last 10)</h2>
+                  <h2>Pack History (Last {PACK_HISTORY_LIMIT})</h2>
                 </div>
 
                 <div className="space-y-4">
@@ -612,7 +408,7 @@ export default function IndexPage() {
               label="Number of Packs"
               placeholder="e.g. 50"
               min="1"
-              max="1000"
+              max={MAX_PACKS_PER_EXPORT.toString()}
               value={numPacks.toString()}
               onChange={(e) => setNumPacks(Number(e.target.value))}
               variant="bordered"

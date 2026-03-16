@@ -1,8 +1,95 @@
 [
   {
+    "version": "2.0.12",
+    "date": "March 15, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added Vitest + React Testing Library test infrastructure — vitest.config.ts, src/test/setup.ts, and test scripts (npm run test, npm run test:run); pre-commit hook now runs the full test suite before every commit (OAK-16)",
+          "Added 28 unit tests for useBoosterPackGeneration hook — covers pack card counts, no-duplicate invariants, wildcard selection logic, empty/undersized collection handling, pack history capping, state updates, and analytics call counts (OAK-17)",
+          "Added 23 unit tests for utils/categories.ts — covers Firestore data mapping, in-memory cache behavior, empty-Firestore fallback with setDoc seeding, error handling, getDefaultCategories purity, and categoriesToLegacyFormat conversion (OAK-18)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.11",
+    "date": "March 15, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added ErrorBoundary component — catches uncaught render errors and lazy-load failures, showing a recovery UI with error details and a reload button instead of a blank screen (OAK-12)",
+          "Converted admin page imports (EditPage, EditCardPage, CategoriesPage) to React.lazy() with a Suspense spinner fallback — main bundle reduced from ~1,414 kB to ~1,289 kB (OAK-13)",
+          "Extracted pack generation tuning constants (MIN_WILDCARD_ATTEMPTS, RETRY_MULTIPLIER, PACK_HISTORY_LIMIT, MAX_PACKS_PER_EXPORT) into src/constants/generation.ts; replaced all remaining hardcoded \"spoonbill\" strings with COLLECTION_IDS.SPOONBILL; removed redundant getCollectionName special-case (OAK-14)",
+          "Added three-tier logging strategy to generateBoosterPack; Tier-2 pack-level slot failures now also fire exception({ fatal: false }) to surface in GA analytics (OAK-15)",
+          "Removed @firebasegen/default-connector file: dependency and deleted dataconnect/ and dataconnect-generated/ scaffold directories — were never used and had zero imports in src/ (OAK-19)",
+          "Added Husky v9 + lint-staged pre-commit hook — automatically runs ESLint (auto-fix) on staged .ts/.tsx files and a full tsc --noEmit type-check on every commit (OAK-20)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.10",
+    "date": "March 15, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Removed duplicate local Card interfaces from edit.tsx and editcard.tsx — both pages now import the canonical Card type from src/types/index.ts (OAK-10)",
+          "Added collectionName? to the canonical Card interface in src/types/index.ts to cover the field used by admin pages (OAK-10)",
+          "Replaced { [key: string]: any } cardsData state in index.tsx with { [key: string]: Card[] } — completes the any→Card[] migration across the primary data path (OAK-11)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.9",
+    "date": "March 13, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Added Card interface to src/types/index.ts and typed the full card pipeline — eliminates any[] throughout pack generation and Excel export hooks (OAK-38)",
+          "Renamed LegacyCollection to Collection — the 'Legacy' prefix was a holdover that no longer reflected the type's role (OAK-38)",
+          "Replaced positional pack[8] wildcard lookup in Excel export with a semantic pack.find() based on collection membership — export no longer breaks if pack slot order changes (OAK-39)",
+          "Hardened BASE_COLLECTION_IDS with as const satisfies readonly string[] — TypeScript now errors on any mutation or reorder attempt (OAK-39)",
+          "Extracted magic numbers from wildcard retry logic into named constants MIN_WILDCARD_ATTEMPTS and RETRY_MULTIPLIER; fixed stale warning message (OAK-40)",
+          "Moved analytics calls out of the private generateBoosterPack function — generation is now a pure operation; a single timing() event fires per batch in generatePacks instead of per pack (OAK-40)",
+          "Removed dead ./src/hooks/**/* content path from tailwind.config.js — hooks contain no Tailwind class strings (OAK-40)"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.8",
+    "date": "March 13, 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Extracted collection constants (COLLECTION_IDS, BASE_COLLECTION_IDS, COLLECTION_DISPLAY_NAMES, COLLECTION_COLORS) into src/constants/collections.ts — eliminates duplication between index.tsx and collection-badge.tsx (OAK-9)",
+          "Extracted pack generation logic into useBoosterPackGeneration hook (src/hooks/use-booster-pack-generation.ts) — separates generation state and logic from page UI orchestration (OAK-7)",
+          "Extracted Excel export into useExcelExport hook (src/hooks/use-excel-export.ts) with dynamic xlsx import — defers ~1.6 MB bundle until first export, creating a separate Vite chunk (OAK-8)"
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.0.7",
     "date": "March 12, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Bug Fixes",
