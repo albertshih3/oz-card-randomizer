@@ -10,6 +10,97 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 23, 2026 - Admin Layout Shell with M3 Top App Bar and Navigation Drawer (OAK-53)
+
+**Pre-release quality fix on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: Admin routes (`/edit`, `/editcard`, `/categories`) previously rendered inside the public `DefaultLayout`. OAK-53 creates a completely separate admin shell with a permanent M3 Navigation Drawer (desktop) and overlay drawer (mobile), with auth gating at the layout level. Old routes redirect to `/admin`.
+
+#### New files
+
+**`src/layouts/admin.tsx`** (default export: `AdminLayout`):
+
+- Module-level `useMediaQuery(query: string): boolean` hook — SSR-safe (`typeof window !== "undefined"` guard), uses `mql.addEventListener("change", handler)` pattern.
+- `ROUTE_TITLES: Record<string, string>` — `{ "/admin": "Cards", "/admin/users": "Users" }`.
+- Auth guard: `useAuth()` from Clerk v5; `useEffect` watches `isLoaded + userId`; navigates to `/sign-in` with `replace: true` when `isLoaded && !userId`.
+- While `!isLoaded`: returns centered `<M3Spinner size="lg">` on `var(--md-sys-color-surface)` background.
+- While `!userId` (after loaded): returns `null` — prevents flash of admin UI while navigation is pending.
+- State: `drawerOpen` (boolean), `isDesktop` (from `useMediaQuery("(min-width: 1024px)")`).
+- Three `useEffect`s: (1) close drawer on resize to desktop, (2) auth guard, (3) body scroll lock (`document.body.style.overflow`).
+- `useCallback` on `handleMenuToggle` and `handleDrawerClose` — both defined BEFORE early returns (Rules of Hooks compliance).
+- Layout: `flex h-screen overflow-hidden` root → `<NavDrawer>` (left) + `<div className="flex flex-col flex-1 min-w-0 overflow-hidden">` (right) → `<TopAppBar>` + `<main className="flex-1 overflow-y-auto p-6"><Outlet /></main>`.
+- Uses `<Outlet />` from react-router-dom (NOT `{children}` like `DefaultLayout`).
+- Does NOT use `DefaultLayout` — completely independent shell.
+
+**`src/components/admin/top-app-bar.tsx`** (named export: `TopAppBar`):
+
+- Props: `{ title: string; onMenuToggle: () => void; isDrawerOpen: boolean }`.
+- `h-16`, `sticky top-0 z-30`, `shadow-elevation-1`, `background: var(--md-sys-color-surface)`.
+- Left: `<button>` with `Menu` icon (lucide-react), `lg:hidden`, full ARIA attrs (`aria-label`, `aria-expanded`, `aria-controls="admin-nav-drawer"`) + `/csclogo.svg` logo (`lg:hidden` — logo appears in nav drawer on desktop).
+- Center: `<h1>` with title prop, `flex-1`, `color: var(--md-sys-color-on-surface)`.
+- Right: `<UserButton>` from `@clerk/clerk-react` + `<a href="/">` with `ArrowLeft` icon, "Back to site" text, `color: var(--md-sys-color-primary)`.
+
+**`src/components/admin/nav-drawer.tsx`** (named export: `NavDrawer`):
+
+- Props: `{ isOpen: boolean; onClose: () => void }`.
+- Internal state: `categories: Category[]`, `isLoading: boolean`.
+- Category fetch: `getCategories()` with cancellation flag pattern (`let cancelled = false`).
+- Active item detection: `useLocation()` internally; active → `background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container)`; `aria-current="page"` on active item.
+- `DrawerContent` inner function (non-exported) takes `{ onClose, categories, isLoading, pathname, onItemClick }` props.
+- Loading skeleton: 3x `<Skeleton className="h-10 w-full rounded-xl my-1" />` from `@heroui/skeleton`.
+- Nav items: "Cards" header → `/admin`; category subitems from Firestore → `/admin`; divider; "Users" → `/admin/users`; divider; "Public Site" → `/`.
+- Desktop: `<aside className="hidden lg:flex flex-col w-64 h-full shrink-0">` with `borderRight: 1px solid var(--md-sys-color-outline-variant)` — always in DOM. No `id` attribute (only the mobile dialog panel carries `id="admin-nav-drawer"` for `aria-controls` targeting).
+- Mobile: `AnimatePresence` wrapping backdrop (`motion.div`, z-40) + panel (`motion.aside`, z-50); panel slides `x: -280 → 0`, duration 350ms, ease `[0.05, 0.7, 0.1, 1.0]` (M3 emphasized-decelerate); `role="dialog"`, `aria-modal="true"`, `aria-label="Navigation menu"`.
+
+**`src/pages/admin/index.tsx`** (default export: `AdminCardsPage`):
+
+- Stub page — "Cards" heading, "Card management coming soon." placeholder.
+- No auth guard — handled by `AdminLayout`.
+
+**`src/pages/admin/users.tsx`** (default export: `AdminUsersPage`):
+
+- Stub page — "Users" heading, "User management coming soon." placeholder.
+
+#### Modified files
+
+**`src/styles/globals.css`**:
+
+- Updated `--md-sys-color-background` in `:root` from `#fef7ff` to `#ffffff` — pure white background for the admin shell in light mode.
+
+**`src/App.tsx`**:
+
+- Removed lazy imports for `EditPage`, `EditCardPage`, `CategoriesPage`.
+- Added: `const AdminLayout = React.lazy(() => import("@/layouts/admin"))`.
+- Added: `const AdminCardsPage = React.lazy(() => import("@/pages/admin/index"))`.
+- Added: `const AdminUsersPage = React.lazy(() => import("@/pages/admin/users"))`.
+- Replaced the `/admin` redirect with a nested layout route:
+  ```tsx
+  <Route element={<AdminLayout />}>
+    <Route path="/admin" element={<AdminCardsPage />} />
+    <Route path="/admin/users" element={<AdminUsersPage />} />
+  </Route>
+  ```
+- Added redirects: `/edit` → `/admin`, `/editcard` → `/admin`, `/categories` → `/admin`.
+
+#### New test file
+
+**`src/test/layouts/admin.test.tsx`** — 2 tests in `describe("AdminLayout — OAK-53")`:
+
+- "redirects to /sign-in when userId is null" — verifies auth guard fires.
+- "renders children when authenticated" — verifies Outlet, TopAppBar, NavDrawer all render.
+- Mock strategy: `@clerk/clerk-react` (`useAuth`), `react-router-dom` (`useNavigate`, `useLocation`, `Outlet`), `@/components/admin/top-app-bar`, `@/components/admin/nav-drawer`, `@/components/m3/spinner`.
+- `matchMedia` shim required in `beforeEach` — `useMediaQuery` calls `window.matchMedia`, which jsdom does not implement.
+- No Firebase mock needed — `AdminLayout` does not import Firebase; `NavDrawer` is fully mocked.
+
+**Verification Results:**
+
+- Build: Successful — new chunks: `admin-Crkfvc6o.js` (7.09 kB), `index-Cp3kIxJM.js` (0.34 kB), `users-TEH0h3h6.js` (0.34 kB); old `/edit`, `/editcard`, `/categories` chunks eliminated.
+- Lint: Clean (same pre-existing baseline — no new warnings introduced).
+- Tests: 75 passing, 0 failing (73 → 75; 2 new tests in `src/test/layouts/admin.test.tsx`).
+- Breaking Changes: `/edit`, `/editcard`, `/categories` now redirect to `/admin`; behavior at those routes is preserved at `/admin` for future phases.
+
+---
+
 ### March 16, 2026 - Custom Sign-In Page and Inline Forgot-Password Flow (OAK-51, OAK-52)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.

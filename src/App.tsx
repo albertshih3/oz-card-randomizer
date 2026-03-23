@@ -9,9 +9,9 @@ import { M3Spinner } from "@/components/m3/spinner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { usePageView } from "@/hooks/use-analytics";
 
-const EditPage = React.lazy(() => import("@/pages/edit"));
-const EditCardPage = React.lazy(() => import("@/pages/editcard"));
-const CategoriesPage = React.lazy(() => import("@/pages/categories"));
+const AdminLayout = React.lazy(() => import("@/layouts/admin"));
+const AdminCardsPage = React.lazy(() => import("@/pages/admin/index"));
+const AdminUsersPage = React.lazy(() => import("@/pages/admin/users"));
 const NotFoundPage = React.lazy(() => import("@/pages/not-found"));
 const SignInPage = React.lazy(() => import("@/pages/sign-in"));
 
@@ -51,12 +51,21 @@ function App() {
         <Suspense fallback={SuspenseFallback}>
           <Routes>
             <Route element={<IndexPage />} path="/" />
-            <Route element={<EditPage />} path="/edit" />
             <Route element={<AboutPage />} path="/about" />
             <Route element={<Changelog />} path="/changelog" />
-            <Route element={<EditCardPage />} path="/editcard" />
-            <Route element={<CategoriesPage />} path="/categories" />
-            <Route path="/admin" element={<Navigate to="/edit" replace />} />
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminCardsPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+            </Route>
+            <Route path="/edit" element={<Navigate to="/admin" replace />} />
+            <Route
+              path="/editcard"
+              element={<Navigate to="/admin" replace />}
+            />
+            <Route
+              path="/categories"
+              element={<Navigate to="/admin" replace />}
+            />
             <Route path="/sign-in" element={<SignInPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
