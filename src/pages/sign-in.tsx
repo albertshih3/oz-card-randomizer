@@ -413,7 +413,8 @@ export default function SignInPage() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.35, ease: M3_EMPHASIZED_DECELERATE }}
-            className="rounded-3xl p-8 border"
+            className="rounded-3xl p-8 border sign-in-light-surface"
+            data-theme="light"
             style={{
               backgroundColor: "rgba(255, 255, 255, 0.82)",
               backdropFilter: "blur(24px)",

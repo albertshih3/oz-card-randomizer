@@ -132,6 +132,42 @@
   }
 }
 
+/* Sign-in card: always render with light-mode tokens regardless of global theme.
+   The card uses a fixed white/glassmorphic background that never goes dark,
+   so the token cascade must be locked to light values.
+   Covers: M3 tokens (--md-sys-color-*), shadcn tokens (--foreground etc.),
+   and HeroUI tokens (via data-theme="light" on the element). */
+.sign-in-light-surface {
+  /* shadcn / Tailwind color tokens — e.g. text-foreground on bordered Button */
+  --background: 0 0% 100%;
+  --foreground: 224 71.4% 4.1%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 262.1 83.3% 57.8%;
+  --muted: 220 14.3% 95.9%;
+  --muted-foreground: 220 8.9% 46.1%;
+  --md-sys-color-primary: #6750a4;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #eaddff;
+  --md-sys-color-on-primary-container: #21005d;
+  --md-sys-color-secondary: #625b71;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #e8def8;
+  --md-sys-color-on-secondary-container: #1d192b;
+  --md-sys-color-surface: #fef7ff;
+  --md-sys-color-surface-variant: #e7e0ec;
+  --md-sys-color-on-surface: #1c1b1f;
+  --md-sys-color-on-surface-variant: #49454f;
+  --md-sys-color-outline: #79747e;
+  --md-sys-color-outline-variant: #cac4d0;
+  --md-sys-color-background: #ffffff;
+  --md-sys-color-on-background: #1c1b1f;
+  --md-sys-color-error: #b3261e;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #f9dedc;
+  --md-sys-color-on-error-container: #410e0b;
+}
+
 /* --- M3 Keyframes --- */
 
 /* M3Spinner: outer SVG rotation */
