@@ -5,9 +5,12 @@ interface BottomSheetProps {
   isOpen: boolean;
   onClose: () => void;
   children: ReactNode;
+  "aria-labelledby"?: string;
 }
 
-export function BottomSheet({ isOpen, onClose, children }: BottomSheetProps) {
+export function BottomSheet(props: BottomSheetProps) {
+  const { isOpen, onClose, children } = props;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -23,6 +26,9 @@ export function BottomSheet({ isOpen, onClose, children }: BottomSheetProps) {
           />
           <motion.div
             key="m3-bs-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={props["aria-labelledby"]}
             className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] max-h-[90vh] overflow-y-auto"
             style={{ backgroundColor: "var(--md-sys-color-surface)" }}
             initial={{ y: "100%" }}

@@ -1,5 +1,22 @@
-import { collection, getDocs, setDoc, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+import { signInWithCustomToken } from "firebase/auth";
+import { db, auth } from "@/lib/firebase";
+
+async function ensureFirebaseAuth(
+  getToken: (opts?: { template: string }) => Promise<string | null>,
+) {
+  if (!auth.currentUser) {
+    const token = await getToken({ template: "integration_firebase" });
+    await signInWithCustomToken(auth, token || "");
+  }
+}
 
 export interface Category {
   id: string;
@@ -161,4 +178,49 @@ export const categoriesToLegacyFormat = (categories: Category[]) => {
     name: cat.displayName,
     isWildcardEligible: cat.isWildcardEligible,
   }));
+};
+
+export const createCategory = async (
+  displayName: string,
+  categoryId: string,
+  getToken: (opts?: { template: string }) => Promise<string | null>,
+): Promise<void> => {
+  await ensureFirebaseAuth(getToken);
+  await setDoc(doc(db, "categories", categoryId), {
+    name: categoryId,
+    displayName,
+    isWildcardEligible: false,
+  });
+  clearCategoriesCache();
+};
+
+export const updateCategoryDisplayName = async (
+  categoryId: string,
+  displayName: string,
+  getToken: (opts?: { template: string }) => Promise<string | null>,
+): Promise<void> => {
+  await ensureFirebaseAuth(getToken);
+  await updateDoc(doc(db, "categories", categoryId), { displayName });
+  clearCategoriesCache();
+};
+
+export const toggleWildcardEligible = async (
+  categoryId: string,
+  value: boolean,
+  getToken: (opts?: { template: string }) => Promise<string | null>,
+): Promise<void> => {
+  await ensureFirebaseAuth(getToken);
+  await updateDoc(doc(db, "categories", categoryId), {
+    isWildcardEligible: value,
+  });
+  clearCategoriesCache();
+};
+
+export const deleteCategory = async (
+  categoryId: string,
+  getToken: (opts?: { template: string }) => Promise<string | null>,
+): Promise<void> => {
+  await ensureFirebaseAuth(getToken);
+  await deleteDoc(doc(db, "categories", categoryId));
+  clearCategoriesCache();
 };

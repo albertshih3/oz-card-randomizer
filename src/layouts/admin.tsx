@@ -4,22 +4,8 @@ import { useAuth } from "@clerk/clerk-react";
 import { M3Spinner } from "@/components/m3/spinner";
 import { TopAppBar } from "@/components/admin/top-app-bar";
 import { NavDrawer } from "@/components/admin/nav-drawer";
-
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(
-    () => typeof window !== "undefined" && window.matchMedia(query).matches,
-  );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia(query);
-    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [query]);
-
-  return matches;
-}
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { AdminFiltersProvider } from "@/contexts/admin-filters-context";
 
 const ROUTE_TITLES: Record<string, string> = {
   "/admin": "Cards",
@@ -69,21 +55,23 @@ export default function AdminLayout() {
   if (!userId) return null;
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ background: "var(--md-sys-color-background)" }}
-    >
-      <NavDrawer isOpen={drawerOpen} onClose={handleDrawerClose} />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <TopAppBar
-          title={title}
-          onMenuToggle={handleMenuToggle}
-          isDrawerOpen={drawerOpen}
-        />
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
-        </main>
+    <AdminFiltersProvider>
+      <div
+        className="flex h-screen overflow-hidden"
+        style={{ background: "var(--md-sys-color-background)" }}
+      >
+        <NavDrawer isOpen={drawerOpen} onClose={handleDrawerClose} />
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <TopAppBar
+            title={title}
+            onMenuToggle={handleMenuToggle}
+            isDrawerOpen={drawerOpen}
+          />
+          <main className="flex-1 overflow-y-auto p-6">
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </AdminFiltersProvider>
   );
 }

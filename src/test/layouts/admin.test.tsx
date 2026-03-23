@@ -27,6 +27,27 @@ vi.mock("@/components/m3/spinner", () => ({
   M3Spinner: () => <div data-testid="m3-spinner" />,
 }));
 
+vi.mock("@/contexts/admin-filters-context", () => ({
+  AdminFiltersProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  useAdminFiltersContext: () => ({
+    filters: {
+      selectedCategory: "all",
+      viewMode: "table",
+      searchQuery: "",
+      statusFilter: "all",
+    },
+    setSelectedCategory: vi.fn(),
+    setViewMode: vi.fn(),
+    setSearchQuery: vi.fn(),
+    setStatusFilter: vi.fn(),
+    categoryRefreshKey: 0,
+    bumpCategoryRefreshKey: vi.fn(),
+  }),
+}));
+
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import AdminLayout from "@/layouts/admin";
 

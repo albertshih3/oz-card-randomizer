@@ -10,6 +10,174 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 23, 2026 - Consolidated Card Management: Card Panel, Edit Sheet, Snackbar, Filter Persistence (OAK-54, OAK-55, OAK-56, OAK-57)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: The `/admin` route previously showed a stub "Card management coming soon." page. OAK-54 builds the full card management panel with table/grid/list views and localStorage filter persistence. OAK-55 adds an in-place card edit form (modal on desktop, bottom sheet on mobile) replacing the full-page `/editcard` flow. OAK-56 adds LinearProgress feedback and M3Snackbar error messages. OAK-57 provides CRUD audit tests and adds category mutation utilities.
+
+#### New files
+
+**`src/hooks/use-media-query.ts`** (named export: `useMediaQuery`):
+
+- Extracted from `src/layouts/admin.tsx` (was inline there; now shared).
+- SSR-safe: `typeof window !== "undefined"` guard in both `useState` initializer and `useEffect`.
+- Uses `mql.addEventListener("change", handler)` pattern with cleanup.
+- Second consumer: `card-edit-sheet.tsx` uses `useMediaQuery("(max-width: 768px)")`.
+
+**`src/hooks/use-admin-filters.ts`** (named export: `useAdminFilters`):
+
+- localStorage keys: `oz-admin.selectedCategory`, `oz-admin.viewMode`, `oz-admin.searchQuery`, `oz-admin.statusFilter`.
+- Exports: `ViewMode = "table" | "grid" | "list"`, `StatusFilter = "all" | "active" | "inactive"`, `AdminFilters` interface.
+- `readStorage` / `writeStorage` helpers with try/catch for private browsing / quota errors.
+- Each setter calls the `State` setter and `writeStorage` immediately.
+- `useState` initializers call `readStorage` lazily (not at module scope) for SSR safety.
+
+**`src/contexts/admin-filters-context.tsx`** (named exports: `AdminFiltersProvider`, `useAdminFiltersContext`):
+
+- `AdminFiltersProvider` instantiates `useAdminFilters()` and provides the result via context.
+- `useAdminFiltersContext()` throws if called outside the provider.
+- Consumed by both `NavDrawer` and `CardPanel` — single source of truth for filter state.
+
+**`src/components/m3/snackbar.tsx`** (named export: `M3Snackbar`):
+
+- Props: `message: string | null`, `onDismiss: () => void`, `actionLabel?: string`, `onAction?: () => void`, `durationMs?: number` (default 4000).
+- When `message` is null: returns `null` (no DOM node).
+- Auto-dismiss: `useEffect` fires `setTimeout(onDismiss, durationMs)` on non-null message; cleanup clears the timer.
+- Uses CSS class `m3-snackbar-enter` (keyframe in `globals.css`) — no Framer Motion.
+- `role="status"` + `aria-live="polite"` for screen reader announcement.
+- Colors: `var(--md-sys-color-inverse-surface)` background, `var(--md-sys-color-inverse-on-surface)` text.
+- Fixed position: `bottom-4 left-1/2 -translate-x-1/2`.
+
+**`src/components/admin/card-edit-sheet.tsx`** (named export: `CardEditSheet`):
+
+- Props: `mode: "create" | "edit"`, `card?: Card`, `categories: Category[]`, `isOpen`, `onClose`, `onSaved`, `onError: (message: string) => void`.
+- Module-scope `ensureFirebaseAuth(getToken)` — same pattern as `editcard.tsx`.
+- Internal `FormContent` function (non-exported) renders form fields; shared between desktop Modal and mobile BottomSheet.
+- Desktop (`useMediaQuery("(max-width: 768px)") === false`): HeroUI `<Modal size="lg">`.
+- Mobile: `<BottomSheet>` from `src/components/m3/bottom-sheet.tsx`.
+- `useEffect([isOpen, mode, card])`: populates form from `card` prop on open; resets to blank for create mode; clears errors and delete confirm on close.
+- Validate-on-submit, clear-on-change (CLAUDE.md lesson #15).
+- Operations: `addDoc` (create), `updateDoc` (update same collection), `writeBatch` set+delete (move), `deleteDoc` (delete).
+- Write payloads: `{ name, number, active }` only — NO `collection` field (CLAUDE.md lesson #29).
+- Inline delete confirmation: sets `showDeleteConfirm = true`; renders inline section (not a nested modal).
+- `onError` callback called from catch blocks; `onSaved()` + `onClose()` called only on success.
+
+**`src/components/admin/card-panel.tsx`** (named export: `CardPanel`):
+
+- No props — reads all state from `useAdminFiltersContext()`.
+- `fetchCards`: `useCallback([filters.selectedCategory])` — re-fetches only on category change.
+- When `selectedCategory === "all"`: fetches `BASE_COLLECTION_IDS` + `COLLECTION_IDS.SPOONBILL` + wildcard-eligible categories not already in base set. Deduplication via `Set<string>` keyed on `colId:docId`.
+- `collection: colId` placed before spread (CLAUDE.md lesson #28); `active: data.active !== false` (lesson #6).
+- `filteredCards`: `useMemo` over `cards` — client-side search + status filter (never triggers re-fetch).
+- `handleToggleActive`: optimistic local update + `fetchCards()` to confirm server state.
+- View modes: Table (HeroUI `<Table>`), Grid (CSS grid), List (divide-y rows).
+- View toggle: custom segmented button (3 `<button>` in flex row) — NOT HeroUI Tabs.
+- FAB: `fixed bottom-6 right-6 lg:hidden` on mobile; inline `<Button className="hidden lg:flex">` on desktop.
+- `<LinearProgress visible={isPending} />` at top of panel.
+- `<M3Snackbar>` at bottom for errors.
+- `<CardEditSheet>` receives `onSaved={fetchCards}` and `onError={setSnackbarMessage}`.
+
+#### Modified files
+
+**`src/layouts/admin.tsx`**:
+
+- Removed inline `useMediaQuery` function; imports from `@/hooks/use-media-query`.
+- Wraps the entire return JSX with `<AdminFiltersProvider>` from `@/contexts/admin-filters-context`.
+
+**`src/components/admin/nav-drawer.tsx`**:
+
+- Imports `useAdminFiltersContext` from `@/contexts/admin-filters-context`.
+- `DrawerContentProps` gains `selectedCategory: string` and `onCategorySelect: (id: string) => void`.
+- "Cards" header button: active when `selectedCategory === "all"` AND `pathname === "/admin"`; click calls `onCategorySelect("all")`.
+- Category subitems: active when `selectedCategory === cat.name` AND `pathname === "/admin"`; click calls `onCategorySelect(cat.name)`.
+- Navigation items (`/admin/users`, `/`): still call `navigate(href)`.
+- Mobile: `onCategorySelect` also calls `onClose()` via the `handleItemClick` wrapper.
+
+**`src/pages/admin/index.tsx`**:
+
+- Replaced stub with `return <CardPanel />;` (single import from `@/components/admin/card-panel`).
+
+**`src/utils/categories.ts`**:
+
+- Added `updateDoc`, `deleteDoc` to firestore imports.
+- Added 4 new exported async functions: `createCategory(displayName, categoryId)`, `updateCategoryDisplayName(categoryId, displayName)`, `toggleWildcardEligible(categoryId, value)`, `deleteCategory(categoryId)`.
+- All four call `clearCategoriesCache()` after the Firestore write.
+- Write payloads for `createCategory`: `{ name: categoryId, displayName, isWildcardEligible: false }`.
+
+**`src/styles/globals.css`**:
+
+- Added `--md-sys-color-inverse-surface` and `--md-sys-color-inverse-on-surface` tokens to both `:root` (light) and `.dark`.
+- Added `@keyframes m3-snackbar-slide-up` and `.m3-snackbar-enter` class at end of file.
+
+#### New test files
+
+**`src/test/hooks/use-admin-filters.test.ts`** — 8 tests: default values, localStorage read on mount, and each setter (selectedCategory, viewMode, searchQuery, statusFilter) updating both state and localStorage, plus error handling.
+
+**`src/test/components/m3/snackbar.test.tsx`** — 4 tests: null render, message display, auto-dismiss with fake timers, action button rendering.
+
+**`src/test/components/admin/card-edit-sheet.test.tsx`** — 5 tests: validation error on empty save, addDoc payload (no `collection` field), onSaved callback, deleteDoc on confirmation, error clearing on field change.
+
+**`src/test/pages/admin/card-crud.test.tsx`** — 4 tests: create payload audit, update payload audit, batch move (set+delete), delete confirmation.
+
+**`src/test/pages/admin/category-crud.test.ts`** — 4 tests: createCategory → setDoc, updateCategoryDisplayName → updateDoc, toggleWildcardEligible → updateDoc, deleteCategory → deleteDoc.
+
+**Modified `src/test/layouts/admin.test.tsx`**: Added `vi.mock("@/contexts/admin-filters-context", ...)` mock to prevent context errors in existing tests.
+
+#### Verification Results
+
+- Build: Successful
+- Lint: Clean (same pre-existing baseline — no new warnings introduced)
+- Tests: 100 passing, 0 failing (75 → 100; 25 new tests across 5 new test files)
+- Breaking Changes: `/admin` no longer shows stub page — shows full card management panel. Old `/edit`, `/editcard`, `/categories` routes still redirect to `/admin`.
+
+---
+
+### March 23, 2026 - Post-Ship Fixes for Card Panel (OAK-70, OAK-71, OAK-72)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**All changes are confined to `src/components/admin/card-panel.tsx`.**
+
+#### OAK-70 — LinearProgress spacing
+
+Added `className="mb-3"` to the `<LinearProgress>` component at the top of `CardPanel`. This adds visual breathing room between the loading bar and the toolbar row below it.
+
+#### OAK-71 — Search crash fix for numeric `card.number` fields
+
+**Problem**: `card.number` may be stored as a numeric type in Firestore (not always a string). The search filter called `card.number.toLowerCase()` directly, which throws `TypeError: card.number.toLowerCase is not a function` when the field is a number.
+
+**Fix**: Changed both search field lookups in the `filteredCards` `useMemo` from:
+
+```ts
+card.name.toLowerCase();
+card.number.toLowerCase();
+```
+
+to:
+
+```ts
+String(card.name ?? "").toLowerCase();
+String(card.number ?? "").toLowerCase();
+```
+
+`String(value ?? "")` handles three cases: a string (pass-through), a number (converts to string), and `null`/`undefined` (returns `""`). This prevents the TypeError regardless of how the field was written to Firestore.
+
+#### OAK-72 — Table column sorting
+
+**What was added**:
+
+- Local `SortDescriptor` interface: `{ column: "name" | "number" | "collection" | "active"; direction: "ascending" | "descending" }`.
+- `sortDescriptor` state, default `{ column: "name", direction: "ascending" }`.
+- Sort step appended to the `filteredCards` `useMemo`, applied after the existing search and status filters. Sorting does not replace or interfere with the existing filters.
+- Sort logic: `name` and `collection` use `localeCompare`; `number` uses `parseInt` for numeric order (e.g., card `#9` sorts before `#10`); `active` sorts active-first by default.
+- HeroUI `<Table>` receives `sortDescriptor` and `onSortChange` props.
+- Sortable columns (`Name`, `Number`, `Collection`, `Active`) have `allowsSorting` and explicit `key` props. The `Actions` column is not sortable.
+
+The sort step in `filteredCards` uses a direction-aware multiplier: `direction === "descending" ? -1 : 1` applied to the raw comparator result.
+
+---
+
 ### March 23, 2026 - Admin Layout Shell with M3 Top App Bar and Navigation Drawer (OAK-53)
 
 **Pre-release quality fix on the `development` branch** — no version bump, no changelog entry.
@@ -1237,9 +1405,14 @@ Test files live under `src/test/`:
 - `src/test/setup.ts` — global setup (jest-dom matchers)
 - `src/test/smoke.test.tsx` — smoke test (1 test)
 - `src/test/hooks/use-booster-pack-generation.test.ts` — hook tests (28 tests)
+- `src/test/hooks/use-admin-filters.test.ts` — filter hook tests (8 tests)
 - `src/test/utils/categories.test.ts` — utility tests (23 tests)
 - `src/test/components/m3/spinner.test.tsx` — M3Spinner component tests (5 tests)
+- `src/test/components/m3/snackbar.test.tsx` — snackbar tests (4 tests)
 - `src/test/components/navbar.test.tsx` — navbar auth-gating tests (5 tests)
+- `src/test/components/admin/card-edit-sheet.test.tsx` — card edit sheet tests (5 tests)
+- `src/test/pages/admin/card-crud.test.tsx` — card CRUD audit tests (4 tests)
+- `src/test/pages/admin/category-crud.test.ts` — category CRUD audit tests (4 tests)
 
 **Deployment**:
 
@@ -1250,7 +1423,7 @@ Test files live under `src/test/`:
 
 ### Test Suite
 
-Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026) and extended through OAK-63. **62 tests, all passing.**
+Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026) and extended through OAK-57. **100 tests, all passing.**
 
 - **Runner**: Vitest with jsdom + React Testing Library (`@testing-library/react`)
 - **Config**: `vitest.config.ts` at project root — separate from `vite.config.ts` so `VitePluginRadar` (GA) never runs in test env

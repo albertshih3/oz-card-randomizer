@@ -5,6 +5,7 @@ import { Skeleton } from "@heroui/skeleton";
 import { Users, ExternalLink } from "lucide-react";
 import { getCategories } from "@/utils/categories";
 import type { Category } from "@/utils/categories";
+import { useAdminFiltersContext } from "@/contexts/admin-filters-context";
 
 interface NavDrawerProps {
   isOpen: boolean;
@@ -16,23 +17,42 @@ interface DrawerContentProps {
   categories: Category[];
   isLoading: boolean;
   pathname: string;
-  onItemClick: (href: string) => void;
+  selectedCategory: string;
+  onCategorySelect: (id: string) => void;
+  onNavigate: (href: string) => void;
 }
 
 function DrawerContent({
+  onClose,
   categories,
   isLoading,
   pathname,
-  onItemClick,
+  selectedCategory,
+  onCategorySelect,
+  onNavigate,
 }: DrawerContentProps) {
+  const isCardsPage = pathname === "/admin";
+
+  const handleCategoryClick = (categoryId: string) => {
+    onCategorySelect(categoryId);
+    onClose();
+  };
+
+  const handleNavClick = (href: string) => {
+    onNavigate(href);
+    onClose();
+  };
+
   return (
     <nav className="flex flex-col flex-1 overflow-y-auto px-3 py-2">
       <button
-        onClick={() => onItemClick("/admin")}
-        aria-current={pathname === "/admin" ? "page" : undefined}
+        onClick={() => handleCategoryClick("all")}
+        aria-current={
+          isCardsPage && selectedCategory === "all" ? "page" : undefined
+        }
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left font-semibold text-base transition-colors"
         style={
-          pathname === "/admin"
+          isCardsPage && selectedCategory === "all"
             ? {
                 background: "var(--md-sys-color-secondary-container)",
                 color: "var(--md-sys-color-on-secondary-container)",
@@ -55,9 +75,19 @@ function DrawerContent({
         categories.map((cat) => (
           <button
             key={cat.id}
-            onClick={() => onItemClick("/admin")}
+            onClick={() => handleCategoryClick(cat.name)}
+            aria-current={
+              isCardsPage && selectedCategory === cat.name ? "page" : undefined
+            }
             className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-left text-sm transition-colors pl-6"
-            style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+            style={
+              isCardsPage && selectedCategory === cat.name
+                ? {
+                    background: "var(--md-sys-color-secondary-container)",
+                    color: "var(--md-sys-color-on-secondary-container)",
+                  }
+                : { color: "var(--md-sys-color-on-surface-variant)" }
+            }
           >
             {cat.displayName}
           </button>
@@ -70,7 +100,7 @@ function DrawerContent({
       />
 
       <button
-        onClick={() => onItemClick("/admin/users")}
+        onClick={() => handleNavClick("/admin/users")}
         aria-current={pathname === "/admin/users" ? "page" : undefined}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
         style={
@@ -94,7 +124,7 @@ function DrawerContent({
       />
 
       <button
-        onClick={() => onItemClick("/")}
+        onClick={() => handleNavClick("/")}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
         style={{ color: "var(--md-sys-color-on-surface-variant)" }}
       >
@@ -108,26 +138,40 @@ function DrawerContent({
 export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { filters, setSelectedCategory, categoryRefreshKey } =
+    useAdminFiltersContext();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    getCategories().then((cats) => {
-      if (!cancelled) {
-        setCategories(cats);
-        setIsLoading(false);
-      }
-    });
+    getCategories()
+      .then((cats) => {
+        if (!cancelled) {
+          setCategories(cats);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("NavDrawer: failed to load categories", err);
+        if (!cancelled) setIsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [categoryRefreshKey]);
 
-  const handleItemClick = (href: string) => {
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    // Ensure we're on the cards page when selecting a category
+    if (pathname !== "/admin") {
+      navigate("/admin");
+    }
+  };
+
+  const handleNavigate = (href: string) => {
     navigate(href);
-    onClose();
   };
 
   const contentProps: DrawerContentProps = {
@@ -135,7 +179,9 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
     categories,
     isLoading,
     pathname,
-    onItemClick: handleItemClick,
+    selectedCategory: filters.selectedCategory,
+    onCategorySelect: handleCategorySelect,
+    onNavigate: handleNavigate,
   };
 
   return (

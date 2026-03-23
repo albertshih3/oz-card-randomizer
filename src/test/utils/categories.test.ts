@@ -12,8 +12,13 @@ vi.mock("firebase/firestore", () => ({
   doc: vi.fn(),
 }));
 
+vi.mock("firebase/auth", () => ({
+  signInWithCustomToken: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/firebase", () => ({
   db: {},
+  auth: { currentUser: {} },
 }));
 
 import { getDocs, setDoc } from "firebase/firestore";
