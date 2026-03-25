@@ -10,6 +10,192 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 24, 2026 - Post-Review Hardening
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry. All changes are confined to already-touched files; no new files were created.
+
+#### `api/_auth.ts`
+
+- Removed duplicate standalone `verifyToken` import from `@clerk/backend`.
+- Changed token verification from `verifyToken(token, { secretKey: ... })` to `clerkClient.verifyToken(token)` — uses the already-instantiated module-scope client rather than re-passing the secret key.
+
+#### `api/users/invite.ts`
+
+- `redirectUrl` now falls through three sources in priority order: `process.env.APP_URL` (server-side, Vercel project setting) → `process.env.VITE_APP_URL` (Vite build-time variable, unreliable in Node serverless runtime on preview deployments) → hardcoded production URL. **Set `APP_URL` in Vercel project settings for preview/staging deployments.**
+- Added `res.setHeader("Allow", "POST")` on the 405 response (RFC 7231 compliance).
+- Added basic email format regex (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`) validation before calling Clerk — fast 400 for clearly malformed addresses.
+
+#### `api/users/list.ts`
+
+- Added `res.setHeader("Allow", "GET")` on the 405 response.
+
+#### `src/components/admin/account-panel.tsx`
+
+- Added `extractClerkError(err: unknown): string` helper — same structural duck-type pattern as `sign-in.tsx` — to extract `err.errors[0].longMessage` from Clerk structured errors before passing to the snackbar. Both catch blocks (profile save and password change) now use it. This prevents raw Clerk SDK internals from reaching the user.
+- Changed `useEffect` dependency from `[user]` to `[user?.id]` — prevents form fields from resetting mid-edit when Clerk's SDK produces new `user` object references during background polling.
+- Avatar section now always renders. When `user.imageUrl` is absent, a `<div>` with `var(--md-sys-color-primary-container)` background displays the user's initials (first letter of `firstName` + first letter of `lastName`, falling back to first letter of email).
+
+#### `src/utils/admin-api.ts`
+
+- `listUsers` now performs runtime shape validation: `Array.isArray(body)` check before returning; throws `"Unexpected response format from /api/users/list"` if the server returns a non-array body on HTTP 200.
+
+#### `src/pages/admin/users.tsx`
+
+- Null `getToken()` handling: when `getToken()` returns `null` in `fetchUsers`, sets `loadError` to `"Session expired. Please refresh the page."` before returning (previously showed a silent empty state).
+- Same null guard in `handleInvite`: sets `inviteError` to the same message.
+- Added inline comment on the fire-and-forget `fetchUsers()` call after a successful invite.
+
+#### `tsconfig.api.json`
+
+- `"moduleResolution"` changed from `"node"` to `"node16"`, `"module"` changed from `"CommonJS"` to `"Node16"` — enables `exports` map resolution for modern packages like `@clerk/backend`.
+
+#### Test changes
+
+- `src/test/components/admin/account-panel.test.tsx`: Added 1 new test: "shows snackbar with error message when password change fails".
+- `src/test/utils/admin-api.test.ts`: Added `expect(result).toBeUndefined()` assertion to the `inviteUser` success test to verify the function returns void.
+
+#### Key new patterns established
+
+- **`APP_URL` vs `VITE_APP_URL`**: Use `APP_URL` (plain server env var) for redirect URLs in serverless functions. `VITE_APP_URL` is a Vite build-time substitution that is not reliably available in the Node runtime on preview deployments.
+- **`extractClerkError` pattern**: Both `sign-in.tsx` and `account-panel.tsx` now use the same structural guard to extract human-readable messages from Clerk API errors. Apply this pattern in any future component that handles Clerk errors — do not surface raw SDK error objects.
+- **`[user?.id]` not `[user]` for Clerk user effects**: Clerk's SDK may produce new `user` object references during background polling without changing any actual user data. Using `[user?.id]` as the `useEffect` dependency prevents spurious form field resets mid-edit.
+
+#### Verification Results
+
+- Build: Successful
+- Lint: Clean
+- Tests: **128 passing, 0 failing** (127 → 128; +1 test)
+- Breaking Changes: None
+
+---
+
+### March 24, 2026 - Post-Ship Fixes: Custom Account Panel + Dev Error UX (OAK-81, OAK-82)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+#### OAK-82 — Fix "Failed to load users" in dev + improve load-error UX
+
+**Root cause**: `npm run dev` runs Vite only. The `/api/users/list` serverless function does not exist in that context. The fetch returns a 404 HTML page; `res.json()` throws; the error reached a transient `<M3Snackbar>` that auto-dismissed after 4 seconds, leaving an empty table with no explanation.
+
+**Fix 1 — `dev:full` script**: Added `"dev:full": "vercel dev"` to `package.json` scripts. `vercel dev` runs both the Vite frontend and serverless functions on a single port. Use this when developing features that call `/api/*` endpoints.
+
+**Fix 2 — Inline error state**: Replaced the snackbar pattern for load failures with a persistent inline error block in `src/pages/admin/users.tsx`. New `loadError: string | null` state. When set, renders: "Could not load team members" heading (error color), the error message, and a "Retry" button that re-calls `fetchUsers()`. The `<M3Snackbar>` is now reserved exclusively for invite operation feedback.
+
+**All changes confined to `src/pages/admin/users.tsx` and `package.json`.**
+
+#### OAK-81 — Custom account management panel (replaces `<UserProfile />`)
+
+**Why**: `<UserProfile />` renders an iframe to Clerk's hosted UI — it ignores M3 design tokens, renders inconsistently in dark mode, and cannot be tested without an iframe mock.
+
+**New file: `src/components/admin/account-panel.tsx`** (named export: `AccountPanel`):
+
+- `useUser()` from `@clerk/clerk-react` (no subpath imports).
+- Avatar display: `user.imageUrl` in a 16×16 rounded-full `<img>`.
+- Section 1 — Profile Information: email (read-only, description "Email changes require verification — contact support."), first name (required), last name (optional). Save → `user.update({ firstName, lastName })`.
+- Section 2 — Change Password: current password, new password (min 8 chars), confirm password. Save → `user.updatePassword({ currentPassword, newPassword, signOutOfOtherSessions: false })`. On success: clears all three fields.
+- Validate-on-submit, clear-on-change (lesson #15). Own `<M3Snackbar>` for success/error feedback.
+- Returns `null` when `!isLoaded` (avoids flash with undefined user).
+
+**Modified `src/pages/admin/users.tsx`**:
+
+- Removed `UserProfile` from `@clerk/clerk-react` import.
+- Added `import { AccountPanel } from "@/components/admin/account-panel"`.
+- Replaced `<UserProfile appearance={...} />` with `<AccountPanel />`.
+
+**New test file: `src/test/components/admin/account-panel.test.tsx`** — 5 tests: email is read-only, profile saves via `user.update`, empty first name shows validation error, password mismatch shows error, success snackbar + field clearing after password change.
+
+**Updated `src/test/pages/admin/users.test.tsx`**: Added `useUser` to `@clerk/clerk-react` mock, removed `UserProfile` from mock, added `@/components/admin/account-panel` mock, added 1 new test ("shows inline error with retry button when load fails").
+
+#### Verification Results
+
+- Build: Successful
+- Lint: Clean
+- Tests: **127 passing, 0 failing** (121 → 127; +6 tests across 2 modified + 1 new test file)
+- Breaking Changes: `/admin/users` "My Account" section now shows a custom panel instead of the Clerk iframe. The `dev:full` script is new; existing `dev` script is unchanged.
+
+---
+
+### March 24, 2026 - Vercel API Layer + Admin Users Page (OAK-58, OAK-59)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-58 stands up the Vercel serverless API layer needed to proxy Clerk's user management endpoints without exposing the Clerk Secret Key to the browser. OAK-59 replaces the 10-line `/admin/users` stub with a full users management page.
+
+#### New files
+
+**`api/_auth.ts`**:
+
+- Exports: `requireAuth(req, res): Promise<AuthPayload>` and `clerkClient`.
+- `clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })` at module scope — reused across warm-starts.
+- `requireAuth` extracts `Authorization: Bearer <token>`, calls `clerkClient.verifyToken(token)`, returns `{ userId: payload.sub }`. Sends 401 and throws on failure — callers must `try/catch` and `return` immediately.
+- `@clerk/backend` is Node-only; never import it from any `src/` file.
+
+**`api/users/list.ts`** (`GET /api/users/list`):
+
+- 405 guard → auth → `clerkClient.users.getUserList({ limit: 100 })` → sanitized `{ id, email, firstName, lastName, lastSignInAt }` array.
+- Does NOT expose `emailAddresses` array, password hashes, or internal Clerk metadata.
+
+**`api/users/invite.ts`** (`POST /api/users/invite`):
+
+- 405 guard → auth → email validation (400 if missing/empty) → `clerkClient.invitations.createInvitation({ emailAddress, redirectUrl })`.
+- `redirectUrl` = `${process.env.VITE_APP_URL ?? "https://ozboosterpacks.albertshih.org"}/sign-in`.
+- Surfaces Clerk's `errors[0].message` on failure.
+
+**`tsconfig.api.json`** (project root):
+
+- IDE support only; Vercel uses esbuild at deploy time.
+- `"module": "CommonJS"`, `"moduleResolution": "node"` — different from the Vite tsconfig.
+- `"include": ["api/**/*.ts"]`.
+- Pre-commit `tsc --noEmit` uses `tsconfig.json` which excludes `api/` — run `tsc -p tsconfig.api.json --noEmit` manually to check API types.
+
+**`src/utils/admin-api.ts`**:
+
+- Exports: `AdminUser` interface, `listUsers(token)`, `inviteUser(token, email)`.
+- Both functions throw `Error` with human-readable message on non-ok responses.
+- `inviteUser` returns `void`. No default export. Named exports only.
+- Never import `@clerk/backend` here — this is a browser-side fetch client.
+
+**`src/pages/admin/users.tsx`** (replaced stub):
+
+- Three sections: User list table, Invite modal/bottom-sheet, My Account.
+- `InviteFormContentProps` interface + `InviteFormContent` function (props-based, non-exported) — same pattern as `FormContent` in `card-edit-sheet.tsx`.
+- `getToken()` called with NO arguments — returns Clerk JWT for `/api/users/*`. Different from `getToken({ template: "integration_firebase" })` used in card management.
+- `UserProfile` from `@clerk/clerk-react` — styled via Appearance API with M3 color tokens.
+- Status badge: `lastSignInAt !== null` → "Active" (primary-container), else → "Invited" (surface-variant).
+
+#### Modified files
+
+**`vercel.json`**:
+
+- Rewrite source changed from `/(.*)` to `/((?!api/.*).*)` — the negative lookahead prevents `/api/*` requests from being rewritten to `/`, allowing Vercel to route them to serverless functions.
+
+**`package.json`**:
+
+- Added `@clerk/backend` to `dependencies` (not devDependencies — runs in Vercel production).
+- Added `@vercel/node` to `devDependencies`.
+
+#### New test files
+
+**`src/test/utils/admin-api.test.ts`** — 5 tests: GET header, parsed array, non-ok throw, POST header+body, POST non-ok throw.
+
+**`src/test/api/users.test.ts`** — 8 tests: list 405, list 401 (no header), list 401 (bad token), list 200 sanitized; invite 405, invite 401, invite 400 (no email), invite 200.
+
+- Uses `vi.hoisted()` to declare mock functions before `vi.mock()` hoisting for stable `clerkClient` instance.
+
+**`src/test/pages/admin/users.test.tsx`** — 5 tests: renders list, opens modal, submits invite, success snackbar, error stays in modal.
+
+- Mocks: `@clerk/clerk-react` (UserProfile as stub div), `@/utils/admin-api`, `@/hooks/use-media-query`, `framer-motion`, `@heroui/modal`, `@heroui/button`, `@heroui/input`, `@heroui/table`, `@/components/m3/linear-progress`, `@/components/m3/snackbar`, `@/components/m3/bottom-sheet`.
+
+#### Verification Results
+
+- Build: Successful (new `users-DpxnC0l0.js` chunk, 5.28 kB)
+- Lint: Clean (0 errors, pre-existing gtag.ts warnings only)
+- Tests: **121 passing, 0 failing** (100 → 121; 21 new tests across 3 new test files)
+- API type-check: `tsc -p tsconfig.api.json --noEmit` — 0 errors
+- Breaking Changes: `/admin/users` no longer shows stub — shows full users management page.
+
+---
+
 ### March 23, 2026 - Consolidated Card Management: Card Panel, Edit Sheet, Snackbar, Filter Persistence (OAK-54, OAK-55, OAK-56, OAK-57)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
@@ -1377,8 +1563,35 @@ Each collection represents a card category:
 **Development**:
 
 ```bash
-npm run dev          # Start dev server (Vite)
+npm run dev          # Vite-only dev server — no /api/* serverless functions
+npm run dev:full     # vercel dev — runs Vite + serverless functions on one port
 ```
+
+Use `npm run dev` for UI-only work. Use `npm run dev:full` any time you need `/api/*` endpoints (e.g., `/admin/users`). See "Local Full-Stack Development" below for setup steps.
+
+### Local Full-Stack Development (`vercel dev`)
+
+`npm run dev:full` runs `vercel dev`, which serves both the Vite frontend and the Vercel serverless functions (`api/`) on a single port. It requires a one-time env pull and has several important behavioral details:
+
+**Setup — run once per machine (or after Vercel env changes)**:
+
+```bash
+vercel env pull .env.local
+```
+
+`vercel dev` reads serverless function environment variables from `.env.local`, not from `.env`. If `.env.local` is absent or stale, serverless functions will fail with missing-key errors. Always pull from Vercel before first use.
+
+**Why `.env` may have mismatched Clerk keys**: If `CLERK_SECRET_KEY` in `.env` was set manually (or copied from a different Clerk instance than `VITE_CLERK_PUBLISHABLE_KEY`), the JWT token issued by the frontend will not pass `clerkClient.verifyToken()` in the serverless functions — you will see a KID mismatch error. `vercel env pull` ensures both keys come from the same Clerk instance.
+
+**`vercel.json` rewrite pattern**: The rewrite source is `/((?!api/|@)[^.]*)`. The two key exclusions are:
+
+- `api/` — prevents Vercel from rewriting `/api/*` requests to `/`, so they reach serverless functions.
+- `@` — prevents Vite virtual modules (`@react-refresh`, `@vite/client`) from being rewritten to `/` and returning 404s.
+- `[^.]*` — matches only extensionless paths (SPA routes); files with extensions (`.tsx`, `.js`, `.css`) are served directly.
+
+**`vite.config.ts` `api-dev-interceptor` plugin**: When running `npm run dev` (Vite-only), this plugin intercepts all `/api/*` requests and returns a `503 Service Unavailable` response with a JSON body explaining that `npm run dev:full` is required. This prevents the cryptic "Unexpected token '<'" JSON parse error that would otherwise appear when a 404 HTML page is returned.
+
+**Dynamic port**: `vite.config.ts` reads `process.env.PORT` so `vercel dev` can assign the Vite dev server a port without conflicting with the Vercel port. Do not hardcode the port in the config.
 
 **Production**:
 
@@ -1407,12 +1620,18 @@ Test files live under `src/test/`:
 - `src/test/hooks/use-booster-pack-generation.test.ts` — hook tests (28 tests)
 - `src/test/hooks/use-admin-filters.test.ts` — filter hook tests (8 tests)
 - `src/test/utils/categories.test.ts` — utility tests (23 tests)
+- `src/test/utils/admin-api.test.ts` — admin API client tests (5 tests)
 - `src/test/components/m3/spinner.test.tsx` — M3Spinner component tests (5 tests)
 - `src/test/components/m3/snackbar.test.tsx` — snackbar tests (4 tests)
 - `src/test/components/navbar.test.tsx` — navbar auth-gating tests (5 tests)
 - `src/test/components/admin/card-edit-sheet.test.tsx` — card edit sheet tests (5 tests)
+- `src/test/components/admin/account-panel.test.tsx` — account panel tests (6 tests; 5 original + 1 added in post-review hardening)
+- `src/test/layouts/admin.test.tsx` — admin layout tests (2 tests)
+- `src/test/pages/sign-in.test.tsx` — sign-in page tests (9 tests)
 - `src/test/pages/admin/card-crud.test.tsx` — card CRUD audit tests (4 tests)
 - `src/test/pages/admin/category-crud.test.ts` — category CRUD audit tests (4 tests)
+- `src/test/pages/admin/users.test.tsx` — users management page tests (6 tests)
+- `src/test/api/users.test.ts` — Vercel handler tests for list + invite (8 tests)
 
 **Deployment**:
 
@@ -1423,7 +1642,7 @@ Test files live under `src/test/`:
 
 ### Test Suite
 
-Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026) and extended through OAK-57. **100 tests, all passing.**
+Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026) and extended through OAK-82 + post-review hardening. **128 tests, all passing.**
 
 - **Runner**: Vitest with jsdom + React Testing Library (`@testing-library/react`)
 - **Config**: `vitest.config.ts` at project root — separate from `vite.config.ts` so `VitePluginRadar` (GA) never runs in test env
