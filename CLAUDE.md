@@ -10,6 +10,66 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 25, 2026 - Changelog Page M3 Redesign (OAK-86, OAK-87, OAK-88)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-86 ports the changelog page to M3 design tokens and motion variants. OAK-87 adds visual distinction to the current version entry and a recency badge for recently-shipped versions. OAK-88 collapses older entries behind a "Show older" toggle.
+
+#### Changes — `src/pages/changelog.tsx` (only file modified)
+
+**OAK-86 — M3 token migration**:
+
+- Replaced all hardcoded Tailwind color classes (`text-blue-500`, `bg-blue-50`, `bg-card`, `text-muted-foreground`, `border-border`, etc.) with M3 CSS custom properties via inline `style` props.
+- Replaced `getSectionColor(type)` (returned Tailwind class string) with `getSectionStyle(type): React.CSSProperties` — returns `{ background, color }` using `var(--md-sys-color-*)` tokens. Section type mapping: `feat` → primary-container, `fix` → tertiary-container, `chore` → secondary-container, `init`/default → surface-variant.
+- Removed color modifier classes from `getSectionIcon` icons — icons now inherit `currentColor` from the styled parent `<span>`.
+- Applied M3 typography scale: `text-headline-large` (h1), `text-title-large` (h2 version), `text-body-large` (subtitle), `text-body-medium` (date row, list items), `text-label-large` (section h3, toggle button), `text-label-medium` (badge chips).
+- Replaced per-entry `initial/animate/transition` inline props with `listContainerVariants` (outer `motion.div`) + `listItemVariants` (per-entry `motion.div`) from `@/lib/motion` — same stagger pattern as `card-panel.tsx`.
+- Accordion `ease` changed from `"easeInOut"` to `[0.2, 0, 0, 1]` (M3 Standard curve, copied by value — not imported — because easing constants in `motion.ts` are not exported).
+- Content panel border-t moved from `className="border-t border-border/50"` to `style={{ borderTop: "1px solid var(--md-sys-color-outline-variant)" }}`.
+- Timeline line and bullet dot backgrounds changed from `bg-border` to `style={{ background: "var(--md-sys-color-outline-variant)" }}`.
+
+**OAK-87 — Current version highlight + recency badge**:
+
+- Current version entry (`isCurrent: true`) gets a `2px solid var(--md-sys-color-primary)` border and `shadow-elevation-1` — visually distinct without a colored background fill (user feedback: no purple card fill).
+- "Current" badge replaced with M3 chip: `text-label-medium`, `background: var(--md-sys-color-primary)`, `color: var(--md-sys-color-on-primary)`.
+- GitCommit avatar circle on current entry uses `primary` background + `on-primary` color.
+- Added `isRecentEntry(dateStr)` module-scope helper: strips ordinal suffixes (`2nd` → `2`), parses with `new Date()`, returns `true` if within 30 days of now. Returns `false` on any parse failure (defensive).
+- "New" badge added (`tertiary-container` background) on non-current entries where `isRecentEntry(entry.date)` is true.
+
+**OAK-88 — Show-all toggle**:
+
+- `RECENT_COUNT = 3` constant — first N entries always visible.
+- `showAll` state (default `false`).
+- `visibleEntries = showAll ? entries : entries.slice(0, RECENT_COUNT)`.
+- `hiddenCount = entries.length - RECENT_COUNT`.
+- Toggle button: M3 outlined chip style (transparent fill, `primary` text, `outline` border, rounded-full). Shows "Show X older versions" (with `ChevronDown` icon) or "Show less".
+- Button wrapped in `AnimatePresence mode="wait"` + `motion.div` with `key={showAll ? "show-less" : "show-more"}` and `variants={pageVariants}` from `@/lib/motion`.
+
+#### Key decisions
+
+- **No `primary-container` card fill**: The current version entry uses a white (`surface`) background with a `2px primary` border for distinction. A full `primary-container` fill (purple) was removed based on user feedback — it was too visually heavy.
+- **Accordion `ease` copied by value**: `[0.2, 0, 0, 1]` (M3 Standard) is written inline on the accordion `motion.div` because `height: auto` animations cannot use shared named variants, and the easing constants in `motion.ts` are not exported.
+- **`isRecentEntry` uses `<=` not `<`**: Exactly 30 days ago is considered "recent". `now` is evaluated at render time, so badges expire naturally as calendar time passes.
+
+#### Post-review fixes (applied during same session)
+
+- Added `aria-expanded` + `aria-controls` on each accordion `<button>`; matching `id` on each content grid `<div>` — WCAG 4.1.2 compliance for screen readers.
+- Added `focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] focus-visible:ring-offset-2` to accordion button — keyboard focus ring restored while keeping `focus:outline-none` for pointer users.
+- Guarded the show-more `AnimatePresence` block behind `entries.length > RECENT_COUNT` — prevents "Show 0 older versions" button when changelog has ≤ 3 entries.
+- Replaced `pageVariants` (16px slide) on show-more button with inline opacity-only fade (150ms) — page-level slide transition was semantically wrong for a label-swap toggle.
+- Fixed indentation misalignment of accordion inner `overflow-hidden` and `px-6` divs — structural clarity, no runtime change.
+
+#### Verification Results
+
+- TypeScript: 0 errors
+- Lint: 0 errors (1 pre-existing warning in `account-panel.tsx` — expected)
+- Tests: 128 passing, 0 failing (no changelog tests exist)
+- Build: Successful
+- Breaking Changes: None
+
+---
+
 ### March 25, 2026 - M3 Motion System + Typography Scale (OAK-60, OAK-61)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
@@ -20,7 +80,7 @@ Web application for generating randomized trading card booster packs for Oakland
 
 **`src/lib/motion.ts`**:
 
-- Exports: `pageVariants`, `listContainerVariants`, `listItemVariants`, `surfaceVariants`, `drawerVariants`, `backdropVariants`.
+- Exports: `pageVariants`, `listContainerVariants`, `listItemVariants`, `surfaceVariants`, `drawerVariants`, `backdropVariants`, `accordionVariants`.
 - Module-scope easing constants: `EMPHASIZED_DECELERATE = [0.05, 0.7, 0.1, 1.0]`, `EMPHASIZED_ACCELERATE = [0.3, 0, 1, 1]`, `STANDARD = [0.2, 0, 0, 1]`.
 - Each variant has JSDoc noting enter/exit behavior, easing curve used, and M3 duration token equivalent.
 - No default export. Named exports only.
