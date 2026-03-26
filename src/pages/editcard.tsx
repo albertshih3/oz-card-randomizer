@@ -20,14 +20,14 @@ import {
   collection as firestoreCollection,
   writeBatch,
 } from "firebase/firestore";
-import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
 import { M3Spinner } from "@/components/m3/spinner";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { ensureFirebaseAuth } from "@/lib/firebase-auth";
 import { validateCardForm, CardFormErrors } from "@/utils/validation";
 import { Save, Trash2, X } from "lucide-react";
 import type { Card } from "@/types/index";
@@ -73,8 +73,7 @@ export default function EditCardPage() {
 
         if (!cardId || !collectionId) return;
 
-        const token = await getToken({ template: "integration_firebase" });
-        await signInWithCustomToken(auth, token || "");
+        await ensureFirebaseAuth(getToken);
         const cardRef = doc(db, collectionId, cardId);
         const cardSnap = await getDoc(cardRef);
         if (cardSnap.exists()) {
@@ -111,15 +110,7 @@ export default function EditCardPage() {
 
     setIsSaving(true);
     try {
-      // Ensure we're authenticated with Firebase before any write
-      const ensureFirebaseAuth = async () => {
-        if (!auth.currentUser) {
-          const token = await getToken({ template: "integration_firebase" });
-          await signInWithCustomToken(auth, token || "");
-        }
-      };
-
-      await ensureFirebaseAuth();
+      await ensureFirebaseAuth(getToken);
 
       if (isNew) {
         event({
@@ -181,9 +172,7 @@ export default function EditCardPage() {
 
     setIsSaving(true);
     try {
-      // Ensure we're authenticated with Firebase before any write
-      const token = await getToken({ template: "integration_firebase" });
-      await signInWithCustomToken(auth, token || "");
+      await ensureFirebaseAuth(getToken);
 
       event({
         action: "delete",
@@ -364,6 +353,7 @@ export default function EditCardPage() {
               onPress={() => handleSave(selectedCard)}
               color="primary"
               isLoading={isSaving}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               startContent={!isSaving && <Save className="w-4 h-4" />}
               className="font-semibold"
             >

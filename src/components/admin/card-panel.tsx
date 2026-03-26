@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  listContainerVariants,
+  listItemVariants,
+  pageVariants,
+} from "@/lib/motion";
 import {
   collection as firestoreCollection,
   getDocs,
   updateDoc,
   doc,
 } from "firebase/firestore";
-import { signInWithCustomToken } from "firebase/auth";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { ensureFirebaseAuth } from "@/lib/firebase-auth";
 import { getCategories } from "@/utils/categories";
 import type { Category } from "@/utils/categories";
 import { COLLECTION_DISPLAY_NAMES } from "@/constants/collections";
@@ -35,15 +41,6 @@ import type { Card } from "@/types/index";
 interface SortDescriptor {
   column: "name" | "number" | "collection" | "active";
   direction: "ascending" | "descending";
-}
-
-async function ensureFirebaseAuth(
-  getToken: (opts?: { template: string }) => Promise<string | null>,
-) {
-  if (!auth.currentUser) {
-    const token = await getToken({ template: "integration_firebase" });
-    await signInWithCustomToken(auth, token || "");
-  }
 }
 
 function getDisplayName(collectionId: string): string {
@@ -276,176 +273,203 @@ export function CardPanel() {
 
       {/* Card count */}
       <p
-        className="text-sm mb-3"
+        className="text-body-medium mb-3"
         style={{ color: "var(--md-sys-color-on-surface-variant)" }}
       >
         {filteredCards.length} card{filteredCards.length !== 1 ? "s" : ""}
         {filters.selectedCategory !== "all" ? " in selected category" : ""}
       </p>
 
-      {/* Table view */}
-      {filters.viewMode === "table" && (
-        <div className="overflow-x-auto">
-          <Table
-            aria-label="Cards"
-            removeWrapper
-            sortDescriptor={sortDescriptor}
-            onSortChange={(descriptor) =>
-              setSortDescriptor(descriptor as SortDescriptor)
-            }
+      <AnimatePresence mode="wait" initial={false}>
+        {/* Table view */}
+        {filters.viewMode === "table" && (
+          <motion.div
+            key="view-table"
+            variants={pageVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
           >
-            <TableHeader>
-              <TableColumn key="name" allowsSorting>
-                Name
-              </TableColumn>
-              <TableColumn key="number" allowsSorting>
-                Number
-              </TableColumn>
-              <TableColumn key="collection" allowsSorting>
-                Collection
-              </TableColumn>
-              <TableColumn key="active" allowsSorting>
-                Active
-              </TableColumn>
-              <TableColumn key="actions">Actions</TableColumn>
-            </TableHeader>
-            <TableBody>
-              {filteredCards.map((card) => (
-                <TableRow key={`${card.collection}:${card.id}`}>
-                  <TableCell>{card.name}</TableCell>
-                  <TableCell>{card.number}</TableCell>
-                  <TableCell>
-                    <CollectionBadge
-                      collection={card.collection}
-                      name={getDisplayName(card.collection)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      isSelected={card.active}
-                      onValueChange={() => handleToggleActive(card)}
-                      size="sm"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      onClick={() => openEditSheet(card)}
-                      className="p-1 rounded-lg"
-                      style={{ color: "var(--md-sys-color-primary)" }}
-                    >
-                      <Pencil size={16} />
-                    </button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {/* Grid view */}
-      {filters.viewMode === "grid" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto">
-          {filteredCards.map((card) => (
-            <div
-              key={`${card.collection}:${card.id}`}
-              className="rounded-2xl p-3 border flex flex-col gap-2"
-              style={{
-                borderColor: "var(--md-sys-color-outline-variant)",
-                background: "var(--md-sys-color-surface-variant)",
-              }}
-            >
-              <CollectionBadge
-                collection={card.collection}
-                name={getDisplayName(card.collection)}
-              />
-              <p
-                className="font-medium text-sm"
-                style={{ color: "var(--md-sys-color-on-surface)" }}
+            <div className="overflow-x-auto">
+              <Table
+                aria-label="Cards"
+                removeWrapper
+                sortDescriptor={sortDescriptor}
+                onSortChange={(descriptor) =>
+                  setSortDescriptor(descriptor as SortDescriptor)
+                }
               >
-                {card.name}
-              </p>
-              <p
-                className="text-xs"
+                <TableHeader>
+                  <TableColumn key="name" allowsSorting>
+                    Name
+                  </TableColumn>
+                  <TableColumn key="number" allowsSorting>
+                    Number
+                  </TableColumn>
+                  <TableColumn key="collection" allowsSorting>
+                    Collection
+                  </TableColumn>
+                  <TableColumn key="active" allowsSorting>
+                    Active
+                  </TableColumn>
+                  <TableColumn key="actions">Actions</TableColumn>
+                </TableHeader>
+                <TableBody>
+                  {filteredCards.map((card) => (
+                    <TableRow key={`${card.collection}:${card.id}`}>
+                      <TableCell>{card.name}</TableCell>
+                      <TableCell>{card.number}</TableCell>
+                      <TableCell>
+                        <CollectionBadge
+                          collection={card.collection}
+                          name={getDisplayName(card.collection)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          isSelected={card.active}
+                          onValueChange={() => handleToggleActive(card)}
+                          size="sm"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={() => openEditSheet(card)}
+                          aria-label={`Edit ${card.name}`}
+                          className="p-1 rounded-lg"
+                          style={{ color: "var(--md-sys-color-primary)" }}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Grid view */}
+        {filters.viewMode === "grid" && (
+          <motion.div
+            key="view-grid"
+            variants={listContainerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto"
+          >
+            {filteredCards.map((card) => (
+              <motion.div
+                key={`${card.collection}:${card.id}`}
+                variants={listItemVariants}
+                className="rounded-2xl p-3 border flex flex-col gap-2"
                 style={{
-                  color: "var(--md-sys-color-on-surface-variant)",
+                  borderColor: "var(--md-sys-color-outline-variant)",
+                  background: "var(--md-sys-color-surface-variant)",
                 }}
               >
-                #{card.number}
-              </p>
-              <div className="flex items-center justify-between mt-auto">
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={
-                    card.active
-                      ? {
-                          background: "var(--md-sys-color-primary-container)",
-                          color: "var(--md-sys-color-on-primary-container)",
-                        }
-                      : {
-                          background: "var(--md-sys-color-surface-variant)",
-                          color: "var(--md-sys-color-on-surface-variant)",
-                        }
-                  }
+                <CollectionBadge
+                  collection={card.collection}
+                  name={getDisplayName(card.collection)}
+                />
+                <p
+                  className="font-medium text-sm"
+                  style={{ color: "var(--md-sys-color-on-surface)" }}
                 >
-                  {card.active ? "Active" : "Inactive"}
+                  {card.name}
+                </p>
+                <p
+                  className="text-xs"
+                  style={{
+                    color: "var(--md-sys-color-on-surface-variant)",
+                  }}
+                >
+                  #{card.number}
+                </p>
+                <div className="flex items-center justify-between mt-auto">
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={
+                      card.active
+                        ? {
+                            background: "var(--md-sys-color-primary-container)",
+                            color: "var(--md-sys-color-on-primary-container)",
+                          }
+                        : {
+                            background: "var(--md-sys-color-surface-variant)",
+                            color: "var(--md-sys-color-on-surface-variant)",
+                          }
+                    }
+                  >
+                    {card.active ? "Active" : "Inactive"}
+                  </span>
+                  <button
+                    onClick={() => openEditSheet(card)}
+                    aria-label={`Edit ${card.name}`}
+                    style={{ color: "var(--md-sys-color-primary)" }}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+
+        {/* List view */}
+        {filters.viewMode === "list" && (
+          <motion.div
+            key="view-list"
+            variants={listContainerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="divide-y overflow-y-auto"
+            style={{ borderColor: "var(--md-sys-color-outline-variant)" }}
+          >
+            {filteredCards.map((card) => (
+              <motion.div
+                key={`${card.collection}:${card.id}`}
+                variants={listItemVariants}
+                className="flex items-center gap-3 py-2"
+              >
+                <CollectionBadge
+                  collection={card.collection}
+                  name={getDisplayName(card.collection)}
+                />
+                <span
+                  className="flex-1 text-sm"
+                  style={{ color: "var(--md-sys-color-on-surface)" }}
+                >
+                  {card.name}
                 </span>
+                <span
+                  className="text-xs"
+                  style={{
+                    color: "var(--md-sys-color-on-surface-variant)",
+                  }}
+                >
+                  #{card.number}
+                </span>
+                <Switch
+                  isSelected={card.active}
+                  onValueChange={() => handleToggleActive(card)}
+                  size="sm"
+                />
                 <button
                   onClick={() => openEditSheet(card)}
+                  aria-label={`Edit ${card.name}`}
                   style={{ color: "var(--md-sys-color-primary)" }}
                 >
-                  <Pencil size={14} />
+                  <Pencil size={16} />
                 </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* List view */}
-      {filters.viewMode === "list" && (
-        <div
-          className="divide-y overflow-y-auto"
-          style={{ borderColor: "var(--md-sys-color-outline-variant)" }}
-        >
-          {filteredCards.map((card) => (
-            <div
-              key={`${card.collection}:${card.id}`}
-              className="flex items-center gap-3 py-2"
-            >
-              <CollectionBadge
-                collection={card.collection}
-                name={getDisplayName(card.collection)}
-              />
-              <span
-                className="flex-1 text-sm"
-                style={{ color: "var(--md-sys-color-on-surface)" }}
-              >
-                {card.name}
-              </span>
-              <span
-                className="text-xs"
-                style={{
-                  color: "var(--md-sys-color-on-surface-variant)",
-                }}
-              >
-                #{card.number}
-              </span>
-              <Switch
-                isSelected={card.active}
-                onValueChange={() => handleToggleActive(card)}
-                size="sm"
-              />
-              <button
-                onClick={() => openEditSheet(card)}
-                style={{ color: "var(--md-sys-color-primary)" }}
-              >
-                <Pencil size={16} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile FAB */}
       <button

@@ -19,6 +19,7 @@ import { listUsers, inviteUser } from "@/utils/admin-api";
 import type { AdminUser } from "@/utils/admin-api";
 import { AccountPanel } from "@/components/admin/account-panel";
 import { X, Send } from "lucide-react";
+import { M3Spinner } from "@/components/m3/spinner";
 
 interface InviteFormContentProps {
   inviteEmail: string;
@@ -56,6 +57,7 @@ function InviteFormContent({
           color="primary"
           onPress={onSend}
           isLoading={isSending}
+          spinner={<M3Spinner size="sm" color="currentColor" />}
           startContent={<Send size={16} />}
         >
           Send Invite
@@ -140,7 +142,7 @@ export default function AdminUsersPage() {
   return (
     <div style={{ color: "var(--md-sys-color-on-surface)" }}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Team Members</h2>
+        <h2 className="text-headline-small">Team Members</h2>
         <Button color="primary" onPress={() => setInviteOpen(true)}>
           Invite User
         </Button>
@@ -202,10 +204,8 @@ export default function AdminUsersPage() {
                     <span
                       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                       style={{
-                        background:
-                          "var(--md-sys-color-primary-container, #d0e4ff)",
-                        color:
-                          "var(--md-sys-color-on-primary-container, #001c38)",
+                        background: "var(--md-sys-color-primary-container)",
+                        color: "var(--md-sys-color-on-primary-container)",
                       }}
                     >
                       Active
@@ -214,10 +214,8 @@ export default function AdminUsersPage() {
                     <span
                       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                       style={{
-                        background:
-                          "var(--md-sys-color-surface-variant, #e0e2ec)",
-                        color:
-                          "var(--md-sys-color-on-surface-variant, #44474e)",
+                        background: "var(--md-sys-color-surface-variant)",
+                        color: "var(--md-sys-color-on-surface-variant)",
                       }}
                     >
                       Invited
@@ -239,7 +237,7 @@ export default function AdminUsersPage() {
           <div className="px-2 pb-6">
             <h2
               id="invite-title"
-              className="text-lg font-semibold px-4 pt-2 pb-2"
+              className="text-title-large px-4 pt-2 pb-2"
               style={{ color: "var(--md-sys-color-on-surface)" }}
             >
               Invite User
@@ -310,7 +308,7 @@ export default function AdminUsersPage() {
       <div className="mt-12">
         <h2
           id="my-account"
-          className="text-xl font-semibold mb-4"
+          className="text-headline-small mb-4"
           style={{ color: "var(--md-sys-color-on-surface)" }}
         >
           My Account

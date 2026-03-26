@@ -9,7 +9,7 @@ vi.mock("@clerk/clerk-react", () => ({
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ pathname: "/admin" }),
+  useLocation: () => ({ pathname: "/admin", key: "default" }),
   Outlet: () => <div data-testid="outlet" />,
 }));
 
@@ -25,6 +25,40 @@ vi.mock("@/components/admin/nav-drawer", () => ({
 
 vi.mock("@/components/m3/spinner", () => ({
   M3Spinner: () => <div data-testid="m3-spinner" />,
+}));
+
+vi.mock("@/lib/motion", () => ({
+  pageVariants: {},
+}));
+
+vi.mock("framer-motion", () => ({
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  motion: {
+    div: ({
+      children,
+      ...rest
+    }: React.HTMLAttributes<HTMLDivElement> & { [key: string]: unknown }) => {
+      const nonDom = new Set([
+        "initial",
+        "animate",
+        "exit",
+        "transition",
+        "variants",
+        "custom",
+        "whileHover",
+        "whileTap",
+        "layout",
+        "layoutId",
+      ]);
+      const filtered: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(rest)) {
+        if (!nonDom.has(k)) filtered[k] = v;
+      }
+      return <div {...filtered}>{children}</div>;
+    },
+  },
 }));
 
 vi.mock("@/contexts/admin-filters-context", () => ({

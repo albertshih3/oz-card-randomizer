@@ -1,8 +1,19 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  drawerVariants,
+  backdropVariants,
+  accordionVariants,
+} from "@/lib/motion";
 import { Skeleton } from "@heroui/skeleton";
-import { Users, ExternalLink } from "lucide-react";
+import {
+  Users,
+  ExternalLink,
+  ChevronDown,
+  ChevronRight,
+  RectangleVertical,
+} from "lucide-react";
 import { getCategories } from "@/utils/categories";
 import type { Category } from "@/utils/categories";
 import { useAdminFiltersContext } from "@/contexts/admin-filters-context";
@@ -20,6 +31,8 @@ interface DrawerContentProps {
   selectedCategory: string;
   onCategorySelect: (id: string) => void;
   onNavigate: (href: string) => void;
+  cardsExpanded: boolean;
+  onToggleCards: () => void;
 }
 
 function DrawerContent({
@@ -30,8 +43,22 @@ function DrawerContent({
   selectedCategory,
   onCategorySelect,
   onNavigate,
+  cardsExpanded,
+  onToggleCards,
 }: DrawerContentProps) {
   const isCardsPage = pathname === "/admin";
+
+  const handleCardsClick = () => {
+    const isAllAndOnAdmin = selectedCategory === "all" && isCardsPage;
+    if (isAllAndOnAdmin) {
+      // Already viewing "all" on /admin — just toggle expand/collapse
+      onToggleCards();
+    } else {
+      // Navigate to "all" and expand to show sub-items
+      onCategorySelect("all");
+      onClose();
+    }
+  };
 
   const handleCategoryClick = (categoryId: string) => {
     onCategorySelect(categoryId);
@@ -43,13 +70,16 @@ function DrawerContent({
     onClose();
   };
 
+  const ChevronIcon = cardsExpanded ? ChevronDown : ChevronRight;
+
   return (
     <nav className="flex flex-col flex-1 overflow-y-auto px-3 py-2">
       <button
-        onClick={() => handleCategoryClick("all")}
+        onClick={handleCardsClick}
         aria-current={
           isCardsPage && selectedCategory === "all" ? "page" : undefined
         }
+        aria-expanded={cardsExpanded}
         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left font-semibold text-base transition-colors"
         style={
           isCardsPage && selectedCategory === "all"
@@ -62,37 +92,54 @@ function DrawerContent({
               }
         }
       >
+        <RectangleVertical size={18} />
         Cards
+        <ChevronIcon size={16} className="ml-auto" />
       </button>
 
-      {isLoading ? (
-        <>
-          <Skeleton className="h-10 w-full rounded-xl my-1" />
-          <Skeleton className="h-10 w-full rounded-xl my-1" />
-          <Skeleton className="h-10 w-full rounded-xl my-1" />
-        </>
-      ) : (
-        categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => handleCategoryClick(cat.name)}
-            aria-current={
-              isCardsPage && selectedCategory === cat.name ? "page" : undefined
-            }
-            className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-left text-sm transition-colors pl-6"
-            style={
-              isCardsPage && selectedCategory === cat.name
-                ? {
-                    background: "var(--md-sys-color-secondary-container)",
-                    color: "var(--md-sys-color-on-secondary-container)",
-                  }
-                : { color: "var(--md-sys-color-on-surface-variant)" }
-            }
+      <AnimatePresence initial={false}>
+        {cardsExpanded && (
+          <motion.div
+            key="category-list"
+            variants={accordionVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="overflow-hidden"
           >
-            {cat.displayName}
-          </button>
-        ))
-      )}
+            {isLoading ? (
+              <>
+                <Skeleton className="h-10 w-full rounded-xl my-1" />
+                <Skeleton className="h-10 w-full rounded-xl my-1" />
+                <Skeleton className="h-10 w-full rounded-xl my-1" />
+              </>
+            ) : (
+              categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategoryClick(cat.name)}
+                  aria-current={
+                    isCardsPage && selectedCategory === cat.name
+                      ? "page"
+                      : undefined
+                  }
+                  className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-left text-sm transition-colors pl-6"
+                  style={
+                    isCardsPage && selectedCategory === cat.name
+                      ? {
+                          background: "var(--md-sys-color-secondary-container)",
+                          color: "var(--md-sys-color-on-secondary-container)",
+                        }
+                      : { color: "var(--md-sys-color-on-surface-variant)" }
+                  }
+                >
+                  {cat.displayName}
+                </button>
+              ))
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <hr
         className="my-2"
@@ -142,6 +189,7 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
     useAdminFiltersContext();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [cardsExpanded, setCardsExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,14 +212,14 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
 
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    // Ensure we're on the cards page when selecting a category
+    setCardsExpanded(true);
     if (pathname !== "/admin") {
       navigate("/admin");
     }
   };
 
-  const handleNavigate = (href: string) => {
-    navigate(href);
+  const handleToggleCards = () => {
+    setCardsExpanded((prev) => !prev);
   };
 
   const contentProps: DrawerContentProps = {
@@ -181,7 +229,9 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
     pathname,
     selectedCategory: filters.selectedCategory,
     onCategorySelect: handleCategorySelect,
-    onNavigate: handleNavigate,
+    onNavigate: navigate,
+    cardsExpanded,
+    onToggleCards: handleToggleCards,
   };
 
   return (
@@ -195,7 +245,13 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
         }}
       >
         <div className="h-16 flex items-center px-4 shrink-0">
-          <img src="/csclogo.svg" alt="Oakland Zoo" className="h-8 w-auto" />
+          <button
+            onClick={() => navigate("/")}
+            aria-label="Go to public site"
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+          >
+            <img src="/csclogo.svg" alt="Oakland Zoo" className="h-8 w-auto" />
+          </button>
         </div>
         <DrawerContent {...contentProps} onClose={() => {}} />
       </aside>
@@ -208,10 +264,10 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
               key="admin-drawer-backdrop"
               className="fixed inset-0 z-40 lg:hidden"
               style={{ background: "rgba(0,0,0,0.5)" }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
               onClick={onClose}
               aria-hidden="true"
             />
@@ -220,20 +276,29 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
               id="admin-nav-drawer"
               className="fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col lg:hidden shadow-elevation-2"
               style={{ background: "var(--md-sys-color-surface)" }}
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ duration: 0.35, ease: [0.05, 0.7, 0.1, 1.0] }}
+              variants={drawerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
               role="dialog"
               aria-modal="true"
               aria-label="Navigation menu"
             >
               <div className="h-16 flex items-center px-4 shrink-0">
-                <img
-                  src="/csclogo.svg"
-                  alt="Oakland Zoo"
-                  className="h-8 w-auto"
-                />
+                <button
+                  onClick={() => {
+                    navigate("/");
+                    onClose();
+                  }}
+                  aria-label="Go to public site"
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <img
+                    src="/csclogo.svg"
+                    alt="Oakland Zoo"
+                    className="h-8 w-auto"
+                  />
+                </button>
               </div>
               <DrawerContent {...contentProps} />
             </motion.aside>

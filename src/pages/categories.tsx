@@ -445,6 +445,7 @@ export default function CategoriesPage() {
               color="primary"
               onPress={handleSave}
               isLoading={isSaving}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               startContent={!isSaving && <Save className="w-4 h-4" />}
               className="font-semibold"
             >

@@ -3,6 +3,7 @@ import { useUser } from "@clerk/clerk-react";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { M3Snackbar } from "@/components/m3/snackbar";
+import { M3Spinner } from "@/components/m3/spinner";
 
 function extractClerkError(err: unknown): string {
   if (
@@ -157,7 +158,7 @@ export function AccountPanel() {
 
       <section>
         <h3
-          className="text-base font-semibold mb-4"
+          className="text-title-medium mb-4"
           style={{ color: "var(--md-sys-color-on-surface)" }}
         >
           Profile Information
@@ -194,6 +195,7 @@ export function AccountPanel() {
               color="primary"
               onPress={handleSaveProfile}
               isLoading={isSavingProfile}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
             >
               Save Profile
             </Button>
@@ -203,7 +205,7 @@ export function AccountPanel() {
 
       <section>
         <h3
-          className="text-base font-semibold mb-4"
+          className="text-title-medium mb-4"
           style={{ color: "var(--md-sys-color-on-surface)" }}
         >
           Change Password
@@ -250,6 +252,7 @@ export function AccountPanel() {
               color="primary"
               onPress={handleChangePassword}
               isLoading={isSavingPassword}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
             >
               Change Password
             </Button>

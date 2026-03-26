@@ -23,6 +23,7 @@ export function M3Spinner({
       height={px}
       viewBox="0 0 48 48"
       className={clsx("m3-spinner-rotate", className)}
+      style={{ color }}
       role="status"
       aria-label="Loading"
     >
@@ -32,7 +33,7 @@ export function M3Spinner({
         cy="24"
         r="20"
         fill="none"
-        stroke={color}
+        stroke="currentColor"
         strokeWidth={4}
         strokeLinecap="round"
         strokeDasharray="1, 200"

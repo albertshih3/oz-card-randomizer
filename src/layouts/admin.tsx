@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { pageVariants } from "@/lib/motion";
 import { M3Spinner } from "@/components/m3/spinner";
 import { TopAppBar } from "@/components/admin/top-app-bar";
 import { NavDrawer } from "@/components/admin/nav-drawer";
@@ -15,7 +17,7 @@ const ROUTE_TITLES: Record<string, string> = {
 export default function AdminLayout() {
   const { isLoaded, userId } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, key: locationKey } = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const title = ROUTE_TITLES[pathname] ?? "Admin";
@@ -67,8 +69,19 @@ export default function AdminLayout() {
             onMenuToggle={handleMenuToggle}
             isDrawerOpen={drawerOpen}
           />
-          <main className="flex-1 overflow-y-auto p-6">
-            <Outlet />
+          <main className="flex-1 overflow-y-auto">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={locationKey}
+                variants={pageVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="p-6 min-h-full"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </div>

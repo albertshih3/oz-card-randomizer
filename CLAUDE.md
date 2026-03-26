@@ -10,6 +10,98 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 25, 2026 - M3 Motion System + Typography Scale (OAK-60, OAK-61)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-60 centralizes all Framer Motion variant definitions into a single module so animation parameters are not scattered across component files. OAK-61 formalizes the Material Design 3 typography scale as Tailwind utility classes so heading and body text sizes are semantically named rather than ad-hoc `text-lg font-medium` combinations.
+
+#### New file
+
+**`src/lib/motion.ts`**:
+
+- Exports: `pageVariants`, `listContainerVariants`, `listItemVariants`, `surfaceVariants`, `drawerVariants`, `backdropVariants`.
+- Module-scope easing constants: `EMPHASIZED_DECELERATE = [0.05, 0.7, 0.1, 1.0]`, `EMPHASIZED_ACCELERATE = [0.3, 0, 1, 1]`, `STANDARD = [0.2, 0, 0, 1]`.
+- Each variant has JSDoc noting enter/exit behavior, easing curve used, and M3 duration token equivalent.
+- No default export. Named exports only.
+- **All future Framer Motion variants for admin UI must be defined here, not inline in component files.**
+
+#### Modified files
+
+**`src/styles/globals.css`**:
+
+- Added M3 Typography Scale as `@layer utilities` at end of file.
+- Classes: `text-display-large` (57px/400), `text-display-medium` (45px/400), `text-headline-large` (32px/400), `text-title-large` (22px/400), `text-title-medium` (16px/500), `text-body-large` (16px/400), `text-body-medium` (14px/400), `text-label-large` (14px/500), `text-label-medium` (12px/500).
+- Use these classes instead of ad-hoc `text-lg font-medium` combinations wherever M3 spec sizes apply.
+
+**`src/layouts/admin.tsx`**:
+
+- Imports `pageVariants` from `@/lib/motion`.
+- Wraps `<Outlet />` in `<AnimatePresence mode="wait" initial={false}>` + `<motion.div key={locationKey} variants={pageVariants} ...>`.
+- `locationKey` comes from `useLocation().key` — unique per navigation event, causing the exit + enter animation to fire on every route change.
+- `p-6` padding moved from `<main>` onto the `motion.div` so it is part of the animated surface.
+
+**`src/components/admin/nav-drawer.tsx`**:
+
+- Replaced hardcoded `animate={{ x: 0 }}` / `initial={{ x: -280 }}` / `exit={{ x: -280 }}` props with `variants={drawerVariants}` from `@/lib/motion`.
+- Replaced hardcoded backdrop `animate={{ opacity: 1 }}` / `initial={{ opacity: 0 }}` props with `variants={backdropVariants}`.
+
+**`src/components/m3/bottom-sheet.tsx`**:
+
+- Replaced spring transition (`type: "spring", damping: 30, stiffness: 300`) with M3 easing.
+- Enter: `emphasized-decelerate`, 400ms. Exit: `emphasized-accelerate`, 250ms.
+- Defined as inline variants on the component (not in `motion.ts`) because bottom-sheet uses `drag` + `dragConstraints` which conflicts with the named `hidden`/`visible`/`exit` pattern.
+
+**`src/components/admin/card-panel.tsx`**:
+
+- Added `AnimatePresence mode="wait"` around the view-mode conditional block.
+- Grid and list items use `listContainerVariants` (container) + `listItemVariants` (per-item) for stagger.
+- Table view uses `pageVariants` fade on the outer `<div>` only — HeroUI `<Table>` rows must NOT be wrapped in `motion.tr` or `motion.div` because HeroUI's react-aria collection internals block Framer Motion ref access.
+- Card count `<p>` uses `text-body-medium` class.
+
+**`src/components/admin/top-app-bar.tsx`**:
+
+- `<h1>` changed from `text-lg font-medium` to `text-title-large`.
+
+**`src/pages/admin/users.tsx`**:
+
+- Both `<h2>` section headings changed to `text-headline-large`.
+- Removed inline CSS variable fallback hex values from status badge `style` props (unnecessary — custom properties are always defined).
+
+**`src/components/admin/card-edit-sheet.tsx`**:
+
+- Bottom sheet `<h2>` uses `text-title-large`.
+- Delete confirm `<p>` uses `text-label-large`.
+- Delete button changed from `variant="light"` to `variant="bordered"` for better visibility.
+
+**`src/components/admin/account-panel.tsx`**:
+
+- Both `<h3>` section headings use `text-title-medium`.
+
+**`src/test/layouts/admin.test.tsx`**:
+
+- Added `key: "default"` to `useLocation` mock return value to match the `locationKey` destructuring in `admin.tsx`.
+- Added `framer-motion` mock (renders children synchronously) and `@/lib/motion` mock.
+
+#### Key architectural decisions
+
+- **Decision A — Central variant registry**: All Framer Motion variants for the admin shell live in `src/lib/motion.ts`. Component files import variants; they do not define them inline. This ensures animation timing is tunable in one file.
+- **Decision B — HeroUI table rows are not animatable individually**: Wrapping HeroUI `<Table>` row components in `motion.*` causes a Framer Motion ref error because react-aria manages DOM refs internally. Only wrap the outer container.
+- **Decision C — Bottom sheet stays inline**: The bottom sheet's `drag` + `dragConstraints` pattern requires inline transition config on the `motion.div` — it cannot use the shared `hidden`/`visible`/`exit` variant pattern cleanly. Its transitions are defined inline with M3 easing values.
+- **Decision D — `locationKey` not `pathname` for page transitions**: Using `pathname` as the animation key would suppress transitions when navigating to the same route with different state. `useLocation().key` is unique per navigation event and is the correct key for `AnimatePresence`.
+- **Decision E — `initial={false}` on `AnimatePresence`**: Prevents the enter animation from firing on the very first render (page load). Only subsequent route changes animate.
+- **Decision F — Typography as `@layer utilities`**: Defining M3 type scale classes in `@layer utilities` makes them available as Tailwind utility classes while respecting Tailwind's cascade layer priority. They override base styles without needing `!important`.
+
+#### Verification Results
+
+- TypeScript: 0 errors
+- Lint: 0 errors (1 pre-existing warning in `account-panel.tsx` for intentional `[user?.id]` dep — expected)
+- Tests: **128 passing, 0 failing** (count unchanged)
+- Build: Successful
+- Breaking Changes: None
+
+---
+
 ### March 24, 2026 - Post-Review Hardening
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry. All changes are confined to already-touched files; no new files were created.

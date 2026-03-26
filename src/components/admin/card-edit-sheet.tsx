@@ -12,12 +12,13 @@ import {
   doc,
   writeBatch,
 } from "firebase/firestore";
-import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { ensureFirebaseAuth } from "@/lib/firebase-auth";
 import { event } from "@/lib/gtag";
 import { validateCardForm, CardFormErrors } from "@/utils/validation";
 import { BottomSheet } from "@/components/m3/bottom-sheet";
+import { M3Spinner } from "@/components/m3/spinner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import type { Card } from "@/types/index";
 import type { Category } from "@/utils/categories";
@@ -33,15 +34,6 @@ interface CardEditSheetProps {
   onClose: () => void;
   onSaved: () => void;
   onError: (message: string) => void;
-}
-
-async function ensureFirebaseAuth(
-  getToken: (opts?: { template: string }) => Promise<string | null>,
-) {
-  if (!auth.currentUser) {
-    const token = await getToken({ template: "integration_firebase" });
-    await signInWithCustomToken(auth, token || "");
-  }
 }
 
 interface FormContentProps {
@@ -132,7 +124,9 @@ function FormContent({
             background: "var(--md-sys-color-error-container, #ffdad6)",
           }}
         >
-          <p className="text-sm font-medium">Delete this card permanently?</p>
+          <p className="text-label-large font-medium">
+            Delete this card permanently?
+          </p>
           <div className="flex gap-2">
             <Button
               size="sm"
@@ -147,6 +141,7 @@ function FormContent({
               color="danger"
               onPress={onDeleteConfirm}
               isLoading={isSaving}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
             >
               Delete permanently
             </Button>
@@ -157,7 +152,7 @@ function FormContent({
       <div className="flex justify-between items-center pt-2">
         {mode === "edit" && !showDeleteConfirm && (
           <Button
-            variant="light"
+            variant="bordered"
             color="danger"
             onPress={onDelete}
             isDisabled={isSaving}
@@ -174,6 +169,7 @@ function FormContent({
             color="primary"
             onPress={onSave}
             isLoading={isSaving}
+            spinner={<M3Spinner size="sm" color="currentColor" />}
             startContent={<Save size={16} />}
           >
             Save
@@ -336,7 +332,7 @@ export function CardEditSheet({
         <div className="px-2 pb-6">
           <h2
             id="card-edit-title"
-            className="text-lg font-semibold px-4 pt-2 pb-2"
+            className="text-title-large px-4 pt-2 pb-2"
             style={{ color: "var(--md-sys-color-on-surface)" }}
           >
             {mode === "create" ? "New Card" : "Edit Card"}

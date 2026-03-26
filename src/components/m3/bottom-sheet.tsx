@@ -31,10 +31,20 @@ export function BottomSheet(props: BottomSheetProps) {
             aria-labelledby={props["aria-labelledby"]}
             className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] max-h-[90vh] overflow-y-auto"
             style={{ backgroundColor: "var(--md-sys-color-surface)" }}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            variants={{
+              hidden: { y: "100%" },
+              visible: {
+                y: 0,
+                transition: { duration: 0.4, ease: [0.05, 0.7, 0.1, 1.0] },
+              },
+              exit: {
+                y: "100%",
+                transition: { duration: 0.25, ease: [0.3, 0, 1, 1] },
+              },
+            }}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             drag="y"
             dragConstraints={{ top: 0 }}
             dragElastic={0.1}

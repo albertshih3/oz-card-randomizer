@@ -35,7 +35,7 @@ export function TopAppBar({
       />
 
       <h1
-        className="flex-1 text-lg font-medium"
+        className="flex-1 text-title-large"
         style={{ color: "var(--md-sys-color-on-surface)" }}
       >
         {title}
@@ -45,7 +45,7 @@ export function TopAppBar({
         <UserButton />
         <a
           href="/"
-          className="flex items-center gap-1 text-sm font-medium hover:opacity-80 transition-opacity"
+          className="flex items-center gap-1 text-label-large hover:opacity-80 transition-opacity"
           style={{ color: "var(--md-sys-color-primary)" }}
         >
           <ArrowLeft size={16} />

@@ -505,6 +505,7 @@ export default function SignInPage() {
                     color="primary"
                     className="w-full font-semibold mt-1"
                     isLoading={isLoading}
+                    spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Sign In
@@ -587,6 +588,7 @@ export default function SignInPage() {
                     color="primary"
                     className="w-full font-semibold"
                     isLoading={isLoading}
+                    spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Verify code
@@ -635,6 +637,7 @@ export default function SignInPage() {
                     color="primary"
                     className="w-full font-semibold"
                     isLoading={isLoading}
+                    spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Send reset code
@@ -710,6 +713,7 @@ export default function SignInPage() {
                     color="primary"
                     className="w-full font-semibold"
                     isLoading={isLoading}
+                    spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Reset password

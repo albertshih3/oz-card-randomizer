@@ -6,17 +6,8 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import { signInWithCustomToken } from "firebase/auth";
-import { db, auth } from "@/lib/firebase";
-
-async function ensureFirebaseAuth(
-  getToken: (opts?: { template: string }) => Promise<string | null>,
-) {
-  if (!auth.currentUser) {
-    const token = await getToken({ template: "integration_firebase" });
-    await signInWithCustomToken(auth, token || "");
-  }
-}
+import { db } from "@/lib/firebase";
+import { ensureFirebaseAuth } from "@/lib/firebase-auth";
 
 export interface Category {
   id: string;

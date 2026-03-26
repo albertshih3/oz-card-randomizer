@@ -41,6 +41,7 @@ import {
   Clock,
 } from "lucide-react";
 import { CollectionBadge } from "@/components/collection-badge";
+import { M3Spinner } from "@/components/m3/spinner";
 import { useBoosterPackGeneration } from "@/hooks/use-booster-pack-generation";
 import { useExcelExport } from "@/hooks/use-excel-export";
 import type { Card, Collection } from "@/types/index";
@@ -161,6 +162,7 @@ export default function IndexPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Button
               isLoading={loading}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               color="primary"
               variant="shadow"
               onPress={() => {
@@ -175,6 +177,7 @@ export default function IndexPage() {
             </Button>
             <Button
               isLoading={loading}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               variant="bordered"
               onPress={handleOpenModal}
               size="lg"
@@ -429,6 +432,7 @@ export default function IndexPage() {
             <Button
               color="primary"
               isLoading={isExporting}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               onPress={handleGenerateAndExport}
               startContent={
                 !isExporting && <FileSpreadsheet className="w-4 h-4" />
