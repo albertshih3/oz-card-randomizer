@@ -88,6 +88,8 @@ vi.mock("@/components/m3/spinner", () => ({
   M3Spinner: () => <div data-testid="m3-spinner" />,
 }));
 
+vi.mock("@/lib/gtag", () => ({ event: vi.fn() }));
+
 // Mock framer-motion so AnimatePresence renders children immediately without animations
 vi.mock("framer-motion", () => {
   const MotionDiv = React.forwardRef(
@@ -196,6 +198,11 @@ describe("SignInPage — OAK-51", () => {
       expect(mockSetActive).toHaveBeenCalledWith({ session: "sess_123" });
       expect(mockNavigate).toHaveBeenCalledWith("/admin");
     });
+
+    const { event } = await import("@/lib/gtag");
+    expect(vi.mocked(event)).toHaveBeenCalledWith("login", {
+      method: "password",
+    });
   });
 });
 
@@ -285,6 +292,12 @@ describe("SignInPage — OAK-52", () => {
 
       expect(mockSetActive).toHaveBeenCalledWith({ session: "sess_456" });
       expect(mockNavigate).toHaveBeenCalledWith("/admin");
+
+      const { event } = await import("@/lib/gtag");
+      expect(vi.mocked(event)).toHaveBeenCalledWith("password_reset", {});
+      expect(vi.mocked(event)).toHaveBeenCalledWith("login", {
+        method: "email_code",
+      });
     } finally {
       vi.useRealTimers();
     }
@@ -366,6 +379,11 @@ describe("SignInPage — email code sign-in", () => {
     await waitFor(() => {
       expect(mockSetActive).toHaveBeenCalledWith({ session: "sess_789" });
       expect(mockNavigate).toHaveBeenCalledWith("/admin");
+    });
+
+    const { event } = await import("@/lib/gtag");
+    expect(vi.mocked(event)).toHaveBeenCalledWith("login", {
+      method: "email_code",
     });
   });
 });

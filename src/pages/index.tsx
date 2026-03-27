@@ -105,10 +105,9 @@ export default function IndexPage() {
 
   // open modal function
   const handleOpenModal = () => {
-    event({
-      action: "click",
-      category: "engagement",
-      label: "open_spreadsheet_modal",
+    event("select_content", {
+      content_type: "button",
+      item_id: "open_spreadsheet_modal",
     });
     setShowModal(true);
   };
@@ -117,12 +116,6 @@ export default function IndexPage() {
   const handleGenerateAndExport = async () => {
     if (isExporting) return;
     if (!numPacks || numPacks < 1) return;
-    event({
-      action: "export",
-      category: "spreadsheet",
-      label: "generate_and_export",
-      value: numPacks,
-    });
     try {
       const packs = generatePacks(numPacks);
       setSelectedKeys(new Set([]));

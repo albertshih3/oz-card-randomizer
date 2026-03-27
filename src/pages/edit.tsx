@@ -136,21 +136,13 @@ export default function EditCardsPage() {
   };
 
   const handleEditClick = (card: Card) => {
-    event({
-      action: "click",
-      category: "card_management",
-      label: "edit_card",
-    });
+    event("select_content", { content_type: "button", item_id: "edit_card" });
     // Navigate to the edit page using query params for editing an existing card.
     navigate(`/editcard?cardId=${card.id}&collection=${card.collection}`);
   };
 
   const handleNewCardClick = () => {
-    event({
-      action: "click",
-      category: "card_management",
-      label: "new_card",
-    });
+    event("select_content", { content_type: "button", item_id: "new_card" });
     // Navigate to the edit page with a query parameter indicating a new card.
     navigate("/editcard?new=true");
   };
@@ -167,10 +159,9 @@ export default function EditCardsPage() {
         active: newActiveStatus,
       });
 
-      event({
-        action: "toggle",
-        category: "card_management",
-        label: "card_status_toggled",
+      event("card_status_toggled", {
+        collection: card.collection,
+        active: newActiveStatus,
       });
 
       // Reload the list to get updated data

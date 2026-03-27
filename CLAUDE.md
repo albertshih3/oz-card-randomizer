@@ -10,6 +10,175 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 27, 2026 - Analytics Post-Review Hardening (OAK-107, OAK-109, OAK-111, OAK-112)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: Post-code-review fixes for the OAK-89/90/91 analytics migration. Four issues caught during review: events firing before their Firestore awaits (phantom GA events on write failure), a missing `login` event in the password reset flow, a dead `useAnalytics` hook, and a semantic mismatch in the `card_status_toggled` event type.
+
+#### OAK-107 — Fix event ordering: fire after Firestore await, not before
+
+**Problem**: In `categories.tsx` and `editcard.tsx`, all `event()` calls fired **before** their corresponding `await`. If the Firestore write threw an error, GA would still record a phantom event for an operation that never completed.
+
+**Fix**: Moved all `event()` calls to after their corresponding `await` in both files:
+
+- `src/pages/editcard.tsx`: `card_created` fires after `await addDoc(...)`, `card_updated` fires after the if/else block containing both `await updateDoc(...)` and `await batch.commit()`, `card_deleted` fires after `await deleteDoc(...)`.
+- `src/pages/categories.tsx`: `category_created` fires after `await addDoc(...)`, `category_updated` fires after `await updateDoc(...)`, `category_deleted` fires after `await deleteDoc(...)`.
+
+`card-edit-sheet.tsx` was already correct (events fired after awaits) — this aligns the legacy admin pages with that pattern.
+
+#### OAK-109 — Delete dead useAnalytics() hook
+
+After the OAK-90 GA4 migration, `useAnalytics()` had zero callers. The function — including `trackButtonClick`, `trackFormSubmission`, and `trackUserAction` — was entirely dead code after `navbar.tsx` migrated to import `event` directly from `@/lib/gtag`.
+
+**Fix**:
+
+- Deleted `useAnalytics()` from `src/hooks/use-analytics.ts`.
+- Renamed `src/hooks/use-analytics.ts` → `src/hooks/use-page-view.ts` (file now only exports `usePageView`).
+- Updated `src/App.tsx` import: `from "@/hooks/use-analytics"` → `from "@/hooks/use-page-view"`.
+
+#### OAK-111 — Fix card_status_toggled semantic event type
+
+**Problem**: The toggle in `src/pages/edit.tsx` fired `event("select_content", { content_type: "button", item_id: "card_status_toggled" })`. `select_content` describes a UI selection action; `card_status_toggled` describes a mutation outcome. These are different semantic classes.
+
+**Fix**: Changed to `event("card_status_toggled", { collection: card.collection, active: newActiveStatus })`. This matches the top-level event naming convention used by all other mutation events and adds the `active` param so GA reports show toggle direction.
+
+#### OAK-112 — Fix: password reset creates session but fires no login event
+
+**Problem**: `handleVerifyCodeAndReset` in `src/pages/sign-in.tsx` calls `resetPassword()` which returns `createdSessionId` — the user is now authenticated. Only `event("password_reset", {})` was firing. No `login` event fired for this path.
+
+**Fix (Option A — fire both)**: Added `event("login", { method: "email_code" })` immediately after `event("password_reset", {})` in `handleVerifyCodeAndReset`. The `login` event is the signal that a session was created; `password_reset` is an additional signal that a password change also happened. Both fire.
+
+**Test update**: Added assertion in `src/test/pages/sign-in.test.tsx` OAK-52 describe block that `event("login", { method: "email_code" })` fires alongside `event("password_reset", {})` in the successful reset test.
+
+#### Updated GA4 Event Taxonomy (as of OAK-112)
+
+| Event name            | Params                                       | Fired by                                                     |
+| --------------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| `generate`            | `content_type: "booster_pack"`, `pack_count` | `use-booster-pack-generation.ts`                             |
+| `download`            | `file_name`, `file_extension`, `pack_count`  | `use-excel-export.ts`                                        |
+| `select_content`      | `content_type: "button"`, `item_id`          | `index.tsx`, `edit.tsx` (nav/modal buttons only)             |
+| `card_created`        | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
+| `card_updated`        | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
+| `card_moved`          | `from_collection`, `to_collection`           | `card-edit-sheet.tsx`                                        |
+| `card_deleted`        | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
+| `card_status_toggled` | `collection`, `active`                       | `edit.tsx`                                                   |
+| `category_created`    | `category_id`                                | `categories.tsx`                                             |
+| `category_updated`    | `category_id`                                | `categories.tsx`                                             |
+| `category_deleted`    | `category_id`                                | `categories.tsx`                                             |
+| `login`               | `method: "password" \| "email_code"`         | `sign-in.tsx` (password sign-in + password reset completion) |
+| `password_reset`      | `{}`                                         | `sign-in.tsx`                                                |
+| `user_invited`        | `{}`                                         | `admin/users.tsx`                                            |
+| `performance_timing`  | `timing_name`, `duration_ms`, `pack_count`   | `use-booster-pack-generation.ts` via `timing()`              |
+| `form_submit`         | `form_name`, `success`                       | via `useAnalytics().trackFormSubmission`                     |
+
+#### Key architectural decisions (additions)
+
+- **Always fire `event()` after `await`, never before**: GA events should only record operations that succeeded. Firing before the await means failed writes produce phantom GA events. `card-edit-sheet.tsx` is the canonical correct implementation.
+- **`login` fires for every session creation, regardless of method**: Both direct sign-in and password-reset-sign-in fire `login`. The `method` param distinguishes them. `password_reset` additionally fires to track the reset operation itself.
+- **`useAnalytics()` is deleted — import `event` from `@/lib/gtag` directly**: The hook abstraction was removed after OAK-90 eliminated all callers. Call sites import `event`/`timing`/`exception` directly from `@/lib/gtag`. `usePageView` is preserved in `src/hooks/use-page-view.ts`.
+
+#### Verification Results
+
+- TypeScript: 0 errors
+- Lint: 0 errors (1 pre-existing warning in `account-panel.tsx` — expected)
+- Tests: ≥ 128 passing, 0 failing
+- Build: Successful
+- Breaking Changes: None
+
+---
+
+### March 27, 2026 - Analytics Audit & Event Standardization (OAK-89, OAK-90, OAK-91)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-89 eliminates duplicate analytics events that were being fired for the same user action. OAK-90 migrates all event calls from the legacy UA-era `{ action, category, label, value }` shape to the GA4 flat-params pattern and replaces the deprecated `timing_complete` hit type with a custom `performance_timing` event. OAK-91 adds missing instrumentation for sign-in and user invite flows.
+
+#### OAK-89 — Duplicate event removal
+
+- Deleted the redundant `event({ action: "page_view", category: "navigation", label: pathname })` call from `usePageView` in `src/hooks/use-analytics.ts`. The `pageview(url)` call (which fires `gtag("config", ...)`) was already sufficient; the second `event()` call was producing a duplicate hit in GA.
+- Deleted the duplicate `export` event in `handleGenerateAndExport` in `src/pages/index.tsx`. The `download` event fired inside `use-excel-export.ts` already covered this action.
+
+#### OAK-90 — GA4 event taxonomy standardization
+
+**`src/lib/gtag.ts`** — rewrote two exported function signatures:
+
+- `event(eventName: string, params?: Record<string, unknown>)` — flat params object; no more `{ action, category, label, value }` wrapper. Maps directly to `gtag("event", eventName, params)`.
+- `timing(name: string, durationMs: number, extra?: Record<string, unknown>)` — fires `gtag("event", "performance_timing", { timing_name: name, duration_ms: durationMs, ...extra })`. Replaces the deprecated `timing_complete` hit type that the old `timing()` used. The `exception()` signature is unchanged.
+
+**Call site migrations**:
+
+| File                             | Old call                                     | New call                                                                                                             |
+| -------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `use-analytics.ts`               | `event({ action: "button_click", ... })`     | `event("select_content", { content_type: "button", item_id })`                                                       |
+| `use-analytics.ts`               | `event({ action: "form_submit", ... })`      | `event("form_submit", { form_name, success })`                                                                       |
+| `use-analytics.ts`               | `event({ action, label: details })`          | `event(action, details ? { details } : undefined)`                                                                   |
+| `use-booster-pack-generation.ts` | `event({ action: "generate", ... })`         | `event("generate", { content_type: "booster_pack", pack_count })`                                                    |
+| `use-booster-pack-generation.ts` | `timing({ ... })`                            | `timing("pack_generation", totalDuration, { pack_count })`                                                           |
+| `use-excel-export.ts`            | `event({ action: "download", ... })`         | `event("download", { file_name: "BoosterPacks.xlsx", file_extension: "xlsx", pack_count })`                          |
+| `index.tsx`                      | `event({ action: "open_modal", ... })`       | `event("select_content", { content_type: "button", item_id: "open_spreadsheet_modal" })`                             |
+| `edit.tsx`                       | `event({ action: "edit_card" })` etc.        | `event("select_content", { content_type: "button", item_id: "edit_card"/"new_card"/"card_status_toggled" })`         |
+| `editcard.tsx`                   | `event({ action: "card_created" })` etc.     | `event("card_created"/"card_updated"/"card_deleted", { collection })`                                                |
+| `categories.tsx`                 | `event({ action: "category_created" })` etc. | `event("category_created"/"category_updated"/"category_deleted", { category_id })`                                   |
+| `card-edit-sheet.tsx`            | (no prior analytics)                         | `event("card_created"/"card_updated"/"card_moved"/"card_deleted", { collection / from_collection / to_collection })` |
+
+#### OAK-91 — Missing event instrumentation
+
+**`src/pages/sign-in.tsx`**:
+
+- Added `import { event } from "@/lib/gtag"`.
+- Fires `event("login", { method: "password" })` after successful password sign-in.
+- Fires `event("login", { method: "email_code" })` after successful email code sign-in (inside the forgot-password flow's `handleVerifyCodeAndReset`, when the user is completing a reset and simultaneously signing in).
+- Fires `event("password_reset", {})` after successful password reset (same handler, after confirming the reset itself).
+
+**`src/pages/admin/users.tsx`**:
+
+- Added `import { event } from "@/lib/gtag"`.
+- Fires `event("user_invited", {})` after a successful Clerk invitation. No email address or other PII is included in the params.
+
+#### GA4 Event Taxonomy (complete as of OAK-91; superseded by OAK-107/111/112 — see above)
+
+| Event name           | Params                                       | Fired by                                        |
+| -------------------- | -------------------------------------------- | ----------------------------------------------- |
+| `generate`           | `content_type: "booster_pack"`, `pack_count` | `use-booster-pack-generation.ts`                |
+| `download`           | `file_name`, `file_extension`, `pack_count`  | `use-excel-export.ts`                           |
+| `select_content`     | `content_type: "button"`, `item_id`          | `index.tsx`, `edit.tsx`                         |
+| `card_created`       | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`           |
+| `card_updated`       | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`           |
+| `card_moved`         | `from_collection`, `to_collection`           | `card-edit-sheet.tsx`                           |
+| `card_deleted`       | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`           |
+| `category_created`   | `category_id`                                | `categories.tsx`                                |
+| `category_updated`   | `category_id`                                | `categories.tsx`                                |
+| `category_deleted`   | `category_id`                                | `categories.tsx`                                |
+| `login`              | `method: "password" \| "email_code"`         | `sign-in.tsx`                                   |
+| `password_reset`     | `{}`                                         | `sign-in.tsx`                                   |
+| `user_invited`       | `{}`                                         | `admin/users.tsx`                               |
+| `performance_timing` | `timing_name`, `duration_ms`, `pack_count`   | `use-booster-pack-generation.ts` via `timing()` |
+| `form_submit`        | `form_name`, `success`                       | via `useAnalytics().trackFormSubmission`        |
+
+#### Key architectural decisions
+
+- **Never use UA-era param shape**: The `{ action, category, label, value }` wrapper was the Universal Analytics pattern. GA4 expects a flat params object. The new `event()` signature enforces this — the first argument is the event name, the second is a plain flat object.
+- **`performance_timing` replaces `timing_complete`**: The `timing_complete` hit type was deprecated in GA4. Custom events with a `timing_name` + `duration_ms` structure are the GA4-idiomatic replacement.
+- **No PII in event params**: `user_invited` fires with an empty params object — the invitee's email address is not included. `collection` and `category_id` are Firestore path identifiers, not PII.
+- **Single `download` event per export**: The event fires inside `useExcelExport` before the xlsx dynamic import, so it fires even if the export fails after the import resolves. The duplicate call in `index.tsx` was removed.
+
+#### Test updates
+
+- `src/test/pages/sign-in.test.tsx`: Added `vi.mock("@/lib/gtag", () => ({ event: vi.fn() }))`. Added assertions that `event("login", { method: "password" })` fires on successful password sign-in, `event("login", { method: "email_code" })` fires on successful code verification, and `event("password_reset", {})` fires on successful reset.
+- `src/test/pages/admin/users.test.tsx`: Added `vi.mock("@/lib/gtag", () => ({ event: vi.fn() }))`. Added assertion that `event("user_invited", {})` fires on successful invite.
+- `src/test/hooks/use-booster-pack-generation.test.ts`: No changes needed — existing tests check call counts, not event shapes.
+
+#### Verification Results
+
+- TypeScript: 0 errors (both `tsconfig.json` and `tsconfig.api.json`)
+- Lint: 0 errors (1 pre-existing warning in `account-panel.tsx` — expected)
+- Tests: 128 passing, 0 failing (count unchanged)
+- Build: Successful
+- Breaking Changes: None
+
+---
+
 ### March 25, 2026 - Changelog Page M3 Redesign (OAK-86, OAK-87, OAK-88)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.

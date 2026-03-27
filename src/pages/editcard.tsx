@@ -113,11 +113,6 @@ export default function EditCardPage() {
       await ensureFirebaseAuth(getToken);
 
       if (isNew) {
-        event({
-          action: "create",
-          category: "card_management",
-          label: "card_created",
-        });
         // Create a new card
         const colRef = firestoreCollection(db, updatedCard.collection);
         await addDoc(colRef, {
@@ -125,12 +120,8 @@ export default function EditCardPage() {
           number: updatedCard.number,
           active: updatedCard.active,
         });
+        event("card_created", { collection: updatedCard.collection });
       } else {
-        event({
-          action: "update",
-          category: "card_management",
-          label: "card_updated",
-        });
         if (!cardId || !collectionId)
           throw new Error("Missing card identifiers.");
 
@@ -153,6 +144,7 @@ export default function EditCardPage() {
           batch.delete(oldRef);
           await batch.commit();
         }
+        event("card_updated", { collection: collectionId });
       }
       navigate("/edit");
     } catch (err) {
@@ -174,13 +166,9 @@ export default function EditCardPage() {
     try {
       await ensureFirebaseAuth(getToken);
 
-      event({
-        action: "delete",
-        category: "card_management",
-        label: "card_deleted",
-      });
       const cardRef = doc(db, cardToDelete.collection, cardToDelete.id);
       await deleteDoc(cardRef);
+      event("card_deleted", { collection: cardToDelete.collection });
       navigate("/edit");
     } catch (err) {
       console.error("Error deleting card:", err);

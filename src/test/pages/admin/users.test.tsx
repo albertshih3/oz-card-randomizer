@@ -134,6 +134,7 @@ vi.mock("@/components/m3/snackbar", () => ({
   M3Snackbar: ({ message }: { message: string | null }) =>
     message ? <div role="status">{message}</div> : null,
 }));
+vi.mock("@/lib/gtag", () => ({ event: vi.fn() }));
 vi.mock("@/components/m3/bottom-sheet", () => ({
   BottomSheet: ({
     children,
@@ -215,6 +216,9 @@ describe("AdminUsersPage — OAK-59", () => {
         "Invite sent to new@zoo.org",
       ),
     );
+
+    const { event } = await import("@/lib/gtag");
+    expect(vi.mocked(event)).toHaveBeenCalledWith("user_invited", {});
   });
 
   it("error message appears inside modal on failed invite", async () => {

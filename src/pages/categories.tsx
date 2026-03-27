@@ -110,12 +110,6 @@ export default function CategoriesPage() {
 
     try {
       if (isCreating) {
-        event({
-          action: "create",
-          category: "category_management",
-          label: "category_created",
-        });
-
         const docRef = await addDoc(collection(db, "categories"), {
           name: newCategoryId.toLowerCase().replace(/\s+/g, ""),
           displayName: newCategoryName,
@@ -128,13 +122,10 @@ export default function CategoriesPage() {
         };
 
         setCategories([...categories, newCategory]);
-      } else if (editingCategory) {
-        event({
-          action: "update",
-          category: "category_management",
-          label: "category_updated",
+        event("category_created", {
+          category_id: newCategoryId.toLowerCase().replace(/\s+/g, ""),
         });
-
+      } else if (editingCategory) {
         const categoryRef = doc(db, "categories", editingCategory.id);
         await updateDoc(categoryRef, {
           name: newCategoryId.toLowerCase().replace(/\s+/g, ""),
@@ -152,6 +143,7 @@ export default function CategoriesPage() {
               : cat,
           ),
         );
+        event("category_updated", { category_id: editingCategory.name });
       }
 
       // Clear cache so other pages get updated categories
@@ -178,13 +170,8 @@ export default function CategoriesPage() {
     }
 
     try {
-      event({
-        action: "delete",
-        category: "category_management",
-        label: "category_deleted",
-      });
-
       await deleteDoc(doc(db, "categories", category.id));
+      event("category_deleted", { category_id: category.name });
       setCategories(categories.filter((cat) => cat.id !== category.id));
 
       // Clear cache so other pages get updated categories

@@ -7,6 +7,7 @@ import { Input } from "@heroui/input";
 import { Eye, EyeOff, Mail } from "lucide-react";
 
 import { M3Spinner } from "@/components/m3/spinner";
+import { event } from "@/lib/gtag";
 
 const M3_EMPHASIZED_DECELERATE: [number, number, number, number] = [
   0.05, 0.7, 0.1, 1.0,
@@ -254,6 +255,7 @@ export default function SignInPage() {
         password,
       });
       if (result.status === "complete") {
+        event("login", { method: "password" });
         await setActive({ session: result.createdSessionId });
         navigate("/admin");
       } else {
@@ -289,6 +291,7 @@ export default function SignInPage() {
         code: emailCode,
       });
       if (result.status === "complete") {
+        event("login", { method: "email_code" });
         await setActive({ session: result.createdSessionId });
         navigate("/admin");
       } else {
@@ -352,6 +355,8 @@ export default function SignInPage() {
         signOutOfOtherSessions: true,
       });
       if (result.status === "complete") {
+        event("password_reset", {});
+        event("login", { method: "email_code" });
         const sessionId = result.createdSessionId;
         setState({ view: "forgot-success" });
         successTimeoutRef.current = setTimeout(async () => {

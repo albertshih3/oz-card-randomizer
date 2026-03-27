@@ -27,45 +27,24 @@ export const pageview = (url: URL) => {
   }
 };
 
-// https://developers.google.com/analytics/devguides/collection/gtagjs/events
-export const event = ({
-  action,
-  category,
-  label,
-  value,
-}: {
-  action: string;
-  category: string;
-  label?: string;
-  value?: number;
-}) => {
+// https://developers.google.com/analytics/devguides/collection/ga4/reference/events
+export const event = (eventName: string, params?: Record<string, unknown>) => {
   if (typeof window !== "undefined" && (window as any).gtag && GA_TRACKING_ID) {
-    (window as any).gtag("event", action, {
-      event_category: category,
-      event_label: label,
-      value: value,
-    });
+    (window as any).gtag("event", eventName, params);
   }
 };
 
-// Track timing events (e.g., how long it takes to generate a pack)
-export const timing = ({
-  name,
-  value,
-  category = "performance",
-  label,
-}: {
-  name: string;
-  value: number;
-  category?: string;
-  label?: string;
-}) => {
+// Track performance timing. Replaces deprecated timing_complete with a custom event.
+export const timing = (
+  name: string,
+  durationMs: number,
+  extra?: Record<string, unknown>,
+) => {
   if (typeof window !== "undefined" && (window as any).gtag && GA_TRACKING_ID) {
-    (window as any).gtag("event", "timing_complete", {
-      name,
-      value,
-      event_category: category,
-      event_label: label,
+    (window as any).gtag("event", "performance_timing", {
+      timing_name: name,
+      duration_ms: durationMs,
+      ...extra,
     });
   }
 };

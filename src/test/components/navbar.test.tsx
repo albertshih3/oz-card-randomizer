@@ -15,13 +15,8 @@ vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@/hooks/use-analytics", () => ({
-  useAnalytics: () => ({
-    trackEvent: vi.fn(),
-    trackButtonClick: vi.fn(),
-    trackFormSubmission: vi.fn(),
-    trackUserAction: vi.fn(),
-  }),
+vi.mock("@/lib/gtag", () => ({
+  event: vi.fn(),
 }));
 
 vi.mock("@heroui/navbar", () => ({

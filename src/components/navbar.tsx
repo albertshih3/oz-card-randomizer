@@ -16,18 +16,23 @@ import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SignedOut, SignedIn, UserButton } from "@clerk/clerk-react";
 import { Button } from "@heroui/button";
-import { useAnalytics } from "@/hooks/use-analytics";
+import { event } from "@/lib/gtag";
 
 export const Navbar = () => {
-  const { trackEvent } = useAnalytics();
   const navigate = useNavigate();
 
   const handleNavClick = (label: string) => {
-    trackEvent("click", "navigation", `nav_${label.toLowerCase()}`);
+    event("select_content", {
+      content_type: "navigation",
+      item_id: `nav_${label.toLowerCase()}`,
+    });
   };
 
   const handleAuthClick = (action: "sign_in" | "sign_out") => {
-    trackEvent("click", "authentication", action);
+    event("select_content", {
+      content_type: "authentication",
+      item_id: action,
+    });
   };
 
   return (

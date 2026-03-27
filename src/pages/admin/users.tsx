@@ -20,6 +20,7 @@ import type { AdminUser } from "@/utils/admin-api";
 import { AccountPanel } from "@/components/admin/account-panel";
 import { X, Send } from "lucide-react";
 import { M3Spinner } from "@/components/m3/spinner";
+import { event } from "@/lib/gtag";
 
 interface InviteFormContentProps {
   inviteEmail: string;
@@ -117,6 +118,7 @@ export default function AdminUsersPage() {
         return;
       }
       await inviteUser(token, trimmed);
+      event("user_invited", {});
       setInviteOpen(false);
       setInviteEmail("");
       setSnackbarMessage(`Invite sent to ${trimmed}`);

@@ -238,29 +238,20 @@ export function CardEditSheet({
 
       if (mode === "create") {
         await addDoc(firestoreCollection(db, formData.collection), payload);
-        event({
-          action: "card_created",
-          category: "admin",
-          label: formData.collection,
-        });
+        event("card_created", { collection: formData.collection });
       } else if (card) {
         if (formData.collection === card.collection) {
           await updateDoc(doc(db, card.collection, card.id), payload);
-          event({
-            action: "card_updated",
-            category: "admin",
-            label: card.collection,
-          });
+          event("card_updated", { collection: card.collection });
         } else {
           const batch = writeBatch(db);
           const newRef = doc(firestoreCollection(db, formData.collection));
           batch.set(newRef, payload);
           batch.delete(doc(db, card.collection, card.id));
           await batch.commit();
-          event({
-            action: "card_moved",
-            category: "admin",
-            label: `${card.collection}->${formData.collection}`,
+          event("card_moved", {
+            from_collection: card.collection,
+            to_collection: formData.collection,
           });
         }
       }
@@ -280,11 +271,7 @@ export function CardEditSheet({
     try {
       await ensureFirebaseAuth(getToken);
       await deleteDoc(doc(db, card.collection, card.id));
-      event({
-        action: "card_deleted",
-        category: "admin",
-        label: card.collection,
-      });
+      event("card_deleted", { collection: card.collection });
       onSaved();
       onClose();
     } catch (err) {
