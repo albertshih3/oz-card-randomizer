@@ -10,6 +10,84 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 27, 2026 - GA4 Analytics Dashboard (OAK-92–OAK-95)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-92 scoped the approach (documented in `plan.md`). OAK-93 creates a Vercel serverless endpoint that proxies the GA4 Data API so the service account credentials never reach the browser. OAK-94 builds the analytics dashboard page. OAK-95 wires it into the admin nav.
+
+#### OAK-93 — `GET /api/analytics/summary` serverless endpoint
+
+**New file: `api/analytics/summary.ts`**:
+
+- Route: `GET /api/analytics/summary?days=N` (default 30, max 90).
+- Auth: `requireAuth` from `api/_auth.ts` — same Clerk JWT pattern as `api/users/list.ts`.
+- Dependency: `@google-analytics/data` (added to `dependencies` — Node-only, never import in `src/`).
+- Makes 4 concurrent `runReport` calls to the GA4 Data API: current-period `generate` events, current-period `download` events, prior-period `generate` events, prior-period `download` events. Using concurrent calls avoids GA4 rate limits that serial calls would approach.
+- Merges current-period results by date into a `DayEntry[]` series (one entry per calendar day).
+- Returns `SummaryResponse: { days, series: DayEntry[], current: PeriodTotals, prior: PeriodTotals }`.
+
+**Credentials pattern** (critical — see also Learned Lessons #30):
+
+- `GA4_PROPERTY_ID`: plain string, e.g. `"123456789"`. Set in Vercel project settings.
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON`: base64-encoded service account JSON. Decoded at runtime: `JSON.parse(Buffer.from(env, "base64").toString("utf8"))`. Credentials are never written to disk and never committed to the repo.
+- Placeholders for both vars added to `.env` (commented out).
+
+**Why base64 in env**: Service account JSON contains newlines and quotes that break multi-line env var storage in most hosting platforms. Base64 encoding produces a single-line, paste-safe string.
+
+#### OAK-94 — Analytics dashboard page
+
+**New file: `src/pages/admin/analytics.tsx`** (default export: `AdminAnalyticsPage`):
+
+- Lazy-loaded via `React.lazy()` in `App.tsx`; route at `/admin/analytics`.
+- Fetches from `/api/analytics/summary?days=N` via `getAnalyticsSummary(token, days)` from `src/utils/admin-api.ts`.
+- Day range selector: 7 / 30 / 90d, using the same segmented button pattern as `card-panel.tsx`.
+- 4 metric cards: Pack Generations, Exports, and two GA4 standard metrics. Each card shows a period-over-period % change badge: `computeChangePct(current, prior)` returns `null` when `prior === 0` (renders "—" instead of ÷0); positive delta → tertiary-container badge; negative delta → error-container badge.
+- Chart: pure SVG grouped bar chart (no charting library) — pack generations (primary color) and exports (tertiary color) grouped by day.
+- Loading state: `<LinearProgress>` + 4 `<Skeleton>` placeholders.
+- Error state: inline error block + Retry button (same pattern as `users.tsx`).
+
+**Updated `src/utils/admin-api.ts`**:
+
+- Added exports: `AnalyticsDayEntry`, `AnalyticsPeriodTotals`, `AnalyticsSummary` interfaces.
+- Added `getAnalyticsSummary(token: string, days: number): Promise<AnalyticsSummary>`.
+
+#### OAK-95 — Nav wiring
+
+- `BarChart2` icon added to `nav-drawer.tsx` lucide-react import.
+- Analytics nav item added to `DrawerContent` between Users and the `<hr>` divider before "Public Site".
+- `"/admin/analytics": "Analytics"` added to `ROUTE_TITLES` in `src/layouts/admin.tsx`.
+
+#### New test files (17 new tests, total 145)
+
+- `src/test/api/analytics.test.ts` — 8 tests for the serverless handler (method guard, auth guard, valid response shape, days clamping).
+- `src/test/utils/admin-api-analytics.test.ts` — 4 tests for `getAnalyticsSummary` (GET header, parsed response, non-ok throw, days param forwarding).
+- `src/test/pages/admin/analytics.test.tsx` — 5 tests for the analytics page (renders skeletons on load, renders metric cards, renders chart, day range selector, error + retry).
+
+#### Key architectural decisions
+
+- **4 concurrent GA4 `runReport` calls instead of 1 combined query**: GA4 Data API does not support filtering by multiple event names in a single report without a dimension filter that inflates row count. Four targeted queries (current/prior × generate/download) are cleaner and easier to extend.
+- **No charting library**: A pure SVG grouped bar chart avoids adding a heavy dependency for a single dashboard. The chart is intentionally minimal — no tooltips, no animations.
+- **`computeChangePct` returns null on prior=0**: Division by zero would produce `Infinity` or `NaN`. Returning null lets the UI render "—" rather than a misleading percentage.
+- **GA4 credentials via base64 env var**: Service account JSON written directly to env vars fails on most platforms due to newlines and quotes. Base64 encoding is the standard workaround.
+
+#### Required environment variables (set in Vercel project settings before use)
+
+| Variable                              | Value                                                             |
+| ------------------------------------- | ----------------------------------------------------------------- |
+| `GA4_PROPERTY_ID`                     | GA4 numeric property ID (e.g. `"123456789"`)                      |
+| `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Base64-encoded service account JSON with `roles/analytics.viewer` |
+
+#### Verification Results
+
+- TypeScript: 0 errors (both `tsconfig.json` and `tsconfig.api.json`)
+- Lint: 0 errors (1 pre-existing warning in `account-panel.tsx` — expected)
+- Tests: 145 passing, 0 failing
+- Build: Successful
+- Breaking Changes: None
+
+---
+
 ### March 27, 2026 - Analytics Post-Review Hardening (OAK-107, OAK-109, OAK-111, OAK-112)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
@@ -1775,7 +1853,7 @@ This ensures `getCategories()` is the authoritative place for caching the fallba
 - **Styling**: Tailwind CSS 3.4.18 + tailwind-merge + class-variance-authority
 - **Database**: Firebase Firestore 11.10.0
 - **Authentication**: Clerk (admin features only)
-- **Analytics**: Vercel Analytics + Google Analytics (gtag)
+- **Analytics**: Vercel Analytics + Google Analytics (gtag) + GA4 Data API (`@google-analytics/data ^4.x`, server-side only)
 - **Animation**: Framer Motion 12.23.24
 - **Excel Export**: xlsx 0.18.5
 - **Hosting**: Vercel
@@ -1952,7 +2030,10 @@ Test files live under `src/test/`:
 - `src/test/pages/admin/card-crud.test.tsx` — card CRUD audit tests (4 tests)
 - `src/test/pages/admin/category-crud.test.ts` — category CRUD audit tests (4 tests)
 - `src/test/pages/admin/users.test.tsx` — users management page tests (6 tests)
+- `src/test/pages/admin/analytics.test.tsx` — analytics page tests (5 tests)
 - `src/test/api/users.test.ts` — Vercel handler tests for list + invite (8 tests)
+- `src/test/api/analytics.test.ts` — analytics summary handler tests (8 tests)
+- `src/test/utils/admin-api-analytics.test.ts` — `getAnalyticsSummary` client tests (4 tests)
 
 **Deployment**:
 
@@ -1963,7 +2044,7 @@ Test files live under `src/test/`:
 
 ### Test Suite
 
-Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026) and extended through OAK-82 + post-review hardening. **128 tests, all passing.**
+Automated tests were added in OAK-16/OAK-17/OAK-18 (March 15, 2026) and extended through OAK-93/94/95 analytics dashboard. **145 tests, all passing.**
 
 - **Runner**: Vitest with jsdom + React Testing Library (`@testing-library/react`)
 - **Config**: `vitest.config.ts` at project root — separate from `vite.config.ts` so `VitePluginRadar` (GA) never runs in test env

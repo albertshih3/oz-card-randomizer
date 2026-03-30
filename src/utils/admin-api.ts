@@ -6,6 +6,28 @@ export interface AdminUser {
   lastSignInAt: number | null;
 }
 
+export interface AnalyticsDayEntry {
+  date: string;
+  activeUsers: number;
+  sessions: number;
+  packGenerations: number;
+  exports: number;
+}
+
+export interface AnalyticsPeriodTotals {
+  activeUsers: number;
+  sessions: number;
+  packGenerations: number;
+  exports: number;
+}
+
+export interface AnalyticsSummary {
+  days: number;
+  series: AnalyticsDayEntry[];
+  current: AnalyticsPeriodTotals;
+  prior: AnalyticsPeriodTotals;
+}
+
 export async function listUsers(token: string): Promise<AdminUser[]> {
   const res = await fetch("/api/users/list", {
     headers: {
@@ -40,4 +62,22 @@ export async function inviteUser(token: string, email: string): Promise<void> {
       (body as { error?: string }).error ?? `Request failed (${res.status})`,
     );
   }
+}
+
+export async function getAnalyticsSummary(
+  token: string,
+  days: number = 30,
+): Promise<AnalyticsSummary> {
+  const res = await fetch(`/api/analytics/summary?days=${days}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as { error?: string }).error ?? `Request failed (${res.status})`,
+    );
+  }
+  return res.json() as Promise<AnalyticsSummary>;
 }

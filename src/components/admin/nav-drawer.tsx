@@ -9,6 +9,7 @@ import {
 import { Skeleton } from "@heroui/skeleton";
 import {
   Users,
+  BarChart2,
   ExternalLink,
   ChevronDown,
   ChevronRight,
@@ -163,6 +164,25 @@ function DrawerContent({
       >
         <Users size={18} />
         Users
+      </button>
+
+      <button
+        onClick={() => handleNavClick("/admin/analytics")}
+        aria-current={pathname === "/admin/analytics" ? "page" : undefined}
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
+        style={
+          pathname === "/admin/analytics"
+            ? {
+                background: "var(--md-sys-color-secondary-container)",
+                color: "var(--md-sys-color-on-secondary-container)",
+              }
+            : {
+                color: "var(--md-sys-color-on-surface-variant)",
+              }
+        }
+      >
+        <BarChart2 size={18} />
+        Analytics
       </button>
 
       <hr

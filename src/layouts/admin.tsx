@@ -12,6 +12,7 @@ import { AdminFiltersProvider } from "@/contexts/admin-filters-context";
 const ROUTE_TITLES: Record<string, string> = {
   "/admin": "Cards",
   "/admin/users": "Users",
+  "/admin/analytics": "Analytics",
 };
 
 export default function AdminLayout() {
