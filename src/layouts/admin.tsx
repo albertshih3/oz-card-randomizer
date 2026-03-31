@@ -13,6 +13,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/admin": "Cards",
   "/admin/users": "Users",
   "/admin/analytics": "Analytics",
+  "/admin/categories": "Categories",
 };
 
 export default function AdminLayout() {

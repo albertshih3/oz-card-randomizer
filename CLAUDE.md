@@ -10,6 +10,131 @@ Web application for generating randomized trading card booster packs for Oakland
 
 ## Recent Changes
 
+### March 31, 2026 - Category Management Post-Review Hardening (OAK-113–OAK-116)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: Four code smells identified during post-review of OAK-103–106. OAK-113 extracts duplicated normalization logic into a shared utility. OAK-114 eliminates a repeated 47-character type literal across four mutation functions. OAK-115 wires a previously-dead `aria-labelledby` attribute on dialog containers. OAK-116 restores GA4 category mutation events that silently stopped firing when the old categories page was removed from routing.
+
+#### OAK-113 — Category ID normalization extracted to shared utility
+
+- Added `export const normalizeCategoryId = (raw: string): string => raw.toLowerCase().replace(/\s+/g, "")` to `src/utils/validation.ts`.
+- Updated `validateCategoryForm` to call `normalizeCategoryId(data.categoryId)` instead of inlining the expression.
+- Updated `CategoryEditSheet.handleSave()` to import and call `normalizeCategoryId` instead of duplicating the expression.
+- **Why**: The normalization logic was written identically in two places. If the rule ever changes (e.g., strip hyphens), one site would drift silently and the validated value would differ from what gets written to Firestore.
+
+#### OAK-114 — GetToken type alias exported from firebase-auth.ts
+
+- Added `export type GetToken = (opts?: { template: string }) => Promise<string | null>` to `src/lib/firebase-auth.ts`.
+- Updated `ensureFirebaseAuth` parameter to use `GetToken`.
+- Updated all 4 mutation functions in `src/utils/categories.ts` (`createCategory`, `updateCategoryDisplayName`, `toggleWildcardEligible`, `deleteCategory`) to use `GetToken` instead of the verbatim inline type.
+- **Why**: The same 47-character type literal was repeated 4× in `categories.ts` plus once in `firebase-auth.ts` itself. A single export keeps all callers in sync if the Clerk SDK signature ever changes.
+
+#### OAK-115 — Wire aria-labelledby on CategoryEditSheet dialog containers
+
+- Added `aria-labelledby="cat-edit-title"` to `<BottomSheet>` in the mobile branch of `category-edit-sheet.tsx`.
+- Added `aria-labelledby="cat-edit-title"` to `<Modal>` in the desktop branch of `category-edit-sheet.tsx`.
+- **Why**: The `id="cat-edit-title"` attribute was defined on the `<h2>` in both branches but never consumed by any `aria-labelledby`. The ID was dead markup. Wiring it to the dialog containers follows the WCAG 4.1.2 pattern already applied to `nav-drawer.tsx` and improves screen reader announcement when the sheet opens.
+
+#### OAK-116 — Restore GA4 category mutation events in CategoryEditSheet; add category_wildcard_toggled
+
+- Added `import { event } from "@/lib/gtag"` to `src/components/admin/category-edit-sheet.tsx` and `src/pages/admin/categories.tsx`.
+- `category_created`, `category_updated`, `category_deleted` events now fire after their corresponding awaits in `CategoryEditSheet` (create, edit, and delete paths respectively).
+- Added `category_wildcard_toggled` event in `AdminCategoriesPage.handleToggleWildcard`, fired after `await toggleWildcardEligible(...)` succeeds.
+- Updated `src/test/components/admin/category-edit-sheet.test.tsx`: added `vi.mock("@/lib/gtag", ...)` and assertions that each mutation event fires after its Firestore call.
+- **Why**: The old `src/pages/categories.tsx` fired all three category mutation events. That page was removed from routing in OAK-53. The new `CategoryEditSheet` had zero `event()` calls — all three events silently stopped firing in production. Also adds `category_wildcard_toggled` following the same pattern as `card_status_toggled` (OAK-111).
+
+#### Key architectural decisions
+
+- **`normalizeCategoryId` is the single normalization source**: Any code that derives a category ID from user input must call `normalizeCategoryId` from `src/utils/validation.ts`. Do not inline `toLowerCase().replace(/\s+/g, "")`.
+- **`GetToken` is the canonical type for Clerk token functions**: Import `GetToken` from `src/lib/firebase-auth.ts` whenever a function needs to accept a Clerk `getToken` argument. Do not write the inline type literal.
+- **`category_wildcard_toggled` follows `card_status_toggled` semantics**: Both events fire after a successful mutation (not before), include the entity identifier and the new boolean state, and originate from a toggle handler in an admin page component.
+
+#### Verification Results
+
+- TypeScript: 0 errors (both `tsconfig.json` and `tsconfig.api.json`)
+- Lint: 0 errors (1 pre-existing warning in `account-panel.tsx` — expected)
+- Tests: 160 passing, 0 failing
+- Build: Successful
+- Breaking Changes: None
+
+---
+
+### March 30, 2026 - Category Management Admin Panel (OAK-103–OAK-106)
+
+**Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
+
+**Motivation**: OAK-103 scoped the feature. OAK-104 builds `CategoryEditSheet` — the responsive create/edit/delete form component. OAK-105 builds `AdminCategoriesPage` — the full category management page. OAK-106 wires the page into the admin nav, routing, and layout.
+
+#### OAK-104 — `CategoryEditSheet` component
+
+**New file: `src/components/admin/category-edit-sheet.tsx`** (named export: `CategoryEditSheet`):
+
+- Props: `mode: "create" | "edit"`, `category?: Category`, `isOpen`, `onClose`, `onSaved`, `onError: (message: string) => void`.
+- Internal `FormContent` function (non-exported) renders form fields; shared between desktop Modal and mobile BottomSheet — same pattern as `card-edit-sheet.tsx`.
+- Desktop (`useMediaQuery("(max-width: 768px)") === false`): HeroUI `<Modal size="lg">`.
+- Mobile: `<BottomSheet>` from `src/components/m3/bottom-sheet.tsx`.
+- `useEffect([isOpen, mode, category])`: populates form from `category` prop on open; resets to blank for create mode; clears errors and delete confirm on close.
+- Validate-on-submit, clear-on-change (CLAUDE.md lesson #15). Uses `validateCategoryForm` from `src/utils/validation.ts`.
+- Operations: `createCategory`, `updateCategoryDisplayName`, `deleteCategory` from `@/utils/categories`, each called with `getToken` as the last argument.
+- Category ID field is read-only in edit mode (`isReadOnly={mode === "edit"}`) — category ID is the Firestore collection path and is immutable after creation (lesson #16).
+- Inline delete confirmation: sets `showDeleteConfirm = true`; renders inline section (not a nested modal) — same pattern as `card-edit-sheet.tsx`.
+- `onError` callback called from catch blocks; `onSaved()` + `onClose()` called only on success.
+
+#### OAK-105 — `AdminCategoriesPage`
+
+**New file: `src/pages/admin/categories.tsx`** (default export: `AdminCategoriesPage`):
+
+- Lazy-loaded via `React.lazy()` in `App.tsx`; route at `/admin/categories`.
+- HeroUI `<Table>` listing all categories: display name, category ID, wildcard eligible toggle.
+- Wildcard toggle uses optimistic update pattern: updates local state immediately, then calls `toggleWildcardEligible` from `@/utils/categories`; reverts on error.
+- `loadError` state with inline "Could not load categories" block + Retry button — same persistent error pattern as `users.tsx`.
+- Empty state: shown when Firestore returns an empty list (should not occur in production but guarded defensively).
+- FAB: `fixed bottom-6 right-6 lg:hidden` on mobile; inline `<Button className="hidden lg:flex">` on desktop — same dual FAB/button pattern as `card-panel.tsx`.
+- `<LinearProgress visible={isPending} />` at top of page.
+- `<M3Snackbar>` for operation success/error feedback.
+- `<CategoryEditSheet>` receives `onSaved={fetchCategories}` and `onError={setSnackbarMessage}`.
+- Auth handled by `AdminLayout` — no auth guard in the page component itself.
+
+#### OAK-106 — Nav and routing wiring
+
+**Modified `src/App.tsx`**:
+
+- Added `const AdminCategoriesPage = React.lazy(() => import("@/pages/admin/categories"))`.
+- Added `<Route path="/admin/categories" element={<AdminCategoriesPage />} />` inside the `<Route element={<AdminLayout />}>` block.
+- Updated the `/categories` redirect: `<Route path="/categories" element={<Navigate to="/admin/categories" replace />} />`.
+
+**Modified `src/layouts/admin.tsx`**:
+
+- Added `"/admin/categories": "Categories"` to `ROUTE_TITLES`.
+
+**Modified `src/components/admin/nav-drawer.tsx`**:
+
+- Added `Tag` icon to lucide-react import.
+- Added Categories nav item to `DrawerContent` between Users and Analytics. Nav drawer order: Cards → (category subitems) → `<hr>` → Users → Categories → Analytics → `<hr>` → Public Site.
+
+#### New test files (11 new tests, total 156)
+
+- `src/test/pages/admin/categories.test.tsx` — 5 tests for AdminCategoriesPage (renders table, wildcard toggle optimistic update, load error + retry, empty state, opens sheet on FAB click).
+- `src/test/components/admin/category-edit-sheet.test.tsx` — 6 tests for CategoryEditSheet (validation error on empty save, createCategory payload, onSaved callback, deleteCategory on confirmation, edit mode category ID read-only, error clearing on field change).
+
+#### Key architectural decisions
+
+- **`CategoryEditSheet` mirrors `CardEditSheet` structurally**: Both use `FormContent` as a non-exported inner function shared between Modal and BottomSheet, inline delete confirmation, `useEffect` for open/close lifecycle, and `onError`/`onSaved` callback props. Consistency reduces cognitive load when working across both sheets.
+- **Optimistic wildcard toggle**: The toggle updates local state immediately for instant feedback, then calls `toggleWildcardEligible`. On error, the state reverts and the snackbar fires. This matches the `handleToggleActive` pattern in `card-panel.tsx`.
+- **Category ID is immutable after creation**: `CategoryEditSheet` sets `isReadOnly={mode === "edit"}` on the category ID field. Changing the ID after cards exist would orphan every card in the Firestore collection (lesson #16).
+- **`/categories` redirect updated**: The legacy `/categories` route now redirects to `/admin/categories` instead of `/admin`. This preserves any bookmarks that pointed to the old categories page.
+
+#### Verification Results
+
+- TypeScript: 0 errors (both `tsconfig.json` and `tsconfig.api.json`)
+- Lint: 0 errors (1 pre-existing warning in `account-panel.tsx` — expected)
+- Tests: 156 passing, 0 failing
+- Build: Successful
+- Breaking Changes: None
+
+---
+
 ### March 27, 2026 - GA4 Analytics Dashboard (OAK-92–OAK-95)
 
 **Pre-release quality fixes on the `development` branch** — no version bump, no changelog entry.
@@ -131,24 +256,25 @@ After the OAK-90 GA4 migration, `useAnalytics()` had zero callers. The function 
 
 #### Updated GA4 Event Taxonomy (as of OAK-112)
 
-| Event name            | Params                                       | Fired by                                                     |
-| --------------------- | -------------------------------------------- | ------------------------------------------------------------ |
-| `generate`            | `content_type: "booster_pack"`, `pack_count` | `use-booster-pack-generation.ts`                             |
-| `download`            | `file_name`, `file_extension`, `pack_count`  | `use-excel-export.ts`                                        |
-| `select_content`      | `content_type: "button"`, `item_id`          | `index.tsx`, `edit.tsx` (nav/modal buttons only)             |
-| `card_created`        | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
-| `card_updated`        | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
-| `card_moved`          | `from_collection`, `to_collection`           | `card-edit-sheet.tsx`                                        |
-| `card_deleted`        | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
-| `card_status_toggled` | `collection`, `active`                       | `edit.tsx`                                                   |
-| `category_created`    | `category_id`                                | `categories.tsx`                                             |
-| `category_updated`    | `category_id`                                | `categories.tsx`                                             |
-| `category_deleted`    | `category_id`                                | `categories.tsx`                                             |
-| `login`               | `method: "password" \| "email_code"`         | `sign-in.tsx` (password sign-in + password reset completion) |
-| `password_reset`      | `{}`                                         | `sign-in.tsx`                                                |
-| `user_invited`        | `{}`                                         | `admin/users.tsx`                                            |
-| `performance_timing`  | `timing_name`, `duration_ms`, `pack_count`   | `use-booster-pack-generation.ts` via `timing()`              |
-| `form_submit`         | `form_name`, `success`                       | via `useAnalytics().trackFormSubmission`                     |
+| Event name                  | Params                                       | Fired by                                                     |
+| --------------------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| `generate`                  | `content_type: "booster_pack"`, `pack_count` | `use-booster-pack-generation.ts`                             |
+| `download`                  | `file_name`, `file_extension`, `pack_count`  | `use-excel-export.ts`                                        |
+| `select_content`            | `content_type: "button"`, `item_id`          | `index.tsx`, `edit.tsx` (nav/modal buttons only)             |
+| `card_created`              | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
+| `card_updated`              | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
+| `card_moved`                | `from_collection`, `to_collection`           | `card-edit-sheet.tsx`                                        |
+| `card_deleted`              | `collection`                                 | `editcard.tsx`, `card-edit-sheet.tsx`                        |
+| `card_status_toggled`       | `collection`, `active`                       | `edit.tsx`                                                   |
+| `category_created`          | `category_id`                                | `categories.tsx`                                             |
+| `category_updated`          | `category_id`                                | `categories.tsx`                                             |
+| `category_deleted`          | `category_id`                                | `categories.tsx`                                             |
+| `category_wildcard_toggled` | `category_id`, `wildcard_eligible`           | `admin/categories.tsx`                                       |
+| `login`                     | `method: "password" \| "email_code"`         | `sign-in.tsx` (password sign-in + password reset completion) |
+| `password_reset`            | `{}`                                         | `sign-in.tsx`                                                |
+| `user_invited`              | `{}`                                         | `admin/users.tsx`                                            |
+| `performance_timing`        | `timing_name`, `duration_ms`, `pack_count`   | `use-booster-pack-generation.ts` via `timing()`              |
+| `form_submit`               | `form_name`, `success`                       | via `useAnalytics().trackFormSubmission`                     |
 
 #### Key architectural decisions (additions)
 

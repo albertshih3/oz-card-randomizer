@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronRight,
   RectangleVertical,
+  Tag,
 } from "lucide-react";
 import { getCategories } from "@/utils/categories";
 import type { Category } from "@/utils/categories";
@@ -164,6 +165,25 @@ function DrawerContent({
       >
         <Users size={18} />
         Users
+      </button>
+
+      <button
+        onClick={() => handleNavClick("/admin/categories")}
+        aria-current={pathname === "/admin/categories" ? "page" : undefined}
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
+        style={
+          pathname === "/admin/categories"
+            ? {
+                background: "var(--md-sys-color-secondary-container)",
+                color: "var(--md-sys-color-on-secondary-container)",
+              }
+            : {
+                color: "var(--md-sys-color-on-surface-variant)",
+              }
+        }
+      >
+        <Tag size={18} />
+        Categories
       </button>
 
       <button

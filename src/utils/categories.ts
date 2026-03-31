@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ensureFirebaseAuth } from "@/lib/firebase-auth";
+import type { GetToken } from "@/lib/firebase-auth";
 
 export interface Category {
   id: string;
@@ -174,7 +175,7 @@ export const categoriesToLegacyFormat = (categories: Category[]) => {
 export const createCategory = async (
   displayName: string,
   categoryId: string,
-  getToken: (opts?: { template: string }) => Promise<string | null>,
+  getToken: GetToken,
 ): Promise<void> => {
   await ensureFirebaseAuth(getToken);
   await setDoc(doc(db, "categories", categoryId), {
@@ -188,7 +189,7 @@ export const createCategory = async (
 export const updateCategoryDisplayName = async (
   categoryId: string,
   displayName: string,
-  getToken: (opts?: { template: string }) => Promise<string | null>,
+  getToken: GetToken,
 ): Promise<void> => {
   await ensureFirebaseAuth(getToken);
   await updateDoc(doc(db, "categories", categoryId), { displayName });
@@ -198,7 +199,7 @@ export const updateCategoryDisplayName = async (
 export const toggleWildcardEligible = async (
   categoryId: string,
   value: boolean,
-  getToken: (opts?: { template: string }) => Promise<string | null>,
+  getToken: GetToken,
 ): Promise<void> => {
   await ensureFirebaseAuth(getToken);
   await updateDoc(doc(db, "categories", categoryId), {
@@ -209,7 +210,7 @@ export const toggleWildcardEligible = async (
 
 export const deleteCategory = async (
   categoryId: string,
-  getToken: (opts?: { template: string }) => Promise<string | null>,
+  getToken: GetToken,
 ): Promise<void> => {
   await ensureFirebaseAuth(getToken);
   await deleteDoc(doc(db, "categories", categoryId));

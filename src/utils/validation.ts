@@ -50,6 +50,9 @@ interface CategoryFormData {
   categoryId: string;
 }
 
+export const normalizeCategoryId = (raw: string): string =>
+  raw.toLowerCase().replace(/\s+/g, "");
+
 export const validateCategoryForm = (
   data: CategoryFormData,
 ): CategoryFormErrors => {
@@ -59,7 +62,7 @@ export const validateCategoryForm = (
     errors.displayName = "Display name is required.";
   }
 
-  const normalizedId = data.categoryId.toLowerCase().replace(/\s+/g, "");
+  const normalizedId = normalizeCategoryId(data.categoryId);
 
   if (!normalizedId) {
     errors.categoryId = "Category ID is required.";

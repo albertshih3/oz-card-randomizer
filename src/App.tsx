@@ -13,6 +13,9 @@ const AdminLayout = React.lazy(() => import("@/layouts/admin"));
 const AdminCardsPage = React.lazy(() => import("@/pages/admin/index"));
 const AdminUsersPage = React.lazy(() => import("@/pages/admin/users"));
 const AdminAnalyticsPage = React.lazy(() => import("@/pages/admin/analytics"));
+const AdminCategoriesPage = React.lazy(
+  () => import("@/pages/admin/categories"),
+);
 const NotFoundPage = React.lazy(() => import("@/pages/not-found"));
 const SignInPage = React.lazy(() => import("@/pages/sign-in"));
 
@@ -58,6 +61,10 @@ function App() {
               <Route path="/admin" element={<AdminCardsPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+              <Route
+                path="/admin/categories"
+                element={<AdminCategoriesPage />}
+              />
             </Route>
             <Route path="/edit" element={<Navigate to="/admin" replace />} />
             <Route
@@ -66,7 +73,7 @@ function App() {
             />
             <Route
               path="/categories"
-              element={<Navigate to="/admin" replace />}
+              element={<Navigate to="/admin/categories" replace />}
             />
             <Route path="/sign-in" element={<SignInPage />} />
             <Route path="*" element={<NotFoundPage />} />
