@@ -17,7 +17,7 @@ import {
   TableRow,
   TableCell,
 } from "@heroui/table";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import {
   Modal,
@@ -249,14 +249,14 @@ export default function CategoriesPage() {
               Create and manage card categories and collections.
             </p>
           </div>
-          <Button
-            color="primary"
+          <M3Button
+            variant="filled"
             onPress={handleCreate}
             startContent={<Plus className="w-5 h-5" />}
             className="font-semibold shadow-md"
           >
             Create Category
-          </Button>
+          </M3Button>
         </div>
 
         {loading ? (
@@ -317,24 +317,24 @@ export default function CategoriesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button
+                        <M3Button
                           size="sm"
-                          variant="flat"
+                          variant="tonal"
                           color="primary"
                           onPress={() => handleEdit(category)}
                           startContent={<Edit2 className="w-3.5 h-3.5" />}
                         >
                           Edit
-                        </Button>
-                        <Button
+                        </M3Button>
+                        <M3Button
                           size="sm"
-                          color="danger"
-                          variant="flat"
+                          variant="tonal"
+                          color="error"
                           onPress={() => handleDelete(category)}
                           startContent={<Trash2 className="w-3.5 h-3.5" />}
                         >
                           Delete
-                        </Button>
+                        </M3Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -421,15 +421,15 @@ export default function CategoriesPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button
-              variant="flat"
+            <M3Button
+              variant="tonal"
               onPress={onClose}
               startContent={<X className="w-4 h-4" />}
             >
               Cancel
-            </Button>
-            <Button
-              color="primary"
+            </M3Button>
+            <M3Button
+              variant="filled"
               onPress={handleSave}
               isLoading={isSaving}
               spinner={<M3Spinner size="sm" color="currentColor" />}
@@ -437,7 +437,7 @@ export default function CategoriesPage() {
               className="font-semibold"
             >
               {isCreating ? "Create Category" : "Save Changes"}
-            </Button>
+            </M3Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

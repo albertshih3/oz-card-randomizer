@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, useSignIn } from "@clerk/clerk-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import { Eye, EyeOff, Mail } from "lucide-react";
 
@@ -457,15 +457,16 @@ export default function SignInPage() {
                 )}
 
                 <form onSubmit={handleSignIn} className="flex flex-col gap-3">
+                  {/* Changed: type="text" + updated label/autoComplete to accept username or email */}
                   <Input
-                    type="email"
-                    label="Email address"
+                    type="text"
+                    label="Email or username"
                     variant="bordered"
                     classNames={INPUT_CLASSNAMES}
                     value={email}
                     onValueChange={setEmail}
                     isRequired
-                    autoComplete="email"
+                    autoComplete="username"
                   />
                   <Input
                     type={showPassword ? "text" : "password"}
@@ -505,16 +506,16 @@ export default function SignInPage() {
                     </button>
                   </div>
 
-                  <Button
+                  <M3Button
                     type="submit"
-                    color="primary"
+                    variant="filled"
                     className="w-full font-semibold mt-1"
                     isLoading={isLoading}
                     spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Sign In
-                  </Button>
+                  </M3Button>
                 </form>
 
                 {/* Divider */}
@@ -540,22 +541,23 @@ export default function SignInPage() {
                 </div>
 
                 {/* Email code option */}
-                <Button
+                <M3Button
                   type="button"
-                  variant="bordered"
+                  variant="outlined"
                   className="w-full"
                   isDisabled={isLoading || !signInLoaded || !email}
                   onPress={handleSendEmailCode}
                   startContent={<Mail size={16} />}
                 >
                   Send me a sign-in code
-                </Button>
+                </M3Button>
+                {/* Updated hint: email code requires an actual email, not a username */}
                 {!email && (
                   <p
                     className="text-center text-xs mt-2"
                     style={{ color: "var(--md-sys-color-on-surface-variant)" }}
                   >
-                    Enter your email above first
+                    Enter your email or username above first
                   </p>
                 )}
               </>
@@ -588,16 +590,16 @@ export default function SignInPage() {
                   className="flex flex-col gap-4"
                 >
                   <OtpInput value={emailCode} onChange={setEmailCode} />
-                  <Button
+                  <M3Button
                     type="submit"
-                    color="primary"
+                    variant="filled"
                     className="w-full font-semibold"
                     isLoading={isLoading}
                     spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Verify code
-                  </Button>
+                  </M3Button>
                 </form>
               </>
             )}
@@ -637,16 +639,16 @@ export default function SignInPage() {
                     isRequired
                     autoComplete="email"
                   />
-                  <Button
+                  <M3Button
                     type="submit"
-                    color="primary"
+                    variant="filled"
                     className="w-full font-semibold"
                     isLoading={isLoading}
                     spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Send reset code
-                  </Button>
+                  </M3Button>
                 </form>
               </>
             )}
@@ -713,16 +715,16 @@ export default function SignInPage() {
                       </button>
                     }
                   />
-                  <Button
+                  <M3Button
                     type="submit"
-                    color="primary"
+                    variant="filled"
                     className="w-full font-semibold"
                     isLoading={isLoading}
                     spinner={<M3Spinner size="sm" color="currentColor" />}
                     isDisabled={isLoading || !signInLoaded}
                   >
                     Reset password
-                  </Button>
+                  </M3Button>
                 </form>
               </>
             )}

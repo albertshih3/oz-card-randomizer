@@ -15,7 +15,13 @@ import {
   ChevronRight,
   RectangleVertical,
   Tag,
+  Sun,
+  Moon,
+  HelpCircle,
 } from "lucide-react";
+import { UserButton } from "@clerk/clerk-react";
+import { useTheme } from "@/hooks/use-theme";
+import { useTutorial } from "@/contexts/tutorial-context";
 import { getCategories } from "@/utils/categories";
 import type { Category } from "@/utils/categories";
 import { useAdminFiltersContext } from "@/contexts/admin-filters-context";
@@ -49,14 +55,14 @@ function DrawerContent({
   onToggleCards,
 }: DrawerContentProps) {
   const isCardsPage = pathname === "/admin";
+  const { isDark, toggleTheme } = useTheme();
+  const { isActive, startTutorial } = useTutorial();
 
   const handleCardsClick = () => {
     const isAllAndOnAdmin = selectedCategory === "all" && isCardsPage;
     if (isAllAndOnAdmin) {
-      // Already viewing "all" on /admin — just toggle expand/collapse
       onToggleCards();
     } else {
-      // Navigate to "all" and expand to show sub-items
       onCategorySelect("all");
       onClose();
     }
@@ -74,25 +80,25 @@ function DrawerContent({
 
   const ChevronIcon = cardsExpanded ? ChevronDown : ChevronRight;
 
+  const navItemStyle = (active: boolean): React.CSSProperties =>
+    active
+      ? {
+          background: "var(--md-sys-color-secondary-container)",
+          color: "var(--md-sys-color-on-secondary-container)",
+        }
+      : { color: "var(--md-sys-color-on-surface-variant)" };
+
   return (
     <nav className="flex flex-col flex-1 overflow-y-auto px-3 py-2">
+      {/* Cards + categories */}
       <button
         onClick={handleCardsClick}
         aria-current={
           isCardsPage && selectedCategory === "all" ? "page" : undefined
         }
         aria-expanded={cardsExpanded}
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left font-semibold text-base transition-colors"
-        style={
-          isCardsPage && selectedCategory === "all"
-            ? {
-                background: "var(--md-sys-color-secondary-container)",
-                color: "var(--md-sys-color-on-secondary-container)",
-              }
-            : {
-                color: "var(--md-sys-color-on-surface-variant)",
-              }
-        }
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-label-large transition-colors"
+        style={navItemStyle(isCardsPage && selectedCategory === "all")}
       >
         <RectangleVertical size={18} />
         Cards
@@ -109,36 +115,33 @@ function DrawerContent({
             exit="exit"
             className="overflow-hidden"
           >
-            {isLoading ? (
-              <>
-                <Skeleton className="h-10 w-full rounded-xl my-1" />
-                <Skeleton className="h-10 w-full rounded-xl my-1" />
-                <Skeleton className="h-10 w-full rounded-xl my-1" />
-              </>
-            ) : (
-              categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleCategoryClick(cat.name)}
-                  aria-current={
-                    isCardsPage && selectedCategory === cat.name
-                      ? "page"
-                      : undefined
-                  }
-                  className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-left text-sm transition-colors pl-6"
-                  style={
-                    isCardsPage && selectedCategory === cat.name
-                      ? {
-                          background: "var(--md-sys-color-secondary-container)",
-                          color: "var(--md-sys-color-on-secondary-container)",
-                        }
-                      : { color: "var(--md-sys-color-on-surface-variant)" }
-                  }
-                >
-                  {cat.displayName}
-                </button>
-              ))
-            )}
+            <div className="ml-6 my-1">
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-9 w-full rounded-xl my-1 ml-1" />
+                  <Skeleton className="h-9 w-full rounded-xl my-1 ml-1" />
+                  <Skeleton className="h-9 w-full rounded-xl my-1 ml-1" />
+                </>
+              ) : (
+                categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryClick(cat.name)}
+                    aria-current={
+                      isCardsPage && selectedCategory === cat.name
+                        ? "page"
+                        : undefined
+                    }
+                    className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-left text-body-medium transition-colors pl-3"
+                    style={navItemStyle(
+                      isCardsPage && selectedCategory === cat.name,
+                    )}
+                  >
+                    {cat.displayName}
+                  </button>
+                ))
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -151,17 +154,8 @@ function DrawerContent({
       <button
         onClick={() => handleNavClick("/admin/users")}
         aria-current={pathname === "/admin/users" ? "page" : undefined}
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
-        style={
-          pathname === "/admin/users"
-            ? {
-                background: "var(--md-sys-color-secondary-container)",
-                color: "var(--md-sys-color-on-secondary-container)",
-              }
-            : {
-                color: "var(--md-sys-color-on-surface-variant)",
-              }
-        }
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-label-large transition-colors"
+        style={navItemStyle(pathname === "/admin/users")}
       >
         <Users size={18} />
         Users
@@ -170,17 +164,8 @@ function DrawerContent({
       <button
         onClick={() => handleNavClick("/admin/categories")}
         aria-current={pathname === "/admin/categories" ? "page" : undefined}
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
-        style={
-          pathname === "/admin/categories"
-            ? {
-                background: "var(--md-sys-color-secondary-container)",
-                color: "var(--md-sys-color-on-secondary-container)",
-              }
-            : {
-                color: "var(--md-sys-color-on-surface-variant)",
-              }
-        }
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-label-large transition-colors"
+        style={navItemStyle(pathname === "/admin/categories")}
       >
         <Tag size={18} />
         Categories
@@ -189,17 +174,8 @@ function DrawerContent({
       <button
         onClick={() => handleNavClick("/admin/analytics")}
         aria-current={pathname === "/admin/analytics" ? "page" : undefined}
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
-        style={
-          pathname === "/admin/analytics"
-            ? {
-                background: "var(--md-sys-color-secondary-container)",
-                color: "var(--md-sys-color-on-secondary-container)",
-              }
-            : {
-                color: "var(--md-sys-color-on-surface-variant)",
-              }
-        }
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-label-large transition-colors"
+        style={navItemStyle(pathname === "/admin/analytics")}
       >
         <BarChart2 size={18} />
         Analytics
@@ -212,12 +188,39 @@ function DrawerContent({
 
       <button
         onClick={() => handleNavClick("/")}
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-sm transition-colors"
+        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-label-large transition-colors"
         style={{ color: "var(--md-sys-color-on-surface-variant)" }}
       >
         <ExternalLink size={18} />
         Public Site
       </button>
+
+      {/* Bottom actions */}
+      <div className="mt-auto flex flex-col">
+        {!isActive && (
+          <button
+            onClick={() => {
+              startTutorial();
+              onClose();
+            }}
+            aria-label="Take a tour"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-label-large transition-colors"
+            style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+          >
+            <HelpCircle size={18} />
+            Take a tour
+          </button>
+        )}
+        <button
+          onClick={toggleTheme}
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl text-left text-label-large transition-colors"
+          style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+        >
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          {isDark ? "Light mode" : "Dark mode"}
+        </button>
+      </div>
     </nav>
   );
 }
@@ -229,7 +232,7 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
     useAdminFiltersContext();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [cardsExpanded, setCardsExpanded] = useState(false);
+  const [cardsExpanded, setCardsExpanded] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,13 +256,7 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
     setCardsExpanded(true);
-    if (pathname !== "/admin") {
-      navigate("/admin");
-    }
-  };
-
-  const handleToggleCards = () => {
-    setCardsExpanded((prev) => !prev);
+    if (pathname !== "/admin") navigate("/admin");
   };
 
   const contentProps: DrawerContentProps = {
@@ -271,28 +268,35 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
     onCategorySelect: handleCategorySelect,
     onNavigate: navigate,
     cardsExpanded,
-    onToggleCards: handleToggleCards,
+    onToggleCards: () => setCardsExpanded((prev) => !prev),
   };
+
+  const DrawerHeader = ({ onLogoClick }: { onLogoClick: () => void }) => (
+    <div className="h-16 flex items-center justify-between px-4 shrink-0">
+      <button
+        onClick={onLogoClick}
+        aria-label="Go to public site"
+        className="cursor-pointer hover:opacity-80 transition-opacity"
+      >
+        <img src="/csclogo.svg" alt="Oakland Zoo" className="h-8 w-auto" />
+      </button>
+      <UserButton />
+    </div>
+  );
 
   return (
     <>
-      {/* Desktop permanent drawer */}
+      {/* Desktop permanent drawer — floating card style */}
       <aside
-        className="hidden lg:flex flex-col w-64 h-full shrink-0"
+        data-tutorial-id="nav-drawer"
+        className="hidden lg:flex flex-col w-64 shrink-0 m-3 rounded-3xl overflow-hidden"
         style={{
           background: "var(--md-sys-color-surface)",
-          borderRight: "1px solid var(--md-sys-color-outline-variant)",
+          border: "1px solid var(--md-sys-color-outline-variant)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
         }}
       >
-        <div className="h-16 flex items-center px-4 shrink-0">
-          <button
-            onClick={() => navigate("/")}
-            aria-label="Go to public site"
-            className="cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <img src="/csclogo.svg" alt="Oakland Zoo" className="h-8 w-auto" />
-          </button>
-        </div>
+        <DrawerHeader onLogoClick={() => navigate("/")} />
         <DrawerContent {...contentProps} onClose={() => {}} />
       </aside>
 
@@ -312,6 +316,7 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
               aria-hidden="true"
             />
             <motion.aside
+              data-tutorial-id="nav-drawer"
               key="admin-drawer-panel"
               id="admin-nav-drawer"
               className="fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col lg:hidden shadow-elevation-2"
@@ -324,22 +329,12 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
               aria-modal="true"
               aria-label="Navigation menu"
             >
-              <div className="h-16 flex items-center px-4 shrink-0">
-                <button
-                  onClick={() => {
-                    navigate("/");
-                    onClose();
-                  }}
-                  aria-label="Go to public site"
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <img
-                    src="/csclogo.svg"
-                    alt="Oakland Zoo"
-                    className="h-8 w-auto"
-                  />
-                </button>
-              </div>
+              <DrawerHeader
+                onLogoClick={() => {
+                  navigate("/");
+                  onClose();
+                }}
+              />
               <DrawerContent {...contentProps} />
             </motion.aside>
           </>

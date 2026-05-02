@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
@@ -128,52 +128,53 @@ function FormContent({
             Delete this card permanently?
           </p>
           <div className="flex gap-2">
-            <Button
+            <M3Button
               size="sm"
-              variant="flat"
+              variant="tonal"
               onPress={onDeleteCancel}
               isDisabled={isSaving}
             >
               Cancel
-            </Button>
-            <Button
+            </M3Button>
+            <M3Button
               size="sm"
-              color="danger"
+              variant="filled"
+              color="error"
               onPress={onDeleteConfirm}
               isLoading={isSaving}
               spinner={<M3Spinner size="sm" color="currentColor" />}
             >
               Delete permanently
-            </Button>
+            </M3Button>
           </div>
         </div>
       )}
 
       <div className="flex justify-between items-center pt-2">
         {mode === "edit" && !showDeleteConfirm && (
-          <Button
-            variant="bordered"
-            color="danger"
+          <M3Button
+            variant="outlined"
+            color="error"
             onPress={onDelete}
             isDisabled={isSaving}
             startContent={<Trash2 size={16} />}
           >
             Delete
-          </Button>
+          </M3Button>
         )}
         <div className="flex gap-2 ml-auto">
-          <Button variant="flat" onPress={onClose} isDisabled={isSaving}>
+          <M3Button variant="tonal" onPress={onClose} isDisabled={isSaving}>
             Cancel
-          </Button>
-          <Button
-            color="primary"
+          </M3Button>
+          <M3Button
+            variant="filled"
             onPress={onSave}
             isLoading={isSaving}
             spinner={<M3Spinner size="sm" color="currentColor" />}
             startContent={<Save size={16} />}
           >
             Save
-          </Button>
+          </M3Button>
         </div>
       </div>
     </div>
@@ -335,6 +336,7 @@ export function CardEditSheet({
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
+      hideCloseButton
       aria-labelledby="card-edit-title"
       classNames={{
         base: "rounded-3xl",

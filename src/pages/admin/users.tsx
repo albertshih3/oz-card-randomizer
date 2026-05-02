@@ -1,68 +1,78 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
-import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@heroui/table";
+import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
 import { LinearProgress } from "@/components/m3/linear-progress";
 import { M3Snackbar } from "@/components/m3/snackbar";
 import { BottomSheet } from "@/components/m3/bottom-sheet";
+import { M3Spinner } from "@/components/m3/spinner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { listUsers, inviteUser } from "@/utils/admin-api";
 import type { AdminUser } from "@/utils/admin-api";
 import { AccountPanel } from "@/components/admin/account-panel";
-import { X, Send } from "lucide-react";
-import { M3Spinner } from "@/components/m3/spinner";
+import { UserPlus, X, Send } from "lucide-react";
 import { event } from "@/lib/gtag";
 
-interface InviteFormContentProps {
-  inviteEmail: string;
-  inviteError: string | null;
-  isSending: boolean;
-  onEmailChange: (v: string) => void;
-  onSend: () => void;
-  onClose: () => void;
+function UserAvatar({ user }: { user: AdminUser }) {
+  const initials =
+    [user.firstName?.[0], user.lastName?.[0]]
+      .filter(Boolean)
+      .join("")
+      .toUpperCase() || user.email[0].toUpperCase();
+
+  return (
+    <div
+      className="w-10 h-10 rounded-full flex items-center justify-center text-label-large shrink-0"
+      style={{
+        background: "var(--md-sys-color-secondary-container)",
+        color: "var(--md-sys-color-on-secondary-container)",
+      }}
+    >
+      {initials}
+    </div>
+  );
 }
 
-function InviteFormContent({
-  inviteEmail,
-  inviteError,
+function InviteForm({
+  email,
+  error,
   isSending,
   onEmailChange,
   onSend,
   onClose,
-}: InviteFormContentProps) {
+}: {
+  email: string;
+  error: string | null;
+  isSending: boolean;
+  onEmailChange: (v: string) => void;
+  onSend: () => void;
+  onClose: () => void;
+}) {
   return (
     <div className="flex flex-col gap-4 p-4">
       <Input
         label="Email address"
         type="email"
-        value={inviteEmail}
+        value={email}
         onValueChange={onEmailChange}
-        isInvalid={!!inviteError}
-        errorMessage={inviteError ?? undefined}
+        isInvalid={!!error}
+        errorMessage={error ?? undefined}
         isDisabled={isSending}
       />
       <div className="flex gap-2 justify-end pt-2">
-        <Button variant="flat" onPress={onClose} isDisabled={isSending}>
+        <M3Button variant="tonal" onPress={onClose} isDisabled={isSending}>
           Cancel
-        </Button>
-        <Button
-          color="primary"
+        </M3Button>
+        <M3Button
+          variant="filled"
           onPress={onSend}
           isLoading={isSending}
           spinner={<M3Spinner size="sm" color="currentColor" />}
           startContent={<Send size={16} />}
         >
           Send Invite
-        </Button>
+        </M3Button>
       </div>
     </div>
   );
@@ -91,8 +101,7 @@ export default function AdminUsersPage() {
         setLoadError("Session expired. Please refresh the page.");
         return;
       }
-      const data = await listUsers(token);
-      setUsers(data);
+      setUsers(await listUsers(token));
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
@@ -103,6 +112,14 @@ export default function AdminUsersPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    if (!inviteOpen) {
+      setInviteEmail("");
+      setInviteError(null);
+      setIsSending(false);
+    }
+  }, [inviteOpen]);
 
   const handleInvite = async () => {
     const trimmed = inviteEmail.trim();
@@ -120,9 +137,7 @@ export default function AdminUsersPage() {
       await inviteUser(token, trimmed);
       event("user_invited", {});
       setInviteOpen(false);
-      setInviteEmail("");
       setSnackbarMessage(`Invite sent to ${trimmed}`);
-      // Fire-and-forget: invite already succeeded; background re-fetch updates the list
       fetchUsers();
     } catch (err) {
       setInviteError(
@@ -133,120 +148,149 @@ export default function AdminUsersPage() {
     }
   };
 
-  useEffect(() => {
-    if (!inviteOpen) {
-      setInviteEmail("");
-      setInviteError(null);
-      setIsSending(false);
-    }
-  }, [inviteOpen]);
-
   return (
-    <div style={{ color: "var(--md-sys-color-on-surface)" }}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-headline-small">Team Members</h2>
-        <Button color="primary" onPress={() => setInviteOpen(true)}>
-          Invite User
-        </Button>
-      </div>
-
-      <LinearProgress visible={isLoading} className="mb-3" />
-
-      {loadError && !isLoading && (
-        <div className="text-center py-12">
+    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8 items-start">
+      {/* My Account */}
+      <section>
+        <div className="flex items-center mb-3" style={{ minHeight: "2rem" }}>
           <p
-            className="font-medium mb-1"
-            style={{ color: "var(--md-sys-color-error)" }}
-          >
-            Could not load team members
-          </p>
-          <p
-            className="text-sm mb-4"
+            className="text-label-medium uppercase tracking-widest"
             style={{ color: "var(--md-sys-color-on-surface-variant)" }}
           >
-            {loadError}
+            My Account
           </p>
-          <Button size="sm" variant="flat" onPress={fetchUsers}>
-            Retry
-          </Button>
         </div>
-      )}
-      {!loadError && users.length === 0 && !isLoading && (
+        <AccountPanel />
+      </section>
+
+      {/* Team */}
+      <section>
         <div
-          className="text-center py-12"
-          style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+          className="flex items-center justify-between mb-3"
+          style={{ minHeight: "2rem" }}
         >
-          No team members found.
+          <p
+            className="text-label-medium uppercase tracking-widest"
+            style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+          >
+            Team{!isLoading && users.length > 0 && ` · ${users.length}`}
+          </p>
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-2xl text-label-large transition-opacity hover:opacity-80"
+            style={{
+              background: "var(--md-sys-color-primary-container)",
+              color: "var(--md-sys-color-on-primary-container)",
+            }}
+          >
+            <UserPlus size={15} />
+            Invite
+          </button>
         </div>
-      )}
 
-      {users.length > 0 && (
-        <Table aria-label="Team members">
-          <TableHeader>
-            <TableColumn>Name</TableColumn>
-            <TableColumn>Email</TableColumn>
-            <TableColumn>Last Sign-In</TableColumn>
-            <TableColumn>Status</TableColumn>
-          </TableHeader>
-          <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  {[user.firstName, user.lastName].filter(Boolean).join(" ") ||
-                    "\u2014"}
-                </TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  {user.lastSignInAt
-                    ? new Date(user.lastSignInAt).toLocaleDateString()
-                    : "Never"}
-                </TableCell>
-                <TableCell>
-                  {user.lastSignInAt ? (
-                    <span
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        background: "var(--md-sys-color-primary-container)",
-                        color: "var(--md-sys-color-on-primary-container)",
-                      }}
-                    >
-                      Active
-                    </span>
-                  ) : (
-                    <span
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        background: "var(--md-sys-color-surface-variant)",
-                        color: "var(--md-sys-color-on-surface-variant)",
-                      }}
-                    >
-                      Invited
-                    </span>
-                  )}
-                </TableCell>
-              </TableRow>
+        <LinearProgress visible={isLoading} className="mb-2" />
+
+        {loadError && !isLoading && (
+          <div
+            className="rounded-2xl p-4 flex items-center justify-between"
+            style={{
+              background: "var(--md-sys-color-error-container)",
+              color: "var(--md-sys-color-on-error-container)",
+            }}
+          >
+            <p className="text-body-medium">{loadError}</p>
+            <button
+              onClick={fetchUsers}
+              className="text-label-large hover:opacity-80 transition-opacity ml-4"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loadError && !isLoading && users.length === 0 && (
+          <p
+            className="text-body-medium py-6 text-center"
+            style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+          >
+            No team members yet.
+          </p>
+        )}
+
+        {users.length > 0 && (
+          <div
+            data-tutorial-id="users-table"
+            className="rounded-3xl border overflow-hidden"
+            style={{
+              background: "var(--md-sys-color-surface)",
+              borderColor: "var(--md-sys-color-outline-variant)",
+            }}
+          >
+            {users.map((user, i) => (
+              <div
+                key={user.id}
+                className="flex items-center gap-4 px-5 py-4"
+                style={
+                  i < users.length - 1
+                    ? {
+                        borderBottom:
+                          "1px solid var(--md-sys-color-outline-variant)",
+                      }
+                    : undefined
+                }
+              >
+                <UserAvatar user={user} />
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-label-large truncate"
+                    style={{ color: "var(--md-sys-color-on-surface)" }}
+                  >
+                    {[user.firstName, user.lastName]
+                      .filter(Boolean)
+                      .join(" ") || "—"}
+                  </p>
+                  <p
+                    className="text-body-medium truncate"
+                    style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+                  >
+                    {user.email}
+                  </p>
+                </div>
+                <span
+                  className="text-label-medium px-2.5 py-0.5 rounded-full shrink-0"
+                  style={
+                    user.lastSignInAt
+                      ? {
+                          background: "var(--md-sys-color-primary-container)",
+                          color: "var(--md-sys-color-on-primary-container)",
+                        }
+                      : {
+                          background: "var(--md-sys-color-surface-variant)",
+                          color: "var(--md-sys-color-on-surface-variant)",
+                        }
+                  }
+                >
+                  {user.lastSignInAt ? "Active" : "Invited"}
+                </span>
+              </div>
             ))}
-          </TableBody>
-        </Table>
-      )}
+          </div>
+        )}
+      </section>
 
+      {/* Invite sheet / modal */}
       {isMobile ? (
-        <BottomSheet
-          isOpen={inviteOpen}
-          onClose={() => setInviteOpen(false)}
-          aria-labelledby="invite-title"
-        >
+        <BottomSheet isOpen={inviteOpen} onClose={() => setInviteOpen(false)}>
           <div className="px-2 pb-6">
             <h2
-              id="invite-title"
               className="text-title-large px-4 pt-2 pb-2"
               style={{ color: "var(--md-sys-color-on-surface)" }}
             >
               Invite User
             </h2>
-            <InviteFormContent
-              inviteEmail={inviteEmail}
-              inviteError={inviteError}
+            <InviteForm
+              email={inviteEmail}
+              error={inviteError}
               isSending={isSending}
               onEmailChange={(v) => {
                 setInviteEmail(v);
@@ -262,36 +306,29 @@ export default function AdminUsersPage() {
           isOpen={inviteOpen}
           onClose={() => setInviteOpen(false)}
           size="md"
-          classNames={{
-            base: "rounded-3xl",
-            header: "border-b-0 pb-0",
-          }}
+          hideCloseButton
+          classNames={{ base: "rounded-3xl", header: "border-b-0 pb-0" }}
         >
           <ModalContent>
             {() => (
               <>
                 <ModalHeader className="flex items-center justify-between">
-                  <span
-                    id="invite-title"
-                    style={{ color: "var(--md-sys-color-on-surface)" }}
-                  >
+                  <span style={{ color: "var(--md-sys-color-on-surface)" }}>
                     Invite User
                   </span>
                   <button
                     onClick={() => setInviteOpen(false)}
                     aria-label="Close"
                     className="p-1 rounded-full"
-                    style={{
-                      color: "var(--md-sys-color-on-surface-variant)",
-                    }}
+                    style={{ color: "var(--md-sys-color-on-surface-variant)" }}
                   >
                     <X size={20} />
                   </button>
                 </ModalHeader>
                 <ModalBody>
-                  <InviteFormContent
-                    inviteEmail={inviteEmail}
-                    inviteError={inviteError}
+                  <InviteForm
+                    email={inviteEmail}
+                    error={inviteError}
                     isSending={isSending}
                     onEmailChange={(v) => {
                       setInviteEmail(v);
@@ -306,17 +343,6 @@ export default function AdminUsersPage() {
           </ModalContent>
         </Modal>
       )}
-
-      <div className="mt-12">
-        <h2
-          id="my-account"
-          className="text-headline-small mb-4"
-          style={{ color: "var(--md-sys-color-on-surface)" }}
-        >
-          My Account
-        </h2>
-        <AccountPanel />
-      </div>
 
       <M3Snackbar
         message={snackbarMessage}

@@ -7,7 +7,7 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@heroui/modal";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { SignInButton } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 
@@ -39,18 +39,18 @@ export default function Unauthorized() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  color="danger"
-                  variant="light"
+                <M3Button
+                  variant="text"
+                  color="error"
                   onPress={() => {
                     onClose();
                     navigate("/");
                   }}
                 >
                   Go Back
-                </Button>
+                </M3Button>
                 <SignInButton>
-                  <Button color="success">Sign In</Button>
+                  <M3Button variant="filled">Sign In</M3Button>
                 </SignInButton>
               </ModalFooter>
             </>

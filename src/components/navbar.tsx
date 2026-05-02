@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SignedOut, SignedIn, UserButton } from "@clerk/clerk-react";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { event } from "@/lib/gtag";
 
 export const Navbar = () => {
@@ -99,17 +99,16 @@ export const Navbar = () => {
         </NavbarItem>
         <NavbarItem className="hidden md:flex">
           <SignedOut>
-            <Button
+            <M3Button
+              variant="tonal"
               className="text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20"
-              variant="flat"
-              radius="full"
               onPress={() => {
                 handleAuthClick("sign_in");
                 navigate("/sign-in");
               }}
             >
               Sign In
-            </Button>
+            </M3Button>
           </SignedOut>
           <SignedIn>
             <UserButton
@@ -159,17 +158,16 @@ export const Navbar = () => {
         </div>
         <div className="mx-4 mt-6 flex flex-col gap-2">
           <SignedOut>
-            <Button
+            <M3Button
+              variant="elevated"
               className="w-full font-bold"
-              color="primary"
-              variant="shadow"
               onPress={() => {
                 handleAuthClick("sign_in");
                 navigate("/sign-in");
               }}
             >
               Sign In
-            </Button>
+            </M3Button>
           </SignedOut>
           <SignedIn>
             <div className="flex items-center gap-4 p-2">

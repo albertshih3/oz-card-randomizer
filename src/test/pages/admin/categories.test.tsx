@@ -48,28 +48,6 @@ vi.mock("framer-motion", () => ({
     div: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   },
 }));
-vi.mock("@heroui/table", () => ({
-  Table: ({ children }: { children: React.ReactNode }) => (
-    <table>{children}</table>
-  ),
-  TableHeader: ({ children }: { children: React.ReactNode }) => (
-    <thead>
-      <tr>{children}</tr>
-    </thead>
-  ),
-  TableColumn: ({ children }: { children: React.ReactNode }) => (
-    <th>{children}</th>
-  ),
-  TableBody: ({ children }: { children: React.ReactNode }) => (
-    <tbody>{children}</tbody>
-  ),
-  TableRow: ({ children }: { children: React.ReactNode }) => (
-    <tr>{children}</tr>
-  ),
-  TableCell: ({ children }: { children: React.ReactNode }) => (
-    <td>{children}</td>
-  ),
-}));
 vi.mock("@heroui/switch", () => ({
   Switch: ({
     isSelected,
@@ -156,9 +134,8 @@ describe("AdminCategoriesPage — OAK-104", () => {
     mockGetCategories.mockRejectedValueOnce(new Error("Network error"));
     render(<AdminCategoriesPage />);
     await waitFor(() =>
-      expect(screen.getByText("Could not load categories")).toBeInTheDocument(),
+      expect(screen.getByText("Network error")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Network error")).toBeInTheDocument();
     const retryBtn = screen.getByRole("button", { name: /retry/i });
     await userEvent.click(retryBtn);
     await waitFor(() => expect(mockGetCategories).toHaveBeenCalledTimes(2));

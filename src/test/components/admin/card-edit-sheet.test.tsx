@@ -30,6 +30,12 @@ vi.mock("framer-motion", () => ({
     }: React.HTMLAttributes<HTMLDivElement> & { [key: string]: unknown }) => (
       <div {...filterDomProps(rest)}>{children}</div>
     ),
+    button: ({
+      children,
+      ...rest
+    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+      [key: string]: unknown;
+    }) => <button {...filterDomProps(rest)}>{children}</button>,
   },
 }));
 vi.mock("@heroui/modal", () => ({

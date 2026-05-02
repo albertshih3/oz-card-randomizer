@@ -26,6 +26,16 @@ vi.mock("@/hooks/use-media-query", () => ({
 vi.mock("framer-motion", () => ({
   motion: {
     div: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    button: ({
+      children,
+      whileTap: _wt,
+      animate: _a,
+      transition: _tr,
+      initial: _i,
+      ...rest
+    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+      [key: string]: unknown;
+    }) => <button {...rest}>{children}</button>,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>

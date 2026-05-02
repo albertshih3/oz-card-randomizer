@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Skeleton } from "@heroui/skeleton";
 import { LinearProgress } from "@/components/m3/linear-progress";
 import { getAnalyticsSummary, type AnalyticsSummary } from "@/utils/admin-api";
@@ -440,7 +440,12 @@ export default function AdminAnalyticsPage() {
 
       {/* Header row */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-headline-large">Analytics</h2>
+        <h1
+          className="text-headline-large"
+          style={{ color: "var(--md-sys-color-on-surface)" }}
+        >
+          Analytics
+        </h1>
         <div
           className="flex items-center gap-1 p-1 rounded-xl"
           style={{ background: "var(--md-sys-color-surface-variant)" }}
@@ -469,25 +474,28 @@ export default function AdminAnalyticsPage() {
       {loadError && !isLoading && (
         <div className="text-center py-12">
           <p
-            className="font-medium mb-1"
+            className="text-label-large mb-1"
             style={{ color: "var(--md-sys-color-error)" }}
           >
             Could not load analytics
           </p>
           <p
-            className="text-sm mb-4"
+            className="text-body-medium mb-4"
             style={{ color: "var(--md-sys-color-on-surface-variant)" }}
           >
             {loadError}
           </p>
-          <Button size="sm" variant="flat" onPress={fetchSummary}>
+          <M3Button size="sm" variant="tonal" onPress={fetchSummary}>
             Retry
-          </Button>
+          </M3Button>
         </div>
       )}
 
       {/* Metric cards grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div
+        data-tutorial-id="analytics-metrics"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+      >
         {metrics
           ? metrics.map((m) => <MetricCard key={m.title} {...m} />)
           : Array.from({ length: 4 }).map((_, i) => (

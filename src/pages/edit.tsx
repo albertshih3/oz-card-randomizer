@@ -14,7 +14,7 @@ import {
   TableCell,
   getKeyValue,
 } from "@heroui/table";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import { Switch } from "@heroui/switch";
 import { Tooltip } from "@heroui/tooltip";
@@ -226,14 +226,14 @@ export default function EditCardsPage() {
               Manage, edit, and organize your trading card collection.
             </p>
           </div>
-          <Button
-            color="primary"
+          <M3Button
+            variant="filled"
             onPress={handleNewCardClick}
             startContent={<Plus className="w-5 h-5" />}
             className="font-semibold shadow-md"
           >
             New Card
-          </Button>
+          </M3Button>
         </div>
 
         {loading ? (
@@ -328,9 +328,9 @@ export default function EditCardsPage() {
                           <TableCell>
                             {columnKey === "actions" ? (
                               <div className="flex justify-end gap-2">
-                                <Button
+                                <M3Button
                                   size="sm"
-                                  variant="flat"
+                                  variant="tonal"
                                   color="primary"
                                   onPress={() => handleEditClick(item)}
                                   startContent={
@@ -338,7 +338,7 @@ export default function EditCardsPage() {
                                   }
                                 >
                                   Edit
-                                </Button>
+                                </M3Button>
                               </div>
                             ) : columnKey === "active" ? (
                               <div className="flex items-center gap-2">

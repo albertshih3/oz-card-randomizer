@@ -110,7 +110,6 @@ describe("AdminLayout — OAK-53", () => {
   it("renders children when authenticated", () => {
     render(<AdminLayout />);
     expect(screen.getByTestId("outlet")).toBeInTheDocument();
-    expect(screen.getByTestId("top-app-bar")).toBeInTheDocument();
     expect(screen.getByTestId("nav-drawer")).toBeInTheDocument();
   });
 });

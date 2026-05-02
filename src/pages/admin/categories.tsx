@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import { motion } from "framer-motion";
-import { listContainerVariants } from "@/lib/motion";
 import {
   getCategories,
   toggleWildcardEligible,
@@ -12,16 +10,7 @@ import { useAdminFiltersContext } from "@/contexts/admin-filters-context";
 import { LinearProgress } from "@/components/m3/linear-progress";
 import { M3Snackbar } from "@/components/m3/snackbar";
 import { CategoryEditSheet } from "@/components/admin/category-edit-sheet";
-import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@heroui/table";
 import { Switch } from "@heroui/switch";
-import { Button } from "@heroui/button";
 import { Plus, Pencil, Tag } from "lucide-react";
 import { event } from "@/lib/gtag";
 
@@ -59,7 +48,6 @@ export default function AdminCategoriesPage() {
 
   const handleToggleWildcard = async (cat: Category) => {
     const newValue = !cat.isWildcardEligible;
-    // Optimistic update
     setCategories((prev) =>
       prev.map((c) =>
         c.id === cat.id ? { ...c, isWildcardEligible: newValue } : c,
@@ -74,7 +62,6 @@ export default function AdminCategoriesPage() {
       bumpCategoryRefreshKey();
     } catch (err) {
       console.error(err);
-      // Revert optimistic update
       setCategories((prev) =>
         prev.map((c) =>
           c.id === cat.id
@@ -104,145 +91,167 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div style={{ color: "var(--md-sys-color-on-surface)" }}>
+    <div>
       <LinearProgress visible={isPending} className="mb-3" />
 
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h1 className="text-headline-large">Categories</h1>
-          <p
-            className="text-body-medium"
-            style={{ color: "var(--md-sys-color-on-surface-variant)" }}
-          >
-            {categories.length} categor{categories.length !== 1 ? "ies" : "y"}
-          </p>
-        </div>
-        <Button
-          color="primary"
-          className="hidden lg:flex"
-          onPress={openCreateSheet}
-          startContent={<Plus size={16} />}
+      <div
+        className="flex items-center justify-between mb-3"
+        style={{ minHeight: "2rem" }}
+      >
+        <p
+          className="text-label-medium uppercase tracking-widest"
+          style={{ color: "var(--md-sys-color-on-surface-variant)" }}
         >
+          Categories
+          {!isPending && categories.length > 0 && ` · ${categories.length}`}
+        </p>
+        <button
+          onClick={openCreateSheet}
+          className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-2xl text-label-large transition-opacity hover:opacity-80"
+          style={{
+            background: "var(--md-sys-color-primary-container)",
+            color: "var(--md-sys-color-on-primary-container)",
+          }}
+        >
+          <Plus size={15} />
           Add Category
-        </Button>
+        </button>
       </div>
 
       {loadError && !isPending && (
-        <div className="text-center py-12">
-          <p
-            className="font-medium mb-1"
-            style={{ color: "var(--md-sys-color-error)" }}
+        <div
+          className="rounded-2xl p-4 flex items-center justify-between"
+          style={{
+            background: "var(--md-sys-color-error-container)",
+            color: "var(--md-sys-color-on-error-container)",
+          }}
+        >
+          <p className="text-body-medium">{loadError}</p>
+          <button
+            onClick={fetchCategories}
+            className="text-label-large hover:opacity-80 transition-opacity ml-4"
           >
-            Could not load categories
-          </p>
-          <p
-            className="text-sm mb-4"
-            style={{ color: "var(--md-sys-color-on-surface-variant)" }}
-          >
-            {loadError}
-          </p>
-          <Button size="sm" variant="flat" onPress={fetchCategories}>
             Retry
-          </Button>
+          </button>
         </div>
       )}
 
-      {!loadError && (
-        <>
-          {categories.length === 0 && !isPending && (
-            <div className="text-center py-12">
-              <p
-                className="text-body-medium mb-4"
-                style={{ color: "var(--md-sys-color-on-surface-variant)" }}
-              >
-                No categories found.
-              </p>
-              <Button
-                color="primary"
-                onPress={openCreateSheet}
-                startContent={<Plus size={16} />}
-              >
-                Add Category
-              </Button>
-            </div>
-          )}
-          {categories.length > 0 && (
-            <motion.div
-              variants={listContainerVariants}
-              initial="hidden"
-              animate="visible"
-              className="overflow-x-auto rounded-2xl"
-              style={{
-                border: "1px solid var(--md-sys-color-outline-variant)",
-              }}
-            >
-              <Table aria-label="Categories" removeWrapper>
-                <TableHeader>
-                  <TableColumn>
-                    <span className="text-label-large">Display Name</span>
-                  </TableColumn>
-                  <TableColumn>
-                    <span className="text-label-large">Category ID</span>
-                  </TableColumn>
-                  <TableColumn>
-                    <span className="text-label-large">Wildcard Eligible</span>
-                  </TableColumn>
-                  <TableColumn>
-                    <span className="text-label-large">Actions</span>
-                  </TableColumn>
-                </TableHeader>
-                <TableBody>
-                  {categories.map((cat) => (
-                    <TableRow key={cat.id}>
-                      <TableCell>
-                        <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-body-medium"
-                          style={{
-                            background: "var(--md-sys-color-primary-container)",
-                            color: "var(--md-sys-color-on-primary-container)",
-                          }}
-                        >
-                          <Tag size={12} />
-                          {cat.displayName}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <code
-                          className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-mono"
-                          style={{
-                            background: "var(--md-sys-color-surface-variant)",
-                            color: "var(--md-sys-color-on-surface-variant)",
-                          }}
-                        >
-                          {cat.name}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          isSelected={cat.isWildcardEligible ?? false}
-                          onValueChange={() => handleToggleWildcard(cat)}
-                          size="sm"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          onClick={() => openEditSheet(cat)}
-                          aria-label={`Edit ${cat.displayName}`}
-                          className="p-1 rounded-lg"
-                          style={{ color: "var(--md-sys-color-primary)" }}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </motion.div>
-          )}
-        </>
+      {!loadError && !isPending && categories.length === 0 && (
+        <p
+          className="text-body-medium py-6 text-center"
+          style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+        >
+          No categories yet.
+        </p>
       )}
 
+      {categories.length > 0 && (
+        <div
+          data-tutorial-id="categories-table"
+          className="rounded-3xl border overflow-hidden"
+          style={{
+            background: "var(--md-sys-color-surface)",
+            borderColor: "var(--md-sys-color-outline-variant)",
+          }}
+        >
+          {/* Header row */}
+          <div
+            className="hidden lg:grid grid-cols-[1fr_180px_120px_48px] gap-4 px-5 py-2.5 border-b"
+            style={{
+              borderColor: "var(--md-sys-color-outline-variant)",
+              background: "var(--md-sys-color-surface-variant)",
+            }}
+          >
+            <span
+              className="text-label-medium"
+              style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+            >
+              Display Name
+            </span>
+            <span
+              className="text-label-medium"
+              style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+            >
+              Category ID
+            </span>
+            <span
+              className="text-label-medium"
+              style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+            >
+              Wildcard
+            </span>
+            <span />
+          </div>
+
+          {categories.map((cat, i) => (
+            <div
+              key={cat.id}
+              className="flex lg:grid lg:grid-cols-[1fr_180px_120px_48px] items-center gap-4 px-5 py-4"
+              style={
+                i < categories.length - 1
+                  ? {
+                      borderBottom:
+                        "1px solid var(--md-sys-color-outline-variant)",
+                    }
+                  : undefined
+              }
+            >
+              {/* Display name */}
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-body-medium truncate"
+                  style={{
+                    background: "var(--md-sys-color-primary-container)",
+                    color: "var(--md-sys-color-on-primary-container)",
+                  }}
+                >
+                  <Tag size={12} className="shrink-0" />
+                  {cat.displayName}
+                </span>
+              </div>
+
+              {/* Category ID */}
+              <div className="hidden lg:block">
+                <code
+                  className="inline-flex items-center px-2.5 py-1 rounded-lg text-body-medium font-mono"
+                  style={{
+                    background: "var(--md-sys-color-surface-variant)",
+                    color: "var(--md-sys-color-on-surface-variant)",
+                  }}
+                >
+                  {cat.name}
+                </code>
+              </div>
+
+              {/* Wildcard toggle */}
+              <div className="shrink-0">
+                <Switch
+                  {...(i === 0
+                    ? { "data-tutorial-id": "wildcard-toggle" }
+                    : {})}
+                  isSelected={cat.isWildcardEligible ?? false}
+                  onValueChange={() => handleToggleWildcard(cat)}
+                  size="sm"
+                />
+              </div>
+
+              {/* Edit button */}
+              <div className="shrink-0 flex justify-end">
+                <button
+                  onClick={() => openEditSheet(cat)}
+                  aria-label={`Edit ${cat.displayName}`}
+                  className="p-2 rounded-xl transition-opacity hover:opacity-70"
+                  style={{ color: "var(--md-sys-color-primary)" }}
+                >
+                  <Pencil size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Mobile FAB */}
       <button
         onClick={openCreateSheet}
         className="fixed bottom-6 right-6 z-20 lg:hidden w-14 h-14 rounded-2xl flex items-center justify-center shadow-elevation-3"

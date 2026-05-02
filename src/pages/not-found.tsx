@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 
 const M3_EMPHASIZED_DECELERATE: [number, number, number, number] = [
   0.05, 0.7, 0.1, 1.0,
@@ -62,9 +62,9 @@ export default function NotFoundPage() {
         }}
         className="mt-8"
       >
-        <Button color="primary" onPress={() => navigate("/")}>
+        <M3Button variant="filled" onPress={() => navigate("/")}>
           Go home
-        </Button>
+        </M3Button>
       </motion.div>
     </div>
   );

@@ -7,7 +7,7 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Input } from "@heroui/input";
 import { Switch } from "@heroui/switch";
@@ -320,33 +320,33 @@ export default function EditCardPage() {
           </ModalBody>
           <ModalFooter>
             {!isNew && selectedCard && (
-              <Button
+              <M3Button
+                variant="text"
+                color="error"
                 onPress={() => handleDelete(selectedCard)}
-                variant="light"
-                color="danger"
                 startContent={<Trash2 className="w-4 h-4" />}
                 className="mr-auto"
               >
                 Delete
-              </Button>
+              </M3Button>
             )}
-            <Button
+            <M3Button
+              variant="tonal"
               onPress={() => navigate("/edit")}
-              variant="flat"
               startContent={<X className="w-4 h-4" />}
             >
               Cancel
-            </Button>
-            <Button
+            </M3Button>
+            <M3Button
+              variant="filled"
               onPress={() => handleSave(selectedCard)}
-              color="primary"
               isLoading={isSaving}
               spinner={<M3Spinner size="sm" color="currentColor" />}
               startContent={!isSaving && <Save className="w-4 h-4" />}
               className="font-semibold"
             >
               {isNew ? "Create Card" : "Save Changes"}
-            </Button>
+            </M3Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

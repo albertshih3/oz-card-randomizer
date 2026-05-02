@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DefaultLayout from "@/layouts/default";
 import { collection, getDocs } from "firebase/firestore";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import {
   Modal,
   ModalContent,
@@ -153,11 +153,10 @@ export default function IndexPage() {
           </h1>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button
+            <M3Button
+              variant="elevated"
               isLoading={loading}
               spinner={<M3Spinner size="sm" color="currentColor" />}
-              color="primary"
-              variant="shadow"
               onPress={() => {
                 generatePacks(1);
                 setSelectedKeys(new Set([]));
@@ -167,18 +166,18 @@ export default function IndexPage() {
               startContent={!loading && <PackageOpen className="w-5 h-5" />}
             >
               Generate Pack
-            </Button>
-            <Button
+            </M3Button>
+            <M3Button
+              variant="outlined"
               isLoading={loading}
               spinner={<M3Spinner size="sm" color="currentColor" />}
-              variant="bordered"
               onPress={handleOpenModal}
               size="lg"
               className="font-semibold w-full sm:w-auto"
               startContent={!loading && <FileSpreadsheet className="w-5 h-5" />}
             >
               Export to Excel
-            </Button>
+            </M3Button>
           </div>
         </motion.div>
       </section>
@@ -415,15 +414,15 @@ export default function IndexPage() {
             />
           </ModalBody>
           <ModalFooter>
-            <Button
-              variant="flat"
-              color="danger"
+            <M3Button
+              variant="tonal"
+              color="error"
               onPress={() => setShowModal(false)}
             >
               Cancel
-            </Button>
-            <Button
-              color="primary"
+            </M3Button>
+            <M3Button
+              variant="filled"
               isLoading={isExporting}
               spinner={<M3Spinner size="sm" color="currentColor" />}
               onPress={handleGenerateAndExport}
@@ -432,7 +431,7 @@ export default function IndexPage() {
               }
             >
               Generate & Export
-            </Button>
+            </M3Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

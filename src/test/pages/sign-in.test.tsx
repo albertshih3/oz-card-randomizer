@@ -110,11 +110,31 @@ vi.mock("framer-motion", () => {
     },
   );
   MotionDiv.displayName = "MotionDiv";
+  const MotionButton = React.forwardRef(
+    (
+      props: React.ButtonHTMLAttributes<HTMLButtonElement> &
+        Record<string, unknown>,
+      ref: React.Ref<HTMLButtonElement>,
+    ) => {
+      const {
+        variants: _variants,
+        initial: _initial,
+        animate: _animate,
+        exit: _exit,
+        transition: _transition,
+        custom: _custom,
+        whileTap: _whileTap,
+        ...rest
+      } = props;
+      return <button ref={ref} {...rest} />;
+    },
+  );
+  MotionButton.displayName = "MotionButton";
   return {
     AnimatePresence: ({ children }: { children: React.ReactNode }) => (
       <>{children}</>
     ),
-    motion: { div: MotionDiv },
+    motion: { div: MotionDiv, button: MotionButton },
   };
 });
 
@@ -384,6 +404,72 @@ describe("SignInPage — email code sign-in", () => {
     const { event } = await import("@/lib/gtag");
     expect(vi.mocked(event)).toHaveBeenCalledWith("login", {
       method: "email_code",
+    });
+  });
+});
+
+describe("SignInPage — username sign-in", () => {
+  it("renders identifier field that accepts non-email text", () => {
+    render(<SignInPage />);
+    // Field label changed to accept both email and username
+    const field = screen.getByRole("textbox", { name: /email or username/i });
+    expect(field).toBeInTheDocument();
+    expect(field).toHaveAttribute("type", "text");
+  });
+
+  it("signs in successfully with a username", async () => {
+    mockSignInCreate.mockResolvedValueOnce({
+      status: "complete",
+      createdSessionId: "sess_user123",
+    });
+    mockSetActive.mockResolvedValueOnce(undefined);
+
+    render(<SignInPage />);
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /email or username/i }),
+      { target: { value: "adminuser" } },
+    );
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
+      target: { value: "correctpassword" },
+    });
+    fireEvent.submit(
+      screen.getByRole("button", { name: /sign in/i }).closest("form")!,
+    );
+
+    await waitFor(() => {
+      // Clerk's create() must receive the username as identifier
+      expect(mockSignInCreate).toHaveBeenCalledWith({
+        strategy: "password",
+        identifier: "adminuser",
+        password: "correctpassword",
+      });
+      expect(mockSetActive).toHaveBeenCalledWith({ session: "sess_user123" });
+      expect(mockNavigate).toHaveBeenCalledWith("/admin");
+    });
+  });
+
+  it("shows Clerk error when username is not found", async () => {
+    const clerkError = {
+      errors: [{ longMessage: "Couldn't find your account." }],
+    };
+    mockSignInCreate.mockRejectedValueOnce(clerkError);
+
+    render(<SignInPage />);
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /email or username/i }),
+      { target: { value: "unknownuser" } },
+    );
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
+      target: { value: "somepassword" },
+    });
+    fireEvent.submit(
+      screen.getByRole("button", { name: /sign in/i }).closest("form")!,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Couldn't find your account."),
+      ).toBeInTheDocument();
     });
   });
 });

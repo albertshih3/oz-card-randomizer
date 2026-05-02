@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import { useAuth } from "@clerk/clerk-react";
 import { BottomSheet } from "@/components/m3/bottom-sheet";
@@ -110,43 +110,44 @@ function FormContent({
             this category will become inaccessible until manually moved.
           </p>
           <div className="flex gap-2">
-            <Button variant="flat" onPress={onDeleteCancel}>
+            <M3Button variant="tonal" onPress={onDeleteCancel}>
               Cancel
-            </Button>
-            <Button
-              color="danger"
+            </M3Button>
+            <M3Button
+              variant="filled"
+              color="error"
               onPress={onDeleteConfirm}
               isLoading={isSaving}
             >
               Delete permanently
-            </Button>
+            </M3Button>
           </div>
         </div>
       )}
 
       <div className="flex justify-between items-center pt-2">
         {mode === "edit" && !showDeleteConfirm && (
-          <Button
-            variant="bordered"
-            color="danger"
+          <M3Button
+            variant="outlined"
+            color="error"
             onPress={onDelete}
             startContent={<Trash2 size={16} />}
           >
             Delete
-          </Button>
+          </M3Button>
         )}
         <div className="flex gap-2 ml-auto">
-          <Button variant="flat" onPress={onClose}>
+          <M3Button variant="tonal" onPress={onClose}>
             Cancel
-          </Button>
-          <Button
-            color="primary"
+          </M3Button>
+          <M3Button
+            variant="filled"
             onPress={onSave}
             isLoading={isSaving}
             startContent={<Save size={16} />}
           >
             Save
-          </Button>
+          </M3Button>
         </div>
       </div>
     </div>
@@ -291,6 +292,7 @@ export function CategoryEditSheet({
       isOpen={isOpen}
       onClose={onClose}
       size="md"
+      hideCloseButton
       aria-labelledby="cat-edit-title"
       classNames={{ base: "rounded-3xl", header: "border-b-0 pb-0" }}
     >

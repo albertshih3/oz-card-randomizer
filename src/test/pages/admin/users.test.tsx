@@ -32,6 +32,16 @@ vi.mock("framer-motion", () => ({
     aside: ({ children }: React.HTMLAttributes<HTMLElement>) => (
       <aside>{children}</aside>
     ),
+    button: ({
+      children,
+      whileTap: _wt,
+      animate: _a,
+      transition: _tr,
+      initial: _i,
+      ...rest
+    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+      [key: string]: unknown;
+    }) => <button {...rest}>{children}</button>,
   },
 }));
 vi.mock("@heroui/modal", () => ({
@@ -185,14 +195,14 @@ describe("AdminUsersPage — OAK-59", () => {
   it('"Invite User" button opens invite modal', async () => {
     render(<AdminUsersPage />);
     await waitFor(() => expect(mockListUsers).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: /invite user/i }));
+    fireEvent.click(screen.getByRole("button", { name: /invite/i }));
     expect(screen.getByTestId("modal")).toBeInTheDocument();
   });
 
   it("submitting invite calls inviteUser with correct email", async () => {
     render(<AdminUsersPage />);
     await waitFor(() => expect(mockListUsers).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: /invite user/i }));
+    fireEvent.click(screen.getByRole("button", { name: /invite/i }));
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "new@zoo.org" },
     });
@@ -206,7 +216,7 @@ describe("AdminUsersPage — OAK-59", () => {
     mockInviteUser.mockResolvedValueOnce(undefined);
     render(<AdminUsersPage />);
     await waitFor(() => expect(mockListUsers).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: /invite user/i }));
+    fireEvent.click(screen.getByRole("button", { name: /invite/i }));
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "new@zoo.org" },
     });
@@ -227,7 +237,7 @@ describe("AdminUsersPage — OAK-59", () => {
     );
     render(<AdminUsersPage />);
     await waitFor(() => expect(mockListUsers).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: /invite user/i }));
+    fireEvent.click(screen.getByRole("button", { name: /invite/i }));
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "existing@zoo.org" },
     });
@@ -244,11 +254,8 @@ describe("AdminUsersPage — OAK-59", () => {
     mockListUsers.mockRejectedValueOnce(new Error("Request failed (404)"));
     render(<AdminUsersPage />);
     await waitFor(() =>
-      expect(
-        screen.getByText("Could not load team members"),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("Request failed (404)")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Request failed (404)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 });
