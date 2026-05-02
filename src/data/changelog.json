@@ -1,8 +1,135 @@
 [
   {
+    "version": "3.4.0",
+    "date": "May 2, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Home Page Redesign",
+        "type": "feat",
+        "items": [
+          "Replaced the HeroUI table with a card-based pack layout — each card gets its own row with collection badge, name, and number",
+          "Per-card completion checkboxes let staff check off cards as they pull them from the binder — progress counter shows X/10 completed",
+          "Pack automatically resets checkmarks when a new pack is generated",
+          "Improved header layout with action buttons stacked on mobile and side-by-side on desktop",
+          "Error state now shows an inline retry button instead of a silent failure"
+        ]
+      },
+      {
+        "title": "Brand & Design",
+        "type": "feat",
+        "items": [
+          "Updated M3 color tokens to Oakland Zoo navy (#102f54) — replaces the default Material purple across all surfaces, buttons, and focus rings in both light and dark themes",
+          "Version 3 announcement banner on the home page with a link to the changelog — dismissable and remembers your choice",
+          "Collection badges now use M3 typography (text-label-medium) for consistency with the rest of the design system"
+        ]
+      },
+      {
+        "title": "Feedback",
+        "type": "feat",
+        "items": [
+          "New Submit Feedback button in the navbar (desktop) and mobile menu — opens a dialog without interrupting your workflow",
+          "Feedback form supports four types: General Feedback, Bug Report, Feature Request, and Other",
+          "Optional reply-to email field so you can receive a direct response",
+          "Submissions are delivered by email via Resend with a formatted HTML receipt"
+        ]
+      },
+      {
+        "title": "Accessibility",
+        "type": "feat",
+        "items": [
+          "Entrance animations now respect the prefers-reduced-motion system setting via useReducedMotion"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "3.3.0",
+    "date": "April 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Admin Tutorial",
+        "type": "feat",
+        "items": [
+          "First-run admin tutorial with a 10-step spotlight tour covering all four admin pages — SVG mask overlay highlights the active element while dimming the rest",
+          "Step cards float next to the highlighted target on desktop and slide up as a bottom sheet on mobile",
+          "Keyboard navigable (Escape, ArrowLeft, ArrowRight) and persisted in localStorage so it only shows once",
+          "A '?' help button in the top app bar lets admins replay the tutorial at any time"
+        ]
+      },
+      {
+        "title": "M3Button Migration",
+        "type": "feat",
+        "items": [
+          "New M3Button component with Material Design 3 shape morphing (pill → rect press) and DOM-direct ripple — no React re-render during gesture",
+          "Replaced all 43 instances of @heroui/button across 15 files — HeroUI Button is no longer used anywhere in the codebase",
+          "Spinner automatically renders inside the button when isLoading is true"
+        ]
+      },
+      {
+        "title": "Category Management",
+        "type": "feat",
+        "items": [
+          "Category admin panel with optimistic UI updates for wildcard eligibility toggles",
+          "Centralized normalizeCategoryId utility prevents ID drift between creation and Firestore writes",
+          "GA4 events now fire after Firestore awaits to prevent phantom success records"
+        ]
+      },
+      {
+        "title": "Typography",
+        "type": "chore",
+        "items": [
+          "All admin UI migrated from raw Tailwind type classes (text-xs, text-sm, font-semibold) to M3 named utilities (text-label-large, text-body-medium, etc.) — enforced as a project standard going forward"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "3.2.0",
+    "date": "March 2026",
+    "isCurrent": false,
+    "sections": [
+      {
+        "title": "Admin Dashboard",
+        "type": "feat",
+        "items": [
+          "New admin layout shell with M3 Top App Bar and collapsible Navigation Drawer — auth-gated via Clerk, separate from the public DefaultLayout",
+          "Card management page with full CRUD — add, edit, and delete cards; inline search, filter by collection, and column sorting",
+          "User management page with invite-by-email and role visibility; powered by a Vercel serverless API layer that proxies Clerk's backend SDK",
+          "Custom Clerk account panel replaces the hosted Clerk iframe for consistent M3 styling",
+          "Analytics dashboard with native SVG line and bar charts — no chart library dependency; data sourced from GA4 via a serverless proxy using a service-account credential"
+        ]
+      },
+      {
+        "title": "Changelog",
+        "type": "feat",
+        "items": [
+          "Changelog page redesigned with M3 card layout, recency badges (New / Recent), and a show-all toggle that collapses older entries by default"
+        ]
+      },
+      {
+        "title": "Analytics",
+        "type": "chore",
+        "items": [
+          "Migrated analytics to GA4 Data API with a serverless proxy — admin dashboard can now surface real usage metrics",
+          "GA4 event hardening: exception() calls now include fatal: false for non-critical errors; timing events consolidated to one per batch instead of one per pack"
+        ]
+      },
+      {
+        "title": "Design System",
+        "type": "chore",
+        "items": [
+          "Formalized M3 motion system — standard, emphasized, and accelerate/decelerate easing curves; short/medium/long duration scale added to Tailwind config",
+          "M3 typography scale finalized and applied across all admin surfaces"
+        ]
+      }
+    ]
+  },
+  {
     "version": "3.1.0",
     "date": "March 16, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Authentication",

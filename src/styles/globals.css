@@ -10,7 +10,7 @@
     --card-foreground: 224 71.4% 4.1%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 4.1%;
-    --primary: 262.1 83.3% 57.8%;
+    --primary: 211 68% 20%;
     --primary-foreground: 210 20% 98%;
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 220.9 39.3% 11%;
@@ -22,7 +22,7 @@
     --destructive-foreground: 210 20% 98%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 262.1 83.3% 57.8%;
+    --ring: 211 68% 20%;
     --radius: 1rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
@@ -31,28 +31,29 @@
     --chart-5: 27 87% 67%;
     /* --- M3 Color System (light) --- */
     /* Primary */
-    --md-sys-color-primary: #6750a4;
+    --md-sys-color-primary: #102f54;
     --md-sys-color-on-primary: #ffffff;
-    --md-sys-color-primary-container: #eaddff;
-    --md-sys-color-on-primary-container: #21005d;
+    --md-sys-color-primary-container: #d4e3f7;
+    --md-sys-color-on-primary-container: #001c37;
     /* Secondary */
-    --md-sys-color-secondary: #625b71;
+    --md-sys-color-secondary: #526070;
     --md-sys-color-on-secondary: #ffffff;
-    --md-sys-color-secondary-container: #e8def8;
-    --md-sys-color-on-secondary-container: #1d192b;
+    --md-sys-color-secondary-container: #d6e4f7;
+    --md-sys-color-on-secondary-container: #0f1d2a;
     /* Tertiary */
-    --md-sys-color-tertiary: #7d5260;
+    --md-sys-color-tertiary: #6a5d37;
     --md-sys-color-on-tertiary: #ffffff;
-    --md-sys-color-tertiary-container: #ffd8e4;
-    --md-sys-color-on-tertiary-container: #31111d;
+    --md-sys-color-tertiary-container: #f3e2ae;
+    --md-sys-color-on-tertiary-container: #221b00;
     /* Surface */
-    --md-sys-color-surface: #fef7ff;
-    --md-sys-color-surface-variant: #e7e0ec;
-    --md-sys-color-on-surface: #1c1b1f;
-    --md-sys-color-on-surface-variant: #49454f;
+    --md-sys-color-surface: #fbfcff;
+    --md-sys-color-surface-variant: #dfe3eb;
+    --md-sys-color-surface-container-lowest: #ffffff;
+    --md-sys-color-on-surface: #191c20;
+    --md-sys-color-on-surface-variant: #42474f;
     /* Outline */
-    --md-sys-color-outline: #79747e;
-    --md-sys-color-outline-variant: #cac4d0;
+    --md-sys-color-outline: #727782;
+    --md-sys-color-outline-variant: #c2c7d0;
     /* Background */
     --md-sys-color-background: #ffffff;
     --md-sys-color-on-background: #1c1b1f;
@@ -73,7 +74,7 @@
     --card-foreground: 210 20% 98%;
     --popover: 0 0% 13%;
     --popover-foreground: 210 20% 98%;
-    --primary: 263.4 70% 50.4%;
+    --primary: 211 68% 72%;
     --primary-foreground: 210 20% 98%;
     --secondary: 215 27.9% 16.9%;
     --secondary-foreground: 210 20% 98%;
@@ -85,7 +86,7 @@
     --destructive-foreground: 210 20% 98%;
     --border: 215 27.9% 16.9%;
     --input: 215 27.9% 16.9%;
-    --ring: 263.4 70% 50.4%;
+    --ring: 211 68% 72%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -93,28 +94,29 @@
     --chart-5: 340 75% 55%;
     /* --- M3 Color System (dark) --- */
     /* Primary */
-    --md-sys-color-primary: #d0bcff;
-    --md-sys-color-on-primary: #381e72;
-    --md-sys-color-primary-container: #4f378b;
-    --md-sys-color-on-primary-container: #eaddff;
+    --md-sys-color-primary: #a5c8f6;
+    --md-sys-color-on-primary: #00315d;
+    --md-sys-color-primary-container: #0a477c;
+    --md-sys-color-on-primary-container: #d4e3f7;
     /* Secondary */
-    --md-sys-color-secondary: #ccc2dc;
-    --md-sys-color-on-secondary: #332d41;
-    --md-sys-color-secondary-container: #4a4458;
-    --md-sys-color-on-secondary-container: #e8def8;
+    --md-sys-color-secondary: #bac8da;
+    --md-sys-color-on-secondary: #243240;
+    --md-sys-color-secondary-container: #3a4858;
+    --md-sys-color-on-secondary-container: #d6e4f7;
     /* Tertiary */
-    --md-sys-color-tertiary: #efb8c8;
-    --md-sys-color-on-tertiary: #492532;
-    --md-sys-color-tertiary-container: #633b48;
-    --md-sys-color-on-tertiary-container: #ffd8e4;
+    --md-sys-color-tertiary: #d7c58d;
+    --md-sys-color-on-tertiary: #3a3008;
+    --md-sys-color-tertiary-container: #514719;
+    --md-sys-color-on-tertiary-container: #f3e2ae;
     /* Surface */
-    --md-sys-color-surface: #1c1b1f;
-    --md-sys-color-surface-variant: #49454f;
-    --md-sys-color-on-surface: #e6e1e5;
-    --md-sys-color-on-surface-variant: #cac4d0;
+    --md-sys-color-surface: #111418;
+    --md-sys-color-surface-variant: #42474f;
+    --md-sys-color-surface-container-lowest: #0c0f13;
+    --md-sys-color-on-surface: #e2e2e8;
+    --md-sys-color-on-surface-variant: #c2c7d0;
     /* Outline */
-    --md-sys-color-outline: #938f99;
-    --md-sys-color-outline-variant: #49454f;
+    --md-sys-color-outline: #8c919a;
+    --md-sys-color-outline-variant: #42474f;
     /* Background */
     --md-sys-color-background: #1c1b1f;
     --md-sys-color-on-background: #e6e1e5;
