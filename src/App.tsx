@@ -1,21 +1,27 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import React, { Suspense, useEffect } from "react";
 import { Toaster, toast } from "sonner";
 
 import IndexPage from "@/pages/index";
 import AboutPage from "@/pages/about";
 import Changelog from "@/pages/changelog";
-import { Spinner } from "@heroui/spinner";
+import { M3Spinner } from "@/components/m3/spinner";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { usePageView } from "@/hooks/use-analytics";
+import { usePageView } from "@/hooks/use-page-view";
 
-const EditPage = React.lazy(() => import("@/pages/edit"));
-const EditCardPage = React.lazy(() => import("@/pages/editcard"));
-const CategoriesPage = React.lazy(() => import("@/pages/categories"));
+const AdminLayout = React.lazy(() => import("@/layouts/admin"));
+const AdminCardsPage = React.lazy(() => import("@/pages/admin/index"));
+const AdminUsersPage = React.lazy(() => import("@/pages/admin/users"));
+const AdminAnalyticsPage = React.lazy(() => import("@/pages/admin/analytics"));
+const AdminCategoriesPage = React.lazy(
+  () => import("@/pages/admin/categories"),
+);
+const NotFoundPage = React.lazy(() => import("@/pages/not-found"));
+const SignInPage = React.lazy(() => import("@/pages/sign-in"));
 
 const SuspenseFallback = (
   <div className="flex justify-center items-center h-screen">
-    <Spinner size="lg" color="primary" />
+    <M3Spinner size="lg" />
   </div>
 );
 
@@ -49,11 +55,28 @@ function App() {
         <Suspense fallback={SuspenseFallback}>
           <Routes>
             <Route element={<IndexPage />} path="/" />
-            <Route element={<EditPage />} path="/edit" />
             <Route element={<AboutPage />} path="/about" />
             <Route element={<Changelog />} path="/changelog" />
-            <Route element={<EditCardPage />} path="/editcard" />
-            <Route element={<CategoriesPage />} path="/categories" />
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminCardsPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+              <Route
+                path="/admin/categories"
+                element={<AdminCategoriesPage />}
+              />
+            </Route>
+            <Route path="/edit" element={<Navigate to="/admin" replace />} />
+            <Route
+              path="/editcard"
+              element={<Navigate to="/admin" replace />}
+            />
+            <Route
+              path="/categories"
+              element={<Navigate to="/admin/categories" replace />}
+            />
+            <Route path="/sign-in" element={<SignInPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
       </ErrorBoundary>

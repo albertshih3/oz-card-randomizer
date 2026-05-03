@@ -4,7 +4,7 @@ import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
 import { useAsyncList } from "@react-stately/data";
-import { Spinner } from "@heroui/spinner";
+import { M3Spinner } from "@/components/m3/spinner";
 import {
   Table,
   TableHeader,
@@ -14,7 +14,7 @@ import {
   TableCell,
   getKeyValue,
 } from "@heroui/table";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import { Switch } from "@heroui/switch";
 import { Tooltip } from "@heroui/tooltip";
@@ -136,21 +136,13 @@ export default function EditCardsPage() {
   };
 
   const handleEditClick = (card: Card) => {
-    event({
-      action: "click",
-      category: "card_management",
-      label: "edit_card",
-    });
+    event("select_content", { content_type: "button", item_id: "edit_card" });
     // Navigate to the edit page using query params for editing an existing card.
     navigate(`/editcard?cardId=${card.id}&collection=${card.collection}`);
   };
 
   const handleNewCardClick = () => {
-    event({
-      action: "click",
-      category: "card_management",
-      label: "new_card",
-    });
+    event("select_content", { content_type: "button", item_id: "new_card" });
     // Navigate to the edit page with a query parameter indicating a new card.
     navigate("/editcard?new=true");
   };
@@ -167,10 +159,9 @@ export default function EditCardsPage() {
         active: newActiveStatus,
       });
 
-      event({
-        action: "toggle",
-        category: "card_management",
-        label: "card_status_toggled",
+      event("card_status_toggled", {
+        collection: card.collection,
+        active: newActiveStatus,
       });
 
       // Reload the list to get updated data
@@ -203,7 +194,7 @@ export default function EditCardsPage() {
   if (!isLoaded) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" color="primary" />
+        <M3Spinner size="lg" label="Loading" />
       </div>
     );
   }
@@ -235,19 +226,19 @@ export default function EditCardsPage() {
               Manage, edit, and organize your trading card collection.
             </p>
           </div>
-          <Button
-            color="primary"
+          <M3Button
+            variant="filled"
             onPress={handleNewCardClick}
             startContent={<Plus className="w-5 h-5" />}
             className="font-semibold shadow-md"
           >
             New Card
-          </Button>
+          </M3Button>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <Spinner size="lg" color="primary" label="Loading cards..." />
+            <M3Spinner size="lg" label="Loading" />
           </div>
         ) : (
           <div className="space-y-4">
@@ -267,7 +258,7 @@ export default function EditCardsPage() {
               />
               {updatingCardId && (
                 <div className="flex items-center gap-2 text-sm text-primary animate-pulse">
-                  <Spinner size="sm" color="current" />
+                  <M3Spinner size="sm" />
                   <span>Updating status...</span>
                 </div>
               )}
@@ -314,7 +305,7 @@ export default function EditCardsPage() {
                   </TableHeader>
                   <TableBody
                     items={filteredItems}
-                    loadingContent={<Spinner label="Loading..." />}
+                    loadingContent={<M3Spinner />}
                     emptyContent={
                       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                         <AlertCircle className="w-12 h-12 mb-4 text-default-300" />
@@ -337,9 +328,9 @@ export default function EditCardsPage() {
                           <TableCell>
                             {columnKey === "actions" ? (
                               <div className="flex justify-end gap-2">
-                                <Button
+                                <M3Button
                                   size="sm"
-                                  variant="flat"
+                                  variant="tonal"
                                   color="primary"
                                   onPress={() => handleEditClick(item)}
                                   startContent={
@@ -347,7 +338,7 @@ export default function EditCardsPage() {
                                   }
                                 >
                                   Edit
-                                </Button>
+                                </M3Button>
                               </div>
                             ) : columnKey === "active" ? (
                               <div className="flex items-center gap-2">

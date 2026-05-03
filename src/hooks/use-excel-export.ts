@@ -16,11 +16,10 @@ export function useExcelExport() {
       return;
     }
 
-    event({
-      action: "download",
-      category: "export",
-      label: "excel_export",
-      value: packs.length,
+    event("download", {
+      file_name: "BoosterPacks.xlsx",
+      file_extension: "xlsx",
+      pack_count: packs.length,
     });
 
     setIsExporting(true);

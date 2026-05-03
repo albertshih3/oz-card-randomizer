@@ -8,7 +8,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { signInWithCustomToken } from "firebase/auth";
-import { Spinner } from "@heroui/spinner";
+import { M3Spinner } from "@/components/m3/spinner";
 import {
   Table,
   TableHeader,
@@ -17,7 +17,7 @@ import {
   TableRow,
   TableCell,
 } from "@heroui/table";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import {
   Modal,
@@ -110,12 +110,6 @@ export default function CategoriesPage() {
 
     try {
       if (isCreating) {
-        event({
-          action: "create",
-          category: "category_management",
-          label: "category_created",
-        });
-
         const docRef = await addDoc(collection(db, "categories"), {
           name: newCategoryId.toLowerCase().replace(/\s+/g, ""),
           displayName: newCategoryName,
@@ -128,13 +122,10 @@ export default function CategoriesPage() {
         };
 
         setCategories([...categories, newCategory]);
-      } else if (editingCategory) {
-        event({
-          action: "update",
-          category: "category_management",
-          label: "category_updated",
+        event("category_created", {
+          category_id: newCategoryId.toLowerCase().replace(/\s+/g, ""),
         });
-
+      } else if (editingCategory) {
         const categoryRef = doc(db, "categories", editingCategory.id);
         await updateDoc(categoryRef, {
           name: newCategoryId.toLowerCase().replace(/\s+/g, ""),
@@ -152,6 +143,7 @@ export default function CategoriesPage() {
               : cat,
           ),
         );
+        event("category_updated", { category_id: editingCategory.name });
       }
 
       // Clear cache so other pages get updated categories
@@ -178,13 +170,8 @@ export default function CategoriesPage() {
     }
 
     try {
-      event({
-        action: "delete",
-        category: "category_management",
-        label: "category_deleted",
-      });
-
       await deleteDoc(doc(db, "categories", category.id));
+      event("category_deleted", { category_id: category.name });
       setCategories(categories.filter((cat) => cat.id !== category.id));
 
       // Clear cache so other pages get updated categories
@@ -230,7 +217,7 @@ export default function CategoriesPage() {
   if (!isLoaded) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" color="primary" />
+        <M3Spinner size="lg" />
       </div>
     );
   }
@@ -262,19 +249,19 @@ export default function CategoriesPage() {
               Create and manage card categories and collections.
             </p>
           </div>
-          <Button
-            color="primary"
+          <M3Button
+            variant="filled"
             onPress={handleCreate}
             startContent={<Plus className="w-5 h-5" />}
             className="font-semibold shadow-md"
           >
             Create Category
-          </Button>
+          </M3Button>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <Spinner size="lg" color="primary" label="Loading categories..." />
+            <M3Spinner size="lg" label="Loading categories..." />
           </div>
         ) : (
           <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
@@ -330,24 +317,24 @@ export default function CategoriesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button
+                        <M3Button
                           size="sm"
-                          variant="flat"
+                          variant="tonal"
                           color="primary"
                           onPress={() => handleEdit(category)}
                           startContent={<Edit2 className="w-3.5 h-3.5" />}
                         >
                           Edit
-                        </Button>
-                        <Button
+                        </M3Button>
+                        <M3Button
                           size="sm"
-                          color="danger"
-                          variant="flat"
+                          variant="tonal"
+                          color="error"
                           onPress={() => handleDelete(category)}
                           startContent={<Trash2 className="w-3.5 h-3.5" />}
                         >
                           Delete
-                        </Button>
+                        </M3Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -434,22 +421,23 @@ export default function CategoriesPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button
-              variant="flat"
+            <M3Button
+              variant="tonal"
               onPress={onClose}
               startContent={<X className="w-4 h-4" />}
             >
               Cancel
-            </Button>
-            <Button
-              color="primary"
+            </M3Button>
+            <M3Button
+              variant="filled"
               onPress={handleSave}
               isLoading={isSaving}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               startContent={!isSaving && <Save className="w-4 h-4" />}
               className="font-semibold"
             >
               {isCreating ? "Create Category" : "Save Changes"}
-            </Button>
+            </M3Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

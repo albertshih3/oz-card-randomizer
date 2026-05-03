@@ -126,12 +126,7 @@ export function useBoosterPackGeneration(
   const generatePacks = (count: number): Card[][] => {
     let newPacks: Card[][] = [];
     try {
-      event({
-        action: "generate",
-        category: "booster_pack",
-        label: "multiple_packs",
-        value: count,
-      });
+      event("generate", { content_type: "booster_pack", pack_count: count });
 
       // Archive current packs to history if they exist
       if (boosterPacks.length > 0) {
@@ -161,12 +156,7 @@ export function useBoosterPackGeneration(
       setBoosterPacks(newPacks);
       setLastGenTime(new Date());
 
-      timing({
-        name: "pack_generation",
-        value: totalDuration,
-        category: "performance",
-        label: "multiple_packs",
-      });
+      timing("pack_generation", totalDuration, { pack_count: count });
     } catch (err) {
       console.error("Error generating packs:", err);
       exception({

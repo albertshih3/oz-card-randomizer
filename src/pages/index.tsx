@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import DefaultLayout from "@/layouts/default";
 import { collection, getDocs } from "firebase/firestore";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import {
   Modal,
   ModalContent,
@@ -11,14 +11,6 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import { Input } from "@heroui/input";
-import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@heroui/table";
 import { Skeleton } from "@heroui/skeleton";
 import { event, exception } from "@/lib/gtag";
 import { db } from "@/lib/firebase";
@@ -39,11 +31,21 @@ import {
   ChevronDown,
   History,
   Clock,
+  RotateCcw,
+  ClipboardList,
+  CircleCheck,
+  Check,
 } from "lucide-react";
 import { CollectionBadge } from "@/components/collection-badge";
+import { M3Spinner } from "@/components/m3/spinner";
 import { useBoosterPackGeneration } from "@/hooks/use-booster-pack-generation";
 import { useExcelExport } from "@/hooks/use-excel-export";
 import type { Card, Collection } from "@/types/index";
+
+const M3_STANDARD_EASING: [number, number, number, number] = [0.2, 0, 0, 1];
+
+const getPackCardKey = (card: Card, cardIndex: number) =>
+  `${cardIndex}-${card.collection}-${card.id}`;
 
 export default function IndexPage() {
   const [expandedPackId, setExpandedPackId] = useState<string | null>(null);
@@ -53,11 +55,33 @@ export default function IndexPage() {
   const [showModal, setShowModal] = useState(false);
   const [numPacks, setNumPacks] = useState(1);
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set([]));
+  const [completedCardKeys, setCompletedCardKeys] = useState<Set<string>>(
+    new Set(),
+  );
+  const shouldReduceMotion = useReducedMotion();
 
   const { boosterPacks, packHistory, lastGenTime, generatePacks } =
     useBoosterPackGeneration(cardsData, collections);
   const { exportToExcel, isExporting } = useExcelExport();
+  const currentPack = boosterPacks[0] ?? [];
+  const hasCurrentPack = currentPack.length > 0;
+  const currentPackSignature = currentPack
+    .map((card, index) => getPackCardKey(card, index))
+    .join("|");
+  const completedCount = completedCardKeys.size;
+  const isCurrentPackComplete =
+    hasCurrentPack && completedCount === currentPack.length;
+
+  const entrance = {
+    initial: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    exit: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 },
+  };
+
+  const handleGenerateSinglePack = () => {
+    setCompletedCardKeys(new Set());
+    generatePacks(1);
+  };
 
   // Pull categories and cards database from Firebase
   useEffect(() => {
@@ -102,12 +126,15 @@ export default function IndexPage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    setCompletedCardKeys(new Set());
+  }, [currentPackSignature]);
+
   // open modal function
   const handleOpenModal = () => {
-    event({
-      action: "click",
-      category: "engagement",
-      label: "open_spreadsheet_modal",
+    event("select_content", {
+      content_type: "button",
+      item_id: "open_spreadsheet_modal",
     });
     setShowModal(true);
   };
@@ -116,15 +143,8 @@ export default function IndexPage() {
   const handleGenerateAndExport = async () => {
     if (isExporting) return;
     if (!numPacks || numPacks < 1) return;
-    event({
-      action: "export",
-      category: "spreadsheet",
-      label: "generate_and_export",
-      value: numPacks,
-    });
     try {
       const packs = generatePacks(numPacks);
-      setSelectedKeys(new Set([]));
       if (packs.length > 0) {
         await exportToExcel(packs);
       }
@@ -144,181 +164,224 @@ export default function IndexPage() {
     setExpandedPackId(expandedPackId === id ? null : id);
   };
 
+  const toggleCardCompleted = (key: string) => {
+    setCompletedCardKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
   return (
     <DefaultLayout>
-      <section className="flex flex-col items-center justify-center py-3 md:py-5">
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-1 pb-28 pt-4 sm:px-4 md:pb-16 md:pt-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-block max-w-2xl text-center justify-center space-y-6"
+          initial={entrance.initial}
+          animate={entrance.animate}
+          transition={{ duration: 0.42, ease: [0.2, 0, 0, 1] }}
+          className="flex flex-col gap-4 rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-5 shadow-sm sm:p-6 md:flex-row md:items-end md:justify-between"
         >
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70">
-            Oakland Zoo <br />
-            <span className="text-primary">Booster Pack Generator</span>
-          </h1>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-label-large text-[var(--md-sys-color-primary)]">
+              <ClipboardList className="h-4 w-4" />
+              Oakland Zoo Booster Pack Generator
+            </div>
+            <h1 className="text-headline-large text-[var(--md-sys-color-on-surface)]">
+              Generate a pack
+            </h1>
+            <p className="max-w-xl text-body-large text-[var(--md-sys-color-on-surface-variant)]">
+              Click on the &ldquo;generate pack&rdquo; button to generate a
+              booster pack. Each pack should contain 10 cards. Two from each
+              section of the zoo, one wildcard, and one spoonbill.
+            </p>
+          </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:min-w-[340px]">
+            <M3Button
+              variant="filled"
               isLoading={loading}
-              color="primary"
-              variant="shadow"
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               onPress={() => {
-                generatePacks(1);
-                setSelectedKeys(new Set([]));
+                handleGenerateSinglePack();
               }}
               size="lg"
-              className="font-semibold w-full sm:w-auto"
+              className="min-h-14 w-full"
               startContent={!loading && <PackageOpen className="w-5 h-5" />}
             >
-              Generate Pack
-            </Button>
-            <Button
+              Generate pack
+            </M3Button>
+            <M3Button
+              variant="outlined"
               isLoading={loading}
-              variant="bordered"
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               onPress={handleOpenModal}
               size="lg"
-              className="font-semibold w-full sm:w-auto"
+              className="min-h-14 w-full"
               startContent={!loading && <FileSpreadsheet className="w-5 h-5" />}
             >
-              Export to Excel
-            </Button>
+              Export packs
+            </M3Button>
           </div>
         </motion.div>
-      </section>
 
-      <section className="max-w-5xl mx-auto pb-20 px-4 space-y-12">
         {loading ? (
-          <div className="space-y-4">
-            <Skeleton className="rounded-lg w-full h-[50px]" />
-            <Skeleton className="rounded-lg w-full h-[400px]" />
+          <div className="space-y-3 rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-4">
+            <Skeleton className="h-12 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-3xl" />
+            <Skeleton className="h-20 w-full rounded-3xl" />
+            <Skeleton className="h-20 w-full rounded-3xl" />
           </div>
         ) : error ? (
-          <div className="p-6 rounded-xl bg-danger/10 border border-danger/20 text-danger flex items-center justify-center">
-            {error}
+          <div className="flex flex-col gap-4 rounded-[28px] border border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)] p-5 text-[var(--md-sys-color-on-error-container)]">
+            <p className="text-title-medium">Card data did not load</p>
+            <p className="text-body-medium">{error}</p>
+            <M3Button
+              variant="outlined"
+              color="error"
+              className="w-fit"
+              onPress={() => window.location.reload()}
+            >
+              Try again
+            </M3Button>
           </div>
         ) : (
           <>
-            {/* Current Packs Table */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl overflow-hidden shadow-sm"
-            >
-              <div className="p-4 border-b border-border/50 flex items-center justify-between">
-                <h2 className="text-xl font-bold">Current Pack(s)</h2>
+            <div className="rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm sm:p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-title-large text-[var(--md-sys-color-on-surface)]">
+                    Current Booster Pack
+                  </h2>
+                  <div className="mt-1 flex items-center gap-2 text-body-medium text-[var(--md-sys-color-on-surface-variant)]">
+                    {hasCurrentPack ? (
+                      <>
+                        <CircleCheck className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                        <span>
+                          {completedCount} of {currentPack.length} pulled
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                        <span>Waiting for the first pack</span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 {lastGenTime && (
-                  <span className="text-sm text-muted-foreground flex items-center">
-                    <Clock className="w-3 h-3 mr-1" />
-                    Generated at {lastGenTime.toLocaleTimeString()}
+                  <span className="hidden items-center gap-1 text-label-medium text-[var(--md-sys-color-on-surface-variant)] sm:flex">
+                    <Clock className="h-3.5 w-3.5" />
+                    {lastGenTime.toLocaleTimeString()}
                   </span>
                 )}
               </div>
-              <Table
-                aria-label="Booster Pack Table"
-                removeWrapper
-                color="primary"
-                selectionMode="multiple"
-                selectedKeys={selectedKeys}
-                onSelectionChange={(keys) =>
-                  setSelectedKeys(keys as Set<string>)
-                }
-                classNames={{
-                  base: "max-h-[600px] overflow-scroll",
-                  table: "min-h-[200px]",
-                  th: "bg-muted/50 text-muted-foreground font-medium",
-                  td: "py-3",
-                }}
-              >
-                <TableHeader>
-                  <TableColumn key="collection">COLLECTION</TableColumn>
-                  <TableColumn key="name">NAME</TableColumn>
-                  <TableColumn key="number">NUMBER</TableColumn>
-                </TableHeader>
-                <TableBody
-                  emptyContent={
-                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                      <Sparkles className="w-12 h-12 mb-4 text-default-300" />
-                      <p className="text-lg font-medium">
-                        No packs generated yet
-                      </p>
-                      <p className="text-sm">
-                        Click &quot;Generate Pack&quot; to get started
-                      </p>
+
+              <AnimatePresence mode="wait">
+                {hasCurrentPack ? (
+                  <motion.ol
+                    key="generated-pack"
+                    {...entrance}
+                    transition={{ duration: 0.3, ease: M3_STANDARD_EASING }}
+                    className="grid gap-3"
+                  >
+                    {currentPack.map((card, cardIndex) => (
+                      <PackCardRow
+                        key={getPackCardKey(card, cardIndex)}
+                        card={card}
+                        cardIndex={cardIndex}
+                        collectionName={getCollectionName(card.collection)}
+                        isCompleted={completedCardKeys.has(
+                          getPackCardKey(card, cardIndex),
+                        )}
+                        shouldReduceMotion={shouldReduceMotion}
+                        onToggle={toggleCardCompleted}
+                      />
+                    ))}
+                  </motion.ol>
+                ) : (
+                  <motion.div
+                    key="empty-pack"
+                    {...entrance}
+                    transition={{ duration: 0.3, ease: M3_STANDARD_EASING }}
+                    className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl bg-[var(--md-sys-color-primary-container)]/45 px-5 py-10 text-center"
+                  >
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-sm">
+                      <PackageOpen className="h-8 w-8" />
                     </div>
-                  }
-                >
-                  {boosterPacks
-                    .map((pack, packIndex) =>
-                      pack.map((card, cardIndex) => (
-                        <TableRow key={`${packIndex}-${cardIndex}-${card.id}`}>
-                          <TableCell>
-                            <CollectionBadge
-                              collection={card.collection}
-                              name={getCollectionName(card.collection)}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {card.name}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            #{card.number}
-                          </TableCell>
-                        </TableRow>
-                      )),
-                    )
-                    .flat()}
-                </TableBody>
-              </Table>
-            </motion.div>
+                    <p className="text-title-medium text-[var(--md-sys-color-on-surface)]">
+                      Tap generate when you&apos;re ready.
+                    </p>
+                    <p className="mt-2 max-w-sm text-body-medium text-[var(--md-sys-color-on-surface-variant)]">
+                      The next screen will turn into a numbered pull list for
+                      the ten cards.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {hasCurrentPack && (
+              <MobilePackAction
+                isComplete={isCurrentPackComplete}
+                shouldReduceMotion={shouldReduceMotion}
+                onGenerate={handleGenerateSinglePack}
+              />
+            )}
 
             {/* History Section */}
             {packHistory.length > 0 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 text-xl font-bold text-foreground/80">
-                  <History className="w-5 h-5" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-title-medium text-[var(--md-sys-color-on-surface-variant)]">
+                  <History className="h-5 w-5" />
                   <h2>Pack History (Last {PACK_HISTORY_LIMIT})</h2>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {packHistory.map((packItem, index) => (
                     <motion.div
                       key={packItem.id}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={
+                        shouldReduceMotion
+                          ? { opacity: 0 }
+                          : { opacity: 0, y: 10 }
+                      }
                       animate={{ opacity: 1, y: 0 }}
-                      className={`border rounded-xl overflow-hidden transition-all duration-200 ${
+                      className={`overflow-hidden rounded-3xl border transition-all duration-200 ${
                         expandedPackId === packItem.id
-                          ? "border-primary/50 shadow-lg bg-card"
-                          : "border-border hover:border-primary/30 bg-card/50"
+                          ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-sm"
+                          : "border-[var(--md-sys-color-outline-variant)] bg-transparent hover:border-[var(--md-sys-color-primary)]"
                       }`}
                     >
                       <button
                         onClick={() => togglePackExpansion(packItem.id)}
-                        className="w-full flex items-center justify-between p-4 text-left focus:outline-none"
+                        className="flex min-h-16 w-full items-center justify-between p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--md-sys-color-primary)]"
                       >
                         <div className="flex items-center gap-4">
                           <div
-                            className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                            className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
                               index === 0
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground"
+                                ? "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]"
+                                : "bg-[var(--md-sys-color-surface-variant)] text-[var(--md-sys-color-on-surface-variant)]"
                             }`}
                           >
-                            <PackageOpen className="w-4 h-4" />
+                            <PackageOpen className="h-4 w-4" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-lg">
+                            <h3 className="text-title-medium text-[var(--md-sys-color-on-surface)]">
                               Booster Pack
                             </h3>
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              <Clock className="w-3 h-3 mr-1" />
+                            <div className="flex items-center gap-1 text-label-medium text-[var(--md-sys-color-on-surface-variant)]">
+                              <Clock className="h-3 w-3" />
                               {packItem.timestamp.toLocaleTimeString()}
                             </div>
                           </div>
                         </div>
                         <ChevronDown
-                          className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${
+                          className={`h-5 w-5 text-[var(--md-sys-color-on-surface-variant)] transition-transform duration-300 ${
                             expandedPackId === packItem.id ? "rotate-180" : ""
                           }`}
                         />
@@ -332,46 +395,24 @@ export default function IndexPage() {
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.3, ease: "easeInOut" }}
                           >
-                            <div className="border-t border-border/50">
-                              <Table
-                                aria-label="Booster Pack Table"
-                                removeWrapper
-                                color="primary"
-                                classNames={{
-                                  base: "max-h-[500px] overflow-scroll",
-                                  th: "bg-muted/50 text-muted-foreground font-medium",
-                                  td: "py-3",
-                                }}
-                              >
-                                <TableHeader>
-                                  <TableColumn>COLLECTION</TableColumn>
-                                  <TableColumn>NAME</TableColumn>
-                                  <TableColumn>NUMBER</TableColumn>
-                                </TableHeader>
-                                <TableBody>
-                                  {packItem.cards.map((card, cardIndex) => (
-                                    <TableRow
-                                      key={`${packItem.id}-${cardIndex}`}
-                                    >
-                                      <TableCell>
-                                        <CollectionBadge
-                                          collection={card.collection}
-                                          name={getCollectionName(
-                                            card.collection,
-                                          )}
-                                        />
-                                      </TableCell>
-                                      <TableCell className="font-medium">
-                                        {card.name}
-                                      </TableCell>
-                                      <TableCell className="text-muted-foreground">
-                                        #{card.number}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
+                            <ol className="grid gap-2 border-t border-[var(--md-sys-color-outline-variant)] p-3">
+                              {packItem.cards.map((card, cardIndex) => (
+                                <li
+                                  key={`${packItem.id}-${cardIndex}`}
+                                  className="grid grid-cols-[2.25rem_1fr_auto] items-center gap-3 rounded-2xl px-2 py-2"
+                                >
+                                  <span className="text-label-large text-[var(--md-sys-color-on-surface-variant)]">
+                                    {cardIndex + 1}
+                                  </span>
+                                  <span className="min-w-0 break-words text-body-medium text-[var(--md-sys-color-on-surface)]">
+                                    {card.name}
+                                  </span>
+                                  <span className="text-label-large text-[var(--md-sys-color-on-surface-variant)]">
+                                    #{card.number}
+                                  </span>
+                                </li>
+                              ))}
+                            </ol>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -397,8 +438,8 @@ export default function IndexPage() {
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            <h3 className="text-xl font-bold">Generate Spreadsheet</h3>
-            <p className="text-sm text-muted-foreground font-normal">
+            <h3 className="text-title-large">Generate spreadsheet</h3>
+            <p className="text-body-medium text-[var(--md-sys-color-on-surface-variant)]">
               Create multiple packs and export to Excel
             </p>
           </ModalHeader>
@@ -419,26 +460,176 @@ export default function IndexPage() {
             />
           </ModalBody>
           <ModalFooter>
-            <Button
-              variant="flat"
-              color="danger"
+            <M3Button
+              variant="tonal"
+              color="error"
               onPress={() => setShowModal(false)}
             >
               Cancel
-            </Button>
-            <Button
-              color="primary"
+            </M3Button>
+            <M3Button
+              variant="filled"
               isLoading={isExporting}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               onPress={handleGenerateAndExport}
               startContent={
                 !isExporting && <FileSpreadsheet className="w-4 h-4" />
               }
             >
               Generate & Export
-            </Button>
+            </M3Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
     </DefaultLayout>
+  );
+}
+
+interface PackCardRowProps {
+  card: Card;
+  cardIndex: number;
+  collectionName: string;
+  isCompleted: boolean;
+  shouldReduceMotion: boolean | null;
+  onToggle: (key: string) => void;
+}
+
+function PackCardRow({
+  card,
+  cardIndex,
+  collectionName,
+  isCompleted,
+  shouldReduceMotion,
+  onToggle,
+}: PackCardRowProps) {
+  const cardKey = getPackCardKey(card, cardIndex);
+
+  return (
+    <motion.li
+      initial={
+        shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: 8 }
+      }
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{
+        duration: 0.22,
+        delay: shouldReduceMotion ? 0 : cardIndex * 0.025,
+        ease: M3_STANDARD_EASING,
+      }}
+    >
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={isCompleted}
+        aria-label={`Mark ${card.name} ${isCompleted ? "incomplete" : "complete"}`}
+        onClick={() => onToggle(cardKey)}
+        className={`grid min-h-[88px] w-full grid-cols-[4rem_minmax(0,1fr)_4.5rem] items-stretch gap-3 rounded-3xl p-3 text-left ring-1 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--md-sys-color-primary)] ${
+          isCompleted
+            ? "bg-[var(--md-sys-color-primary-container)]/35 ring-[var(--md-sys-color-primary)]/30"
+            : "bg-[var(--md-sys-color-surface-container-lowest,#ffffff)] ring-[var(--md-sys-color-outline-variant)]"
+        }`}
+      >
+        <div
+          className={`flex min-h-16 w-full self-stretch items-center justify-center rounded-3xl text-title-medium transition-colors ${
+            isCompleted
+              ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]"
+              : "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]"
+          }`}
+        >
+          {isCompleted ? <Check className="h-5 w-5" /> : cardIndex + 1}
+        </div>
+        <div className="min-w-0 py-0.5">
+          <p
+            className={`break-words text-title-medium leading-6 text-[var(--md-sys-color-on-surface)] transition-all ${
+              isCompleted ? "line-through opacity-60" : ""
+            }`}
+          >
+            {card.name}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <CollectionBadge
+              collection={card.collection}
+              name={collectionName}
+              className="max-w-full"
+            />
+          </div>
+        </div>
+        <div
+          className={`flex min-h-16 w-full self-stretch items-center justify-center rounded-3xl px-3 text-title-medium transition-colors ${
+            isCompleted
+              ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]"
+              : "bg-[var(--md-sys-color-surface-variant)] text-[var(--md-sys-color-on-surface)]"
+          }`}
+        >
+          #{card.number}
+        </div>
+      </button>
+    </motion.li>
+  );
+}
+
+interface MobilePackActionProps {
+  isComplete: boolean;
+  shouldReduceMotion: boolean | null;
+  onGenerate: () => void;
+}
+
+function MobilePackAction({
+  isComplete,
+  shouldReduceMotion,
+  onGenerate,
+}: MobilePackActionProps) {
+  const motionState = shouldReduceMotion
+    ? { opacity: 0 }
+    : { opacity: 0, scale: 0.92 };
+
+  return (
+    <div
+      className={`fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 py-3 md:hidden ${
+        isComplete
+          ? "border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]/95 shadow-[0_-8px_24px_rgba(16,47,84,0.12)] backdrop-blur"
+          : "pointer-events-none"
+      }`}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        {isComplete ? (
+          <motion.div
+            key="full-generate-another"
+            initial={motionState}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={motionState}
+            transition={{ duration: 0.2, ease: M3_STANDARD_EASING }}
+            className="w-full"
+          >
+            <M3Button
+              variant="filled"
+              size="lg"
+              className="min-h-14 w-full"
+              onPress={onGenerate}
+              startContent={<RotateCcw className="h-5 w-5" />}
+            >
+              Generate another
+            </M3Button>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="compact-generate-another"
+            initial={motionState}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={motionState}
+            transition={{ duration: 0.2, ease: M3_STANDARD_EASING }}
+          >
+            <M3Button
+              variant="filled"
+              size="sm"
+              className="pointer-events-auto h-10 px-4 shadow-lg"
+              onPress={onGenerate}
+              startContent={<RotateCcw className="h-4 w-4" />}
+            >
+              Regenerate
+            </M3Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

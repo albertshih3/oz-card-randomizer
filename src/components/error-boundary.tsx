@@ -1,5 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from "react";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { AlertTriangle } from "lucide-react";
 
 function ErrorFallback({
@@ -22,16 +22,16 @@ function ErrorFallback({
         <code className="text-xs text-default-400 break-all">
           {error.message}
         </code>
-        <Button
+        <M3Button
+          variant="tonal"
           color="primary"
-          variant="flat"
           onPress={() => {
             onReset();
             window.location.reload();
           }}
         >
           Reload page
-        </Button>
+        </M3Button>
       </div>
     </div>
   );

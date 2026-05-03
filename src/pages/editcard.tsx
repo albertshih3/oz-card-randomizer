@@ -7,7 +7,7 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
-import { Button } from "@heroui/button";
+import { M3Button } from "@/components/m3/button";
 import { Select, SelectItem } from "@heroui/select";
 import { Input } from "@heroui/input";
 import { Switch } from "@heroui/switch";
@@ -20,14 +20,14 @@ import {
   collection as firestoreCollection,
   writeBatch,
 } from "firebase/firestore";
-import { signInWithCustomToken } from "firebase/auth";
 import { useAuth } from "@clerk/clerk-react";
-import { Spinner } from "@heroui/spinner";
+import { M3Spinner } from "@/components/m3/spinner";
 import DefaultLayout from "@/layouts/default";
 import Unauthorized from "@/components/unauthorized";
 import { event } from "@/lib/gtag";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { ensureFirebaseAuth } from "@/lib/firebase-auth";
 import { validateCardForm, CardFormErrors } from "@/utils/validation";
 import { Save, Trash2, X } from "lucide-react";
 import type { Card } from "@/types/index";
@@ -73,8 +73,7 @@ export default function EditCardPage() {
 
         if (!cardId || !collectionId) return;
 
-        const token = await getToken({ template: "integration_firebase" });
-        await signInWithCustomToken(auth, token || "");
+        await ensureFirebaseAuth(getToken);
         const cardRef = doc(db, collectionId, cardId);
         const cardSnap = await getDoc(cardRef);
         if (cardSnap.exists()) {
@@ -111,22 +110,9 @@ export default function EditCardPage() {
 
     setIsSaving(true);
     try {
-      // Ensure we're authenticated with Firebase before any write
-      const ensureFirebaseAuth = async () => {
-        if (!auth.currentUser) {
-          const token = await getToken({ template: "integration_firebase" });
-          await signInWithCustomToken(auth, token || "");
-        }
-      };
-
-      await ensureFirebaseAuth();
+      await ensureFirebaseAuth(getToken);
 
       if (isNew) {
-        event({
-          action: "create",
-          category: "card_management",
-          label: "card_created",
-        });
         // Create a new card
         const colRef = firestoreCollection(db, updatedCard.collection);
         await addDoc(colRef, {
@@ -134,12 +120,8 @@ export default function EditCardPage() {
           number: updatedCard.number,
           active: updatedCard.active,
         });
+        event("card_created", { collection: updatedCard.collection });
       } else {
-        event({
-          action: "update",
-          category: "card_management",
-          label: "card_updated",
-        });
         if (!cardId || !collectionId)
           throw new Error("Missing card identifiers.");
 
@@ -162,6 +144,7 @@ export default function EditCardPage() {
           batch.delete(oldRef);
           await batch.commit();
         }
+        event("card_updated", { collection: collectionId });
       }
       navigate("/edit");
     } catch (err) {
@@ -181,17 +164,11 @@ export default function EditCardPage() {
 
     setIsSaving(true);
     try {
-      // Ensure we're authenticated with Firebase before any write
-      const token = await getToken({ template: "integration_firebase" });
-      await signInWithCustomToken(auth, token || "");
+      await ensureFirebaseAuth(getToken);
 
-      event({
-        action: "delete",
-        category: "card_management",
-        label: "card_deleted",
-      });
       const cardRef = doc(db, cardToDelete.collection, cardToDelete.id);
       await deleteDoc(cardRef);
+      event("card_deleted", { collection: cardToDelete.collection });
       navigate("/edit");
     } catch (err) {
       console.error("Error deleting card:", err);
@@ -204,7 +181,7 @@ export default function EditCardPage() {
     return (
       <DefaultLayout>
         <div className="flex items-center justify-center h-screen">
-          <Spinner size="lg" color="primary" />
+          <M3Spinner size="lg" />
         </div>
       </DefaultLayout>
     );
@@ -343,32 +320,33 @@ export default function EditCardPage() {
           </ModalBody>
           <ModalFooter>
             {!isNew && selectedCard && (
-              <Button
+              <M3Button
+                variant="text"
+                color="error"
                 onPress={() => handleDelete(selectedCard)}
-                variant="light"
-                color="danger"
                 startContent={<Trash2 className="w-4 h-4" />}
                 className="mr-auto"
               >
                 Delete
-              </Button>
+              </M3Button>
             )}
-            <Button
+            <M3Button
+              variant="tonal"
               onPress={() => navigate("/edit")}
-              variant="flat"
               startContent={<X className="w-4 h-4" />}
             >
               Cancel
-            </Button>
-            <Button
+            </M3Button>
+            <M3Button
+              variant="filled"
               onPress={() => handleSave(selectedCard)}
-              color="primary"
               isLoading={isSaving}
+              spinner={<M3Spinner size="sm" color="currentColor" />}
               startContent={!isSaving && <Save className="w-4 h-4" />}
               className="font-semibold"
             >
               {isNew ? "Create Card" : "Save Changes"}
-            </Button>
+            </M3Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
