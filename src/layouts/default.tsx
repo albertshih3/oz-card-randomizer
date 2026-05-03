@@ -37,7 +37,7 @@ export default function DefaultLayout({
                 <p className="text-title-medium">Version 3 is here</p>
                 <p className="text-body-medium text-[var(--md-sys-color-on-primary)]/90">
                   Introducting the next version of the booster pack generator, with a cleaner mobile
-                  flow and refreshed pack results (& new admin features)!
+                  view & new admin features)!
                 </p>
               </div>
             </div>
