@@ -6,9 +6,12 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
+import clsx from "clsx";
+import { CheckCircle2, MessageCircle, X } from "lucide-react";
 import { BottomSheet } from "@/components/m3/bottom-sheet";
 import { M3Button } from "@/components/m3/button";
 import { event } from "@/lib/gtag";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 type FeedbackType = "bug" | "feature" | "general" | "other";
 
@@ -18,6 +21,9 @@ const FEEDBACK_TYPES: { value: FeedbackType; label: string }[] = [
   { value: "feature", label: "Feature Request" },
   { value: "other", label: "Other" },
 ];
+
+const fieldClassName =
+  "w-full rounded-[16px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-4 py-3 text-body-medium text-[var(--md-sys-color-on-surface)] outline-none transition-colors duration-short4 ease-standard placeholder:text-[var(--md-sys-color-on-surface-variant)] focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-[0.38]";
 
 interface FeedbackDialogProps {
   isOpen: boolean;
@@ -73,30 +79,39 @@ function FeedbackForm({
   };
 
   return (
-    <div className="flex flex-col gap-4 px-6 pb-6 pt-2">
-      {/* Type selector */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor={typeId}
-          className="text-label-medium text-[var(--md-sys-color-on-surface-variant)]"
+    <div className="flex flex-col gap-5 px-6 pb-6 pt-2">
+      <fieldset className="flex flex-col gap-2" disabled={isSubmitting}>
+        <legend
+          id={typeId}
+          className="mb-2 text-label-medium text-[var(--md-sys-color-on-surface-variant)]"
         >
           Type
-        </label>
-        <select
-          id={typeId}
-          value={type}
-          onChange={(e) => setType(e.target.value as FeedbackType)}
-          className="rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-highest)] px-3 py-2 text-body-medium text-[var(--md-sys-color-on-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)]"
+        </legend>
+        <div
+          className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+          role="radiogroup"
+          aria-labelledby={typeId}
         >
           {FEEDBACK_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
+            <button
+              key={t.value}
+              type="button"
+              role="radio"
+              aria-checked={type === t.value}
+              onClick={() => setType(t.value)}
+              className={clsx(
+                "min-h-11 rounded-full border px-4 text-label-large transition-colors duration-short4 ease-standard focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--md-sys-color-primary)] disabled:cursor-not-allowed disabled:opacity-[0.38]",
+                type === t.value
+                  ? "border-transparent bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]"
+                  : "border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)]",
+              )}
+            >
               {t.label}
-            </option>
+            </button>
           ))}
-        </select>
-      </div>
+        </div>
+      </fieldset>
 
-      {/* Message */}
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor={messageId}
@@ -108,25 +123,25 @@ function FeedbackForm({
           id={messageId}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Tell us what's on your mind…"
+          placeholder="Tell me what's on your mind..."
           rows={5}
           maxLength={2000}
-          className="resize-none rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-highest)] px-3 py-2 text-body-medium text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)] focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)]"
+          disabled={isSubmitting}
+          className={clsx(fieldClassName, "min-h-32 resize-none")}
         />
-        <span className="text-label-small text-[var(--md-sys-color-on-surface-variant)] self-end">
+        <span className="self-end text-label-medium text-[var(--md-sys-color-on-surface-variant)]">
           {message.length}/2000
         </span>
       </div>
 
-      {/* Reply-to (optional) */}
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor={replyToId}
           className="text-label-medium text-[var(--md-sys-color-on-surface-variant)]"
         >
           Email{" "}
-          <span className="text-label-small text-[var(--md-sys-color-on-surface-variant)] opacity-70">
-            (optional — for follow-up)
+          <span className="text-label-medium text-[var(--md-sys-color-on-surface-variant)] opacity-70">
+            (optional, for follow-up)
           </span>
         </label>
         <input
@@ -134,22 +149,23 @@ function FeedbackForm({
           type="email"
           value={replyTo}
           onChange={(e) => setReplyTo(e.target.value)}
-          placeholder="you@example.com"
-          className="rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-highest)] px-3 py-2 text-body-medium text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)] focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)]"
+          placeholder="username@oaklandzoo.org"
+          disabled={isSubmitting}
+          className={fieldClassName}
         />
       </div>
 
       {error && (
-        <p
+        <div
           role="alert"
-          className="text-label-medium text-[var(--md-sys-color-error)]"
+          className="rounded-[16px] bg-[var(--md-sys-color-error-container)] px-4 py-3 text-label-large text-[var(--md-sys-color-on-error-container)]"
         >
           {error}
-        </p>
+        </div>
       )}
 
       <div className="flex justify-end gap-2 pt-1">
-        <M3Button variant="text" onPress={onClose} isDisabled={isSubmitting}>
+        <M3Button variant="tonal" onPress={onClose} isDisabled={isSubmitting}>
           Cancel
         </M3Button>
         <M3Button
@@ -167,15 +183,15 @@ function FeedbackForm({
 
 function SuccessContent({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 pb-8 pt-2 text-center">
-      <span className="text-4xl" role="img" aria-label="Checkmark">
-        ✅
+    <div className="flex flex-col items-center gap-4 px-6 pb-8 pt-3 text-center">
+      <span className="m3-feedback-success-mark flex h-16 w-16 items-center justify-center rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)]">
+        <CheckCircle2 size={34} strokeWidth={2.25} />
       </span>
       <p className="text-title-medium text-[var(--md-sys-color-on-surface)]">
         Feedback sent!
       </p>
       <p className="text-body-medium text-[var(--md-sys-color-on-surface-variant)]">
-        Thanks for the feedback! Look for an update soon!
+        Thanks for helping make booster packs easier to use.
       </p>
       <M3Button variant="tonal" onPress={onClose} className="mt-2">
         Done
@@ -184,16 +200,62 @@ function SuccessContent({ onClose }: { onClose: () => void }) {
   );
 }
 
+function DialogHeading({
+  title,
+  description,
+  headingId,
+  onClose,
+}: {
+  title: string;
+  description: string;
+  headingId: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex w-full items-start gap-4 px-6 pb-3 pt-5">
+      <span
+        aria-hidden="true"
+        className="mt-0.5 hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)] sm:flex"
+      >
+        <MessageCircle size={20} strokeWidth={2.25} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2
+          id={headingId}
+          className="text-title-large text-[var(--md-sys-color-on-surface)]"
+        >
+          {title}
+        </h2>
+        <p className="mt-1 text-body-medium text-[var(--md-sys-color-on-surface-variant)]">
+          {description}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close feedback dialog"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors duration-short4 ease-standard hover:bg-[var(--md-sys-color-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--md-sys-color-primary)]"
+      >
+        <X size={20} />
+      </button>
+    </div>
+  );
+}
+
 export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
   const [submitted, setSubmitted] = useState(false);
   const headingId = "feedback-dialog-heading";
+  const isMobile = useMediaQuery("(max-width: 639px)");
 
   const handleClose = () => {
     setSubmitted(false);
     onClose();
   };
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const title = submitted ? "Feedback sent" : "Submit Feedback";
+  const description = submitted
+    ? "Your note is on its way."
+    : "Let me know if you have found a bug, or if you have any feedback!";
 
   if (isMobile) {
     return (
@@ -202,12 +264,12 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
         onClose={handleClose}
         aria-labelledby={headingId}
       >
-        <h2
-          id={headingId}
-          className="px-6 pt-2 pb-1 text-title-large text-[var(--md-sys-color-on-surface)]"
-        >
-          {submitted ? "Done!" : "Submit Feedback"}
-        </h2>
+        <DialogHeading
+          title={title}
+          description={description}
+          headingId={headingId}
+          onClose={handleClose}
+        />
         {submitted ? (
           <SuccessContent onClose={handleClose} />
         ) : (
@@ -226,16 +288,28 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
       onClose={handleClose}
       backdrop="blur"
       size="md"
+      hideCloseButton
       aria-labelledby={headingId}
+      classNames={{
+        base: "rounded-[28px] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] shadow-elevation-3",
+        backdrop: "bg-black/40",
+        header: "border-b-0 p-0",
+        body: "p-0",
+      }}
     >
       <ModalContent>
         {() => (
           <>
-            <ModalHeader id={headingId} className="text-title-large">
-              {submitted ? "Done!" : "Submit Feedback"}
+            <ModalHeader>
+              <DialogHeading
+                title={title}
+                description={description}
+                headingId={headingId}
+                onClose={handleClose}
+              />
             </ModalHeader>
             {submitted ? (
-              <ModalBody className="pb-6">
+              <ModalBody>
                 <SuccessContent onClose={handleClose} />
               </ModalBody>
             ) : (
