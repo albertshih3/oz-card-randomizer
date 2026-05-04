@@ -316,6 +316,27 @@
   animation: m3-snackbar-slide-up 0.25s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
 }
 
+@keyframes m3-feedback-success-pop {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.m3-feedback-success-mark {
+  animation: m3-feedback-success-pop 0.28s cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m3-feedback-success-mark {
+    animation: none;
+  }
+}
+
 /* --- M3 Typography Scale --- */
 
 @layer utilities {
