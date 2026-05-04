@@ -71,6 +71,9 @@ export default function IndexPage() {
   const completedCount = completedCardKeys.size;
   const isCurrentPackComplete =
     hasCurrentPack && completedCount === currentPack.length;
+  const packProgress = hasCurrentPack
+    ? Math.round((completedCount / currentPack.length) * 100)
+    : 0;
 
   const entrance = {
     initial: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 },
@@ -279,6 +282,29 @@ export default function IndexPage() {
                   </span>
                 )}
               </div>
+              {hasCurrentPack && (
+                <div className="mb-4" aria-hidden="true">
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--md-sys-color-surface-variant)]">
+                    <motion.div
+                      className="h-full rounded-full bg-[var(--md-sys-color-primary)]"
+                      initial={false}
+                      animate={{ width: `${packProgress}%` }}
+                      transition={{
+                        duration: shouldReduceMotion ? 0 : 0.32,
+                        ease: M3_STANDARD_EASING,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <AnimatePresence>
+                {isCurrentPackComplete && (
+                  <PackReadyCelebration
+                    shouldReduceMotion={shouldReduceMotion}
+                  />
+                )}
+              </AnimatePresence>
 
               <AnimatePresence mode="wait">
                 {hasCurrentPack ? (
@@ -516,12 +542,14 @@ function PackCardRow({
         ease: M3_STANDARD_EASING,
       }}
     >
-      <button
+      <motion.button
         type="button"
         role="checkbox"
         aria-checked={isCompleted}
         aria-label={`Mark ${card.name} ${isCompleted ? "incomplete" : "complete"}`}
         onClick={() => onToggle(cardKey)}
+        whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+        whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
         className={`grid min-h-[88px] w-full grid-cols-[4rem_minmax(0,1fr)_4.5rem] items-stretch gap-3 rounded-3xl p-3 text-left ring-1 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--md-sys-color-primary)] ${
           isCompleted
             ? "bg-[var(--md-sys-color-primary-container)]/35 ring-[var(--md-sys-color-primary)]/30"
@@ -535,7 +563,29 @@ function PackCardRow({
               : "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]"
           }`}
         >
-          {isCompleted ? <Check className="h-5 w-5" /> : cardIndex + 1}
+          <AnimatePresence mode="wait" initial={false}>
+            {isCompleted ? (
+              <motion.span
+                key="checked"
+                className="flex self-stretch items-center"
+                initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.18, ease: M3_STANDARD_EASING }}
+              >
+                <Check className="h-5 w-5" />
+              </motion.span>
+            ) : (
+              <motion.span
+                key="number"
+                className="flex self-stretch items-center"
+                initial={false}
+                animate={{ opacity: 1 }}
+              >
+                {cardIndex + 1}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
         <div className="min-w-0 py-0.5">
           <p
@@ -562,8 +612,48 @@ function PackCardRow({
         >
           #{card.number}
         </div>
-      </button>
+      </motion.button>
     </motion.li>
+  );
+}
+
+interface PackReadyCelebrationProps {
+  shouldReduceMotion: boolean | null;
+}
+
+function PackReadyCelebration({
+  shouldReduceMotion,
+}: PackReadyCelebrationProps) {
+  return (
+    <motion.div
+      role="status"
+      initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+      transition={{ duration: 0.24, ease: M3_STANDARD_EASING }}
+      className="mb-4 overflow-hidden rounded-3xl bg-[var(--md-sys-color-primary-container)] px-4 py-3 text-[var(--md-sys-color-on-primary-container)]"
+    >
+      <div className="flex items-center gap-3">
+        <motion.div
+          aria-hidden="true"
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : { rotate: [0, -8, 8, 0], scale: [1, 1.08, 1] }
+          }
+          transition={{ duration: 0.5, ease: M3_STANDARD_EASING }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)]"
+        >
+          <Sparkles className="h-5 w-5" />
+        </motion.div>
+        <div className="min-w-0">
+          <p className="text-title-medium">Pack ready</p>
+          <p className="text-body-medium opacity-80">
+            All cards are pulled and ready to hand off.
+          </p>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 

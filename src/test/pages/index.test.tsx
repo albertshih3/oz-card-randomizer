@@ -201,4 +201,32 @@ describe("IndexPage", () => {
 
     expect(await screen.findByText("Generate another")).toBeInTheDocument();
   });
+
+  it("celebrates when every card in the current pack has been pulled", async () => {
+    mockBoosterPacks = [
+      [
+        {
+          id: "card-1",
+          name: "African Elephant",
+          number: "42",
+          collection: "africansavanna",
+        },
+      ],
+    ];
+
+    render(<IndexPage />);
+
+    expect(screen.queryByText("Pack ready")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: /mark african elephant complete/i,
+      }),
+    );
+
+    expect(await screen.findByText("Pack ready")).toBeInTheDocument();
+    expect(
+      screen.getByText("All cards are pulled and ready to hand off."),
+    ).toBeInTheDocument();
+  });
 });

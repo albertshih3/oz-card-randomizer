@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTutorial } from "@/contexts/tutorial-context";
 import { TUTORIAL_STEPS } from "./steps";
@@ -20,6 +20,11 @@ const popoverVariants = {
   exit: { opacity: 0, y: -8 },
 };
 
+const VIEWPORT_MARGIN = 16;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
 export function TutorialPopover() {
   const {
     currentStep,
@@ -31,6 +36,7 @@ export function TutorialPopover() {
   } = useTutorial();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [position, setPosition] = useState<Position>({});
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   const step = TUTORIAL_STEPS[currentStep];
   const isFirst = currentStep === 0;
@@ -64,30 +70,40 @@ export function TutorialPopover() {
       return;
     }
     const r = el.getBoundingClientRect();
-    const popoverWidth = 320;
+    const popoverWidth = popoverRef.current?.offsetWidth || 320;
+    const popoverHeight = popoverRef.current?.offsetHeight || 240;
     const gap = 16;
+    const maxTop = Math.max(
+      VIEWPORT_MARGIN,
+      window.innerHeight - popoverHeight - VIEWPORT_MARGIN,
+    );
 
     // Right placement: position popover to the right of the target
     if (step.placement === "right") {
-      const left = Math.min(
+      const left = clamp(
         r.right + gap,
-        window.innerWidth - popoverWidth - 16,
+        VIEWPORT_MARGIN,
+        window.innerWidth - popoverWidth - VIEWPORT_MARGIN,
       );
-      const top = Math.max(16, Math.min(r.top + 16, window.innerHeight - 250));
+      const top = clamp(r.top + VIEWPORT_MARGIN, VIEWPORT_MARGIN, maxTop);
       setPosition({ top, left });
       return;
     }
 
     const spaceBelow = window.innerHeight - r.bottom;
     let top: number;
-    if (spaceBelow > 200) {
+    if (spaceBelow >= popoverHeight + gap + VIEWPORT_MARGIN) {
       top = r.bottom + gap;
     } else {
-      top = r.top - gap - 200;
+      top = r.top - gap - popoverHeight;
     }
     let left = r.left + r.width / 2 - popoverWidth / 2;
-    left = Math.max(16, Math.min(left, window.innerWidth - popoverWidth - 16));
-    top = Math.max(16, top);
+    left = clamp(
+      left,
+      VIEWPORT_MARGIN,
+      window.innerWidth - popoverWidth - VIEWPORT_MARGIN,
+    );
+    top = clamp(top, VIEWPORT_MARGIN, maxTop);
     setPosition({ top, left });
   }, [isDesktop, effectiveTargetId, step.placement]);
 
@@ -137,6 +153,8 @@ export function TutorialPopover() {
     position: "fixed",
     zIndex: 51,
     width: 320,
+    maxHeight: "calc(100vh - 32px)",
+    overflowY: "auto",
     borderRadius: 28,
     padding: 24,
     background: "var(--md-sys-color-surface)",
@@ -152,6 +170,7 @@ export function TutorialPopover() {
     >
       <AnimatePresence mode="wait">
         <motion.div
+          ref={popoverRef}
           key={currentStep}
           variants={popoverVariants}
           initial="initial"
