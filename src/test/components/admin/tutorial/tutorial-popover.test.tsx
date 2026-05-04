@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
 
 const mockNextStep = vi.fn();
 const mockPrevStep = vi.fn();
@@ -129,6 +129,10 @@ beforeEach(() => {
 });
 
 describe("TutorialPopover", () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renders step title, description, and step counter on first step", () => {
     render(<TutorialPopover />);
     expect(screen.getByText("First Step")).toBeInTheDocument();
@@ -175,5 +179,49 @@ describe("TutorialPopover", () => {
     expect(backBtn).toBeInTheDocument();
     fireEvent.click(backBtn);
     expect(mockPrevStep).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the popover controls inside the viewport when the target is low on the page", () => {
+    vi.useFakeTimers();
+    mockCurrentStep = 1;
+    const target = document.createElement("div");
+    target.dataset.tutorialId = "some-target";
+    target.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          x: 500,
+          y: 500,
+          top: 500,
+          right: 620,
+          bottom: 540,
+          left: 500,
+          width: 120,
+          height: 40,
+          toJSON: vi.fn(),
+        }) as DOMRect,
+    );
+    document.body.appendChild(target);
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 600,
+    });
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 900,
+    });
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get: () => 360,
+    });
+
+    render(<TutorialPopover />);
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    const dialogCard = screen.getByRole("dialog").firstElementChild;
+    expect(dialogCard).toHaveStyle({ top: "124px" });
+
+    target.remove();
   });
 });

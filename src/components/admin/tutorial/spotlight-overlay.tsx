@@ -47,7 +47,7 @@ export function SpotlightOverlay({ targetId }: SpotlightOverlayProps) {
         position: "fixed",
         inset: 0,
         zIndex: 50,
-        pointerEvents: "none",
+        pointerEvents: "auto",
       }}
     >
       <svg width="100%" height="100%">

@@ -22,7 +22,7 @@ describe("DefaultLayout", () => {
 
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
     expect(banner).toHaveTextContent(/version 3/i);
-    expect(banner).toHaveTextContent(/major version/i);
+    expect(banner).toHaveTextContent(/new version/i);
     expect(banner).toHaveClass("bg-[var(--md-sys-color-primary)]");
     expect(
       screen.getByRole("link", { name: /view changelog/i }),
