@@ -12,26 +12,44 @@ interface SpotlightOverlayProps {
   targetId: string | null;
 }
 
+const ROUTED_TARGET_RETRY_MS = 50;
+const ROUTED_TARGET_RETRY_LIMIT = 20;
+
 export function SpotlightOverlay({ targetId }: SpotlightOverlayProps) {
   const [rect, setRect] = useState<Rect | null>(null);
 
   const measure = useCallback(() => {
     if (!targetId) {
       setRect(null);
-      return;
+      return true;
     }
     const el = document.querySelector(`[data-tutorial-id="${targetId}"]`);
     if (!el) {
       setRect(null);
-      return;
+      return false;
     }
     const r = el.getBoundingClientRect();
     setRect({ x: r.x, y: r.y, width: r.width, height: r.height });
+    return true;
   }, [targetId]);
 
   useEffect(() => {
-    const timer = setTimeout(measure, 200);
-    return () => clearTimeout(timer);
+    let attempts = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const measureUntilReady = () => {
+      const targetReady = measure();
+      attempts += 1;
+      if (!targetReady && attempts < ROUTED_TARGET_RETRY_LIMIT) {
+        retryTimer = setTimeout(measureUntilReady, ROUTED_TARGET_RETRY_MS);
+      }
+    };
+
+    const timer = setTimeout(measureUntilReady, 200);
+    return () => {
+      clearTimeout(timer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [measure]);
 
   useEffect(() => {

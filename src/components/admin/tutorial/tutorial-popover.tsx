@@ -21,6 +21,8 @@ const popoverVariants = {
 };
 
 const VIEWPORT_MARGIN = 16;
+const ROUTED_TARGET_RETRY_MS = 50;
+const ROUTED_TARGET_RETRY_LIMIT = 20;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -49,14 +51,14 @@ export function TutorialPopover() {
       : step.description;
 
   const computePosition = useCallback(() => {
-    if (!isDesktop) return;
+    if (!isDesktop) return true;
     if (!effectiveTargetId) {
       setPosition({
         top: window.innerHeight / 2,
         left: window.innerWidth / 2,
         transform: "translate(-50%, -50%)",
       });
-      return;
+      return true;
     }
     const el = document.querySelector(
       `[data-tutorial-id="${effectiveTargetId}"]`,
@@ -67,7 +69,7 @@ export function TutorialPopover() {
         left: window.innerWidth / 2,
         transform: "translate(-50%, -50%)",
       });
-      return;
+      return false;
     }
     const r = el.getBoundingClientRect();
     const popoverWidth = popoverRef.current?.offsetWidth || 320;
@@ -86,8 +88,8 @@ export function TutorialPopover() {
         window.innerWidth - popoverWidth - VIEWPORT_MARGIN,
       );
       const top = clamp(r.top + VIEWPORT_MARGIN, VIEWPORT_MARGIN, maxTop);
-      setPosition({ top, left });
-      return;
+      setPosition({ top, left, transform: undefined });
+      return true;
     }
 
     const spaceBelow = window.innerHeight - r.bottom;
@@ -104,12 +106,27 @@ export function TutorialPopover() {
       window.innerWidth - popoverWidth - VIEWPORT_MARGIN,
     );
     top = clamp(top, VIEWPORT_MARGIN, maxTop);
-    setPosition({ top, left });
+    setPosition({ top, left, transform: undefined });
+    return true;
   }, [isDesktop, effectiveTargetId, step.placement]);
 
   useEffect(() => {
-    const timer = setTimeout(computePosition, 250);
-    return () => clearTimeout(timer);
+    let attempts = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const measureUntilReady = () => {
+      const targetReady = computePosition();
+      attempts += 1;
+      if (!targetReady && attempts < ROUTED_TARGET_RETRY_LIMIT) {
+        retryTimer = setTimeout(measureUntilReady, ROUTED_TARGET_RETRY_MS);
+      }
+    };
+
+    const timer = setTimeout(measureUntilReady, 250);
+    return () => {
+      clearTimeout(timer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [computePosition]);
 
   useEffect(() => {

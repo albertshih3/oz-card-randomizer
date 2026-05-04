@@ -224,4 +224,59 @@ describe("TutorialPopover", () => {
 
     target.remove();
   });
+
+  it("remeasures after a routed step target appears late", () => {
+    vi.useFakeTimers();
+    mockCurrentStep = 1;
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 800,
+    });
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 900,
+    });
+
+    render(<TutorialPopover />);
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    const dialogCard = screen.getByRole("dialog").firstElementChild;
+    expect(dialogCard).toHaveStyle({
+      top: "400px",
+      left: "450px",
+      transform: "translate(-50%, -50%)",
+    });
+
+    const target = document.createElement("div");
+    target.dataset.tutorialId = "some-target";
+    target.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          x: 100,
+          y: 120,
+          top: 120,
+          right: 220,
+          bottom: 160,
+          left: 100,
+          width: 120,
+          height: 40,
+          toJSON: vi.fn(),
+        }) as DOMRect,
+    );
+    document.body.appendChild(target);
+
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(dialogCard).toHaveStyle({
+      top: "176px",
+      left: "16px",
+      transform: "",
+    });
+
+    target.remove();
+  });
 });
