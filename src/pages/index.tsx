@@ -649,7 +649,7 @@ function PackReadyCelebration({
         <div className="min-w-0">
           <p className="text-title-medium">Pack ready</p>
           <p className="text-body-medium opacity-80">
-            All cards are pulled and ready to hand off.
+            All done! Time to generate another?
           </p>
         </div>
       </div>

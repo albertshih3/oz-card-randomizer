@@ -226,7 +226,7 @@ describe("IndexPage", () => {
 
     expect(await screen.findByText("Pack ready")).toBeInTheDocument();
     expect(
-      screen.getByText("All cards are pulled and ready to hand off."),
+      screen.getByText("All done! Time to generate another?"),
     ).toBeInTheDocument();
   });
 });
