@@ -15,8 +15,8 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@clerk/backend": "^3.2.2",
-    "@clerk/clerk-react": "^5.57.0",
+    "@clerk/backend": "^3.8.4",
+    "@clerk/clerk-react": "^5.61.8",
     "@google-analytics/data": "^4.0.0",
     "@heroui/button": "2.2.27",
     "@heroui/chip": "^2.2.22",
@@ -48,7 +48,7 @@
     "lucide-react": "^0.555.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "6.23.0",
+    "react-router-dom": "^6.30.4",
     "resend": "^6.12.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",

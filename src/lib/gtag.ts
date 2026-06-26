@@ -9,8 +9,8 @@ export const initGtag = () => {
     document.head.appendChild(script);
 
     window.dataLayer = window.dataLayer || [];
-    window.gtag = function () {
-      window.dataLayer.push(arguments);
+    window.gtag = function (...args) {
+      window.dataLayer.push(args);
     };
     window.gtag("js", new Date());
     window.gtag("config", GA_TRACKING_ID);
@@ -19,8 +19,8 @@ export const initGtag = () => {
 
 // https://developers.google.com/analytics/devguides/collection/gtagjs/pages
 export const pageview = (url: URL) => {
-  if (typeof window !== "undefined" && (window as any).gtag && GA_TRACKING_ID) {
-    (window as any).gtag("config", GA_TRACKING_ID, {
+  if (typeof window !== "undefined" && window.gtag && GA_TRACKING_ID) {
+    window.gtag("config", GA_TRACKING_ID, {
       page_path: url.pathname,
       page_title: document.title,
     });
@@ -29,8 +29,8 @@ export const pageview = (url: URL) => {
 
 // https://developers.google.com/analytics/devguides/collection/ga4/reference/events
 export const event = (eventName: string, params?: Record<string, unknown>) => {
-  if (typeof window !== "undefined" && (window as any).gtag && GA_TRACKING_ID) {
-    (window as any).gtag("event", eventName, params);
+  if (typeof window !== "undefined" && window.gtag && GA_TRACKING_ID) {
+    window.gtag("event", eventName, params);
   }
 };
 
@@ -40,8 +40,8 @@ export const timing = (
   durationMs: number,
   extra?: Record<string, unknown>,
 ) => {
-  if (typeof window !== "undefined" && (window as any).gtag && GA_TRACKING_ID) {
-    (window as any).gtag("event", "performance_timing", {
+  if (typeof window !== "undefined" && window.gtag && GA_TRACKING_ID) {
+    window.gtag("event", "performance_timing", {
       timing_name: name,
       duration_ms: durationMs,
       ...extra,
@@ -57,8 +57,8 @@ export const exception = ({
   description: string;
   fatal?: boolean;
 }) => {
-  if (typeof window !== "undefined" && (window as any).gtag && GA_TRACKING_ID) {
-    (window as any).gtag("event", "exception", {
+  if (typeof window !== "undefined" && window.gtag && GA_TRACKING_ID) {
+    window.gtag("event", "exception", {
       description,
       fatal,
     });
@@ -67,7 +67,7 @@ export const exception = ({
 
 declare global {
   interface Window {
-    gtag: (...args: any[]) => void;
-    dataLayer: any[];
+    gtag: (command: string, ...args: unknown[]) => void;
+    dataLayer: unknown[][];
   }
 }

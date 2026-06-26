@@ -55,3 +55,21 @@ Web application for generating randomized trading card booster packs for the Oak
 - **Events**: GA4 events must fire **after** Firestore `awaits` to prevent "phantom" success records.
 - **Immutability**: Category IDs are immutable after creation to prevent orphaning associated cards.
 - **Performance**: Use `React.lazy()` for all admin routes; defer heavy libraries (`xlsx`) via dynamic imports.
+
+---
+
+### Known Accepted Risks (last reviewed June 2026)
+
+Packages with vulnerabilities that cannot be resolved without a breaking major-version upgrade. All are dev/build tooling — none affect the production runtime bundle deployed to Vercel.
+
+| Package            | Severity | Reason no fix available                                                                                                                  | Revisit trigger                  |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `xlsx@0.18.5`      | High     | No patch from SheetJS; used in admin-only Excel export, no public-facing attack surface                                                  | SheetJS releases a patched build |
+| `vite@5.x`         | High     | Fix requires v8 major bump; vulnerabilities are dev-server only (path traversal, `server.fs.deny` bypass) — not in the production bundle | Next major maintenance pass      |
+| `vercel@50.x`      | High     | Fix requires v54 major bump; CLI/build tooling only, not the production runtime                                                          | Next major maintenance pass      |
+| `@vercel/node@5.x` | High     | Same chain as `vercel` above                                                                                                             | Next major maintenance pass      |
+
+**Notes:**
+
+- `vercel` is listed under `dependencies` (not `devDependencies`). No source file imports it directly — this may be a historical artifact. Do not move it without confirming no deploy hook depends on it.
+- `legacy-peer-deps=true` in `.npmrc` accommodates React 19 peer range mismatches with HeroUI. Do not remove.
