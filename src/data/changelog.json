@@ -1,8 +1,32 @@
 [
   {
+    "version": "3.4.1",
+    "date": "June 25, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Security Patches",
+        "type": "chore",
+        "items": [
+          "Updated @clerk/backend and @clerk/clerk-react to patch auth bypass vulnerabilities (CVSS 8.1) affecting organization and billing permission checks",
+          "Updated react-router-dom to patch XSS via open redirects (CVSS 8.0)",
+          "Resolved 20 additional transitive dependency vulnerabilities via npm audit fix — total vulnerability count reduced from 60 to 40, with 0 critical remaining"
+        ]
+      },
+      {
+        "title": "Code Health",
+        "type": "chore",
+        "items": [
+          "Removed three unreachable page files (edit.tsx, editcard.tsx, categories.tsx) left over from the admin UI migration — 1,191 lines of dead code deleted",
+          "Cleaned up gtag.ts: replaced the arguments keyword with rest parameters, removed redundant (window as any) casts, and tightened the Window interface types — ESLint warnings cleared to zero"
+        ]
+      }
+    ]
+  },
+  {
     "version": "3.4.0",
     "date": "May 2, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Home Page Redesign",
