@@ -3,14 +3,23 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "26.x"
+  },
   "scripts": {
     "dev": "vite",
     "dev:full": "vercel dev",
-    "build": "tsc && vite build",
-    "lint": "eslint -c .eslintrc.json ./src/**/**/*.{ts,tsx} --fix",
+    "build": "npm run typecheck && vite build",
+    "lint": "eslint -c .eslintrc.json src api --ext .ts,.tsx",
+    "lint:fix": "eslint -c .eslintrc.json src api --ext .ts,.tsx --fix",
+    "typecheck": "npm run typecheck:app && npm run typecheck:api && npm run typecheck:test",
+    "typecheck:app": "tsc --noEmit -p tsconfig.json",
+    "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
+    "verify": "npm run lint && npm run typecheck && npm run test:run && vite build",
     "update-changelog": "node scripts/update-changelog.js",
     "prepare": "husky"
   },
@@ -54,7 +63,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwind-variants": "3.2.2",
     "tailwindcss-animate": "^1.0.7",
-    "vercel": "^50.37.3",
+    "vercel": "^50.44.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
