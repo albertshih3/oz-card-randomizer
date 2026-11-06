@@ -37,7 +37,9 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   // before React re-renders (rapid clicks, keyboard repeat).
   const stepRef = useRef(0);
   const pathnameRef = useRef(pathname);
-  pathnameRef.current = pathname;
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   const goToStep = useCallback(
     (index: number) => {
@@ -85,16 +87,33 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     if (stepRef.current > 0) goToStep(stepRef.current - 1);
   }, [goToStep]);
 
-  // Browser Back/Forward or drawer links can move the route out from under the
-  // tour. Follow the route so the step and page cannot disagree.
-  useEffect(() => {
-    if (!isActive || TUTORIAL_STEPS[stepRef.current].route === pathname) return;
-    const index = TUTORIAL_STEPS.findIndex((step) => step.route === pathname);
+  const followRoute = useCallback((route: string) => {
+    pathnameRef.current = route;
+    if (TUTORIAL_STEPS[stepRef.current].route === route) return;
+    const index = TUTORIAL_STEPS.findIndex((step) => step.route === route);
     if (index >= 0) {
       stepRef.current = index;
       setCurrentStep(index);
     }
-  }, [isActive, pathname]);
+  }, []);
+
+  // Keep the step and page in agreement when the route moves under the tour.
+  // Keyed on the route alone: starting the tour must not react to a location
+  // that is about to change.
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+  useEffect(() => {
+    if (isActiveRef.current) followRoute(pathname);
+  }, [pathname, followRoute]);
+
+  // React Router applies location changes in a transition, so Back during a
+  // pending navigation can leave `pathname` unchanged. The URL is authoritative.
+  useEffect(() => {
+    if (!isActive) return;
+    const onPopState = () => followRoute(window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [isActive, followRoute]);
 
   // First-visit auto-show
   const startRef = useRef(startTutorial);

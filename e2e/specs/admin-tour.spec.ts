@@ -163,6 +163,27 @@ test("browser Back moves the tour with the page", async ({ page }) => {
   await expect(tour(page).getByText("Step 6 of 10")).toBeVisible();
 });
 
+test("browser Back during a pending navigation cannot strand the tour", async ({
+  page,
+}) => {
+  await setup(page, { chunkDelayMs: 1500 });
+  await startTour(page);
+  await advanceTo(page, 6);
+  await expect(tour(page).getByText("Loading this page")).toHaveCount(0, {
+    timeout: 8000,
+  });
+  await tour(page).getByRole("button", { name: "Next" }).click();
+  await tour(page).getByRole("button", { name: "Next" }).click();
+  await expect(stepLabel(page, 8)).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/admin\/categories$/);
+  await expect(stepLabel(page, 6)).toBeVisible();
+  await expect(tour(page).getByRole("button", { name: "Next" })).toBeEnabled({
+    timeout: 8000,
+  });
+});
+
 test("the centered steps are actually centered", async ({ page }) => {
   await setup(page);
   await startTour(page);
