@@ -192,6 +192,13 @@ Firefox 128. Two intended visual changes remain: slightly different orange badge
 - History scan for Clerk, Resend, GitHub, and private-key patterns: no matches. The
   only hits were Firebase web API keys, which are public identifiers.
 
+## Runtime note
+
+Do not import `firebase-admin/auth` in `api/`. Its `jwks-rsa` dependency `require()`s
+an ESM-only package, which crashes the Vercel function at load even though plain Node
+allows it. `createCustomToken` in `api/_firebase-admin.ts` signs tokens directly.
+`firebase-admin/firestore` loads fine.
+
 ## Not verified
 
 - **Real Clerk flows:** sign-in, MFA, password reset, invitation acceptance, and token

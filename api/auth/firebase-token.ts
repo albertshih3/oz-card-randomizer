@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getAuth } from "firebase-admin/auth";
 import { requireApproved } from "../_auth.js";
-import { getFirebaseAdminApp } from "../_firebase-admin.js";
+import { createCustomToken } from "../_firebase-admin.js";
 
 /**
  * How long a Firebase session may write after its approval was last confirmed.
@@ -33,10 +32,7 @@ export default async function handler(
   try {
     const approvedUntil =
       Math.floor(Date.now() / 1000) + APPROVAL_LEASE_SECONDS;
-    const token = await getAuth(getFirebaseAdminApp()).createCustomToken(
-      userId,
-      { approved: true, approvedUntil },
-    );
+    const token = createCustomToken(userId, { approved: true, approvedUntil });
     res.status(200).json({ token, approvedUntil });
   } catch (err) {
     console.error("[POST /api/auth/firebase-token]", err);

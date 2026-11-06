@@ -12,11 +12,8 @@ vi.mock("@clerk/backend", () => ({
   createClerkClient: vi.fn(() => ({ users: { getUser: mockGetUser } })),
   verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
 }));
-vi.mock("firebase-admin/auth", () => ({
-  getAuth: () => ({ createCustomToken: mockCreateCustomToken }),
-}));
 vi.mock("../../../api/_firebase-admin", () => ({
-  getFirebaseAdminApp: vi.fn(() => ({})),
+  createCustomToken: mockCreateCustomToken,
 }));
 
 import {
@@ -56,7 +53,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockVerifyToken.mockResolvedValue({ sub: "user_1" });
   mockGetUser.mockResolvedValue({ publicMetadata: { approved: true } });
-  mockCreateCustomToken.mockResolvedValue("firebase-token");
+  mockCreateCustomToken.mockReturnValue("firebase-token");
 });
 
 afterEach(() => {
@@ -180,7 +177,9 @@ describe("POST /api/auth/firebase-token", () => {
   });
 
   it("fails closed when the admin credential is unavailable", async () => {
-    mockCreateCustomToken.mockRejectedValue(new Error("no credential"));
+    mockCreateCustomToken.mockImplementation(() => {
+      throw new Error("no credential");
+    });
     const { res, state } = makeRes();
     await tokenHandler(makeReq("t"), res);
     expect(state.status).toBe(503);
