@@ -9,6 +9,8 @@
 # testing
 /coverage
 /test-results
+*-debug.log
+categories-backup-*.json
 /playwright-report
 
 # next.js

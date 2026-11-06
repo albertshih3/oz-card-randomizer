@@ -30,3 +30,20 @@ jobs:
       - run: npx vite build
       - run: npx playwright install --with-deps chromium-headless-shell
       - run: npm run test:e2e
+
+  rules:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm run test:rules

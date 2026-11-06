@@ -2,6 +2,12 @@
   "emulators": {
     "dataconnect": {
       "dataDir": "dataconnect/.dataconnect/pgliteData"
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
     }
   },
   "dataconnect": {
@@ -13,11 +19,7 @@
   },
   "hosting": {
     "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
   },
   "storage": {
     "rules": "storage.rules"
