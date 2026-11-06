@@ -1,8 +1,83 @@
 [
   {
+    "version": "3.4.2",
+    "date": "November 5, 2026",
+    "isCurrent": true,
+    "sections": [
+      {
+        "title": "Pack Generation",
+        "type": "fix",
+        "items": [
+          "Packs now track all ten slots individually, so a wildcard from a base set or Spoonbill stays in the right spreadsheet column instead of disappearing or replacing another card",
+          "The fixed Spoonbill slot is filled before the wildcard, so the wildcard can't use up the only Spoonbill card",
+          "Incomplete packs now show which slots are empty, on screen, in pack history, and in a new Warnings column in the spreadsheet",
+          "\"Pack ready\" only appears for a full ten-card pack",
+          "A failed spreadsheet export now shows an error and lets you retry with the same packs"
+        ]
+      },
+      {
+        "title": "Admin Tour",
+        "type": "fix",
+        "items": [
+          "Fixed the guided tour freezing or crashing when moving between admin pages",
+          "The tour now handles slow pages, empty pages, and the browser Back button, and Skip always works",
+          "A page that fails to load now shows a reload option instead of replacing the whole admin area"
+        ]
+      },
+      {
+        "title": "Security & Access",
+        "type": "feat",
+        "items": [
+          "Admin access now requires an approved account, not just a sign-in. Invited users are approved automatically",
+          "Card and category changes are now checked by the database, and scoped to approved admins",
+          "Feedback and invitations now have spam protection and rate limits, and feedback only reports success when the message was really sent"
+        ]
+      },
+      {
+        "title": "Categories & Cards",
+        "type": "fix",
+        "items": [
+          "Duplicate category IDs are rejected instead of overwriting an existing category",
+          "Required categories can't be deleted, and a category must be empty before it can be removed",
+          "Fixed editing older cards with numbers stored in a legacy format",
+          "Loading errors now show a retry option instead of looking like an empty catalog"
+        ]
+      },
+      {
+        "title": "Analytics",
+        "type": "fix",
+        "items": [
+          "Active users and sessions now cover all site usage, and returning users are no longer counted more than once",
+          "Charts now include days with no activity and follow the reporting timezone",
+          "\"Pack Generations\" is now \"Generation Runs\", because a bulk export counts as one run"
+        ]
+      },
+      {
+        "title": "Accessibility & Performance",
+        "type": "feat",
+        "items": [
+          "Sheets and the mobile menu now support keyboard use, including Escape and proper focus handling",
+          "Switches, search, and view toggles now have screen reader labels, and small edit buttons are easier to tap",
+          "Animations now respect the reduced motion setting",
+          "The main page bundle is much smaller, so the site loads faster"
+        ]
+      },
+      {
+        "title": "Maintenance",
+        "type": "chore",
+        "items": [
+          "Upgraded the core stack, including Vite, React Router, Clerk, Firebase, and Tailwind CSS",
+          "Moved to Node 26 and replaced the spreadsheet library with the official maintained release",
+          "Cleared all high and critical security advisories from production dependencies",
+          "Added browser tests, database rule tests, and stricter automated checks"
+        ]
+      }
+    ]
+  },
+  {
     "version": "3.4.1",
     "date": "June 25, 2026",
-    "isCurrent": true,
+    "isCurrent": false,
     "sections": [
       {
         "title": "Security Patches",
