@@ -18,13 +18,13 @@ Instruction manual for AI agents working in this repository. Read this file at t
 
 During the OAK-22/23/24 fix session (2026-02-28), a code review pass caught an additional bug — `setShowModal(false)` was placed after the `try/finally` block in `handleGenerateAndExport`, meaning the modal would stay open permanently if `exportToExcel` threw. The initial implementation looked correct at a glance. Code review before commit caught this. Make reviewing diffs a required step before committing any changes to generation or export logic.
 
-### Pack generation logic lives in `src/pages/index.tsx`, NOT `src/utils/categories.ts`
+### Pack generation lives in `src/utils/pack-generation.ts`
 
-`src/utils/categories.ts` only fetches and caches category metadata from Firestore. It does not contain `generateBoosterPack`, `generatePacks`, `handleGenerateAndExport`, or `exportToExcel`. All of those live in `src/pages/index.tsx`. This distinction has caused documentation errors before.
+`drawPack` builds ten explicit slots, `src/hooks/use-booster-pack-generation.ts` owns state and analytics, and `src/hooks/use-excel-export.ts` writes the workbook. Never infer a slot from a card's collection: a wildcard can come from a base set or Spoonbill. `src/utils/categories.ts` only handles category metadata.
 
-### `setShowModal(false)` must be inside `finally`
+### Export failures keep the modal open
 
-In `handleGenerateAndExport`, both `setIsExporting(false)` and `setShowModal(false)` must be inside the `finally` block. Placing either of them after the `try/finally` block means they will not execute on error paths, leaving the UI in a permanently disabled or stuck state.
+`handleGenerateAndExport` closes the modal only after a successful export. On failure it keeps the generated packs and offers a retry of that same set. `setIsExporting(false)` stays in `finally` so controls always unlock.
 
 ### Short-circuit `||` silently skips side-effectful function calls
 
@@ -83,8 +83,12 @@ Using a boolean state flag (`exportTrigger`) toggled to `true` and watched by a 
 
 - `npm run dev` — Vite-only dev server (no `/api/*` serverless functions)
 - `npm run dev:full` — `vercel dev`; runs Vite + serverless functions together. **Requires `vercel env pull .env.local` first** (see CLAUDE.md "Local Full-Stack Development").
-- `npm run build` — production build (TypeScript + Vite)
-- `npm run lint` — ESLint with auto-fix
+- `npm run build` — typecheck everything, then Vite build (also what Vercel runs)
+- `npm run lint` — ESLint, no changes written; `npm run lint:fix` applies fixes
+- `npm run typecheck` — app, API, and test TypeScript projects
+- `npm run verify` — lint, typecheck, unit tests, and production build
+- `npm run test:e2e` — Playwright against real routing with stubbed services
+- `npm run test:rules` — Firestore rules in the emulator (needs Java)
 - `npm run test` — Vitest in watch mode (development)
 - `npm run test:run` — Vitest single-pass (CI / pre-commit); runs automatically in `.husky/pre-commit`
 - Vercel auto-deploys on push to `main`

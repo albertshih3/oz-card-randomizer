@@ -1,7 +1,35 @@
 # Maintenance handoff
 
-Running record for the dependency, security, and maintenance pass. Updated per
-batch: verification evidence, compatibility exceptions, and manual platform steps.
+Record of the dependency, security, and maintenance pass: decisions, evidence,
+exceptions, and the platform steps only the owner can do.
+
+## Deployment runbook
+
+**Order matters. Merging before steps 1 to 3 locks every admin out**, because the
+API will require approval that nobody has yet. The public generator is unaffected
+until step 5.
+
+1. **Create the credential.** Make a Firebase service account, base64-encode its
+   JSON, and set `FIREBASE_SERVICE_ACCOUNT_JSON` in Vercel (all environments).
+2. **Approve existing admins.** Review `scripts/set-user-approval.mjs --list`, then
+   run `--approve <email> --apply` for each trusted account.
+3. **Set `AUTHORIZED_PARTIES`** if any origin besides production and this project's
+   preview URLs needs access.
+4. **Deploy to preview and smoke test:** sign in, password reset, MFA, public
+   generation and export, card create/edit/delete, category delete, invitation.
+5. **Migrate categories, then deploy rules, in that order.** Back up Firestore, run
+   `scripts/migrate-categories.mjs` (preview) and review it, then `--apply`, then
+   `firebase deploy --only firestore:rules`. Rules before migration breaks the public
+   catalog. Old clients keep working on the old rules until you deploy.
+6. **Promote to production.**
+7. **Follow up:** add a TTL policy on `rateLimits.expiresAt`, add the two Clerk
+   domains seen in report-only CSP violations and then enforce the CSP, remove
+   `VITE_GA_ID`, turn off Clerk's Firebase integration, and mark the CI checks as
+   required in branch protection.
+
+**Rollback.** If approval misbehaves, fix provisioning or disable mutations. Do not
+restore the old catch-all rules. Each dependency commit reverts on its own with its
+lockfile. The migration writes a local backup of the original category documents.
 
 ## Batch A — validation baseline
 
@@ -133,3 +161,25 @@ Firefox 128. Two intended visual changes remain: slightly different orange badge
 - Preferences survive denied storage (`src/lib/safe-storage.ts`).
 - About and Changelog are lazy-loaded. The entry chunk is 155 kB (47 kB gzip); the
   audit measured 1,178 kB in one chunk.
+
+## Batch I — operations
+
+- `vercel.json` sets `nosniff`, frame, referrer, and permissions headers, plus a
+  **report-only** CSP. Its Clerk production domain (`clerk.albertshih.org`) is an
+  assumption, since `.env.local` only has a development key. Confirm before enforcing.
+- `/api/users/list` pages through all users up to 1,000 and returns primary emails.
+- `firebase.json` no longer references the absent `dataconnect` directory. Its
+  `hosting` block is unchanged; the site deploys through Vercel.
+- History scan for Clerk, Resend, GitHub, and private-key patterns: no matches. The
+  only hits were Firebase web API keys, which are public identifiers.
+
+## Not verified
+
+- **Real Clerk flows:** sign-in, MFA, password reset, invitation acceptance, and token
+  verification against a live instance. Browser tests stub Clerk.
+- **Real Firebase session minting and rate limiter:** covered by unit tests with
+  mocks; rules are tested in the emulator.
+- **Deployed configuration:** Vercel firewall tier, production headers, current rules,
+  branch protection, and Clerk registration settings.
+- **Browser matrix:** 200% zoom, virtual keyboard, screen readers, and measured
+  contrast were not tested. Safari and Firefox were not run.
