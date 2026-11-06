@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { TUTORIAL_STEPS } from "@/components/admin/tutorial/steps";
+import { readPreference, writePreference } from "@/lib/safe-storage";
 
 const STORAGE_KEY = "oz-admin-tutorial-v1";
 
@@ -20,74 +21,107 @@ interface TutorialContextValue {
   prevStep: () => void;
   skipTutorial: () => void;
   completeTutorial: () => void;
+  /** Ends a tour that failed, without recording it as completed or dismissed. */
+  abortTutorial: () => void;
 }
 
 const TutorialContext = createContext<TutorialContextValue | null>(null);
 
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { pathname } = useLocation();
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const autoShowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Mirrors of state and location for handlers that can fire several times
+  // before React re-renders (rapid clicks, keyboard repeat).
+  const stepRef = useRef(0);
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  const goToStep = useCallback(
+    (index: number) => {
+      stepRef.current = index;
+      setCurrentStep(index);
+      const { route } = TUTORIAL_STEPS[index];
+      if (pathnameRef.current !== route) {
+        pathnameRef.current = route;
+        navigate(route);
+      }
+    },
+    [navigate],
+  );
 
   const startTutorial = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "in-progress");
-    setCurrentStep(0);
+    writePreference(STORAGE_KEY, "in-progress");
     setIsActive(true);
-    const firstRoute = TUTORIAL_STEPS[0].route;
-    if (location.pathname !== firstRoute) {
-      navigate(firstRoute);
-    }
-  }, [navigate, location.pathname]);
+    goToStep(0);
+  }, [goToStep]);
 
   const completeTutorial = useCallback(() => {
     setIsActive(false);
-    localStorage.setItem(STORAGE_KEY, "completed");
+    writePreference(STORAGE_KEY, "completed");
   }, []);
 
   const skipTutorial = useCallback(() => {
     setIsActive(false);
-    localStorage.setItem(STORAGE_KEY, "dismissed");
+    writePreference(STORAGE_KEY, "dismissed");
+  }, []);
+
+  const abortTutorial = useCallback(() => {
+    setIsActive(false);
   }, []);
 
   const nextStep = useCallback(() => {
-    const next = currentStep + 1;
+    const next = stepRef.current + 1;
     if (next >= TUTORIAL_STEPS.length) {
       completeTutorial();
       return;
     }
-    const nextRoute = TUTORIAL_STEPS[next].route;
-    if (location.pathname !== nextRoute) {
-      navigate(nextRoute);
-    }
-    setCurrentStep(next);
-  }, [completeTutorial, navigate, location.pathname, currentStep]);
+    goToStep(next);
+  }, [completeTutorial, goToStep]);
 
   const prevStep = useCallback(() => {
-    const next = Math.max(0, currentStep - 1);
-    if (next !== currentStep) {
-      const prevRoute = TUTORIAL_STEPS[next].route;
-      if (location.pathname !== prevRoute) {
-        navigate(prevRoute);
-      }
+    if (stepRef.current > 0) goToStep(stepRef.current - 1);
+  }, [goToStep]);
+
+  const followRoute = useCallback((route: string) => {
+    pathnameRef.current = route;
+    if (TUTORIAL_STEPS[stepRef.current].route === route) return;
+    const index = TUTORIAL_STEPS.findIndex((step) => step.route === route);
+    if (index >= 0) {
+      stepRef.current = index;
+      setCurrentStep(index);
     }
-    setCurrentStep(next);
-  }, [navigate, location.pathname, currentStep]);
+  }, []);
+
+  // Keep the step and page in agreement when the route moves under the tour.
+  // Keyed on the route alone: starting the tour must not react to a location
+  // that is about to change.
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+  useEffect(() => {
+    if (isActiveRef.current) followRoute(pathname);
+  }, [pathname, followRoute]);
+
+  // React Router applies location changes in a transition, so Back during a
+  // pending navigation can leave `pathname` unchanged. The URL is authoritative.
+  useEffect(() => {
+    if (!isActive) return;
+    const onPopState = () => followRoute(window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [isActive, followRoute]);
 
   // First-visit auto-show
+  const startRef = useRef(startTutorial);
+  startRef.current = startTutorial;
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === null) {
-      autoShowRef.current = setTimeout(() => {
-        localStorage.setItem(STORAGE_KEY, "in-progress");
-        setCurrentStep(0);
-        setIsActive(true);
-      }, 800);
-    }
-    return () => {
-      if (autoShowRef.current) clearTimeout(autoShowRef.current);
-    };
+    if (readPreference(STORAGE_KEY) !== null) return;
+    const timer = setTimeout(() => startRef.current(), 800);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -101,6 +135,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
         prevStep,
         skipTutorial,
         completeTutorial,
+        abortTutorial,
       }}
     >
       {children}

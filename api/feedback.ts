@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Resend } from "resend";
+import { clientAddress, isValidEmail, readJsonObject } from "./_http.js";
+import { enforceRateLimit } from "./_rate-limit.js";
 
 const ALLOWED_TYPES = ["bug", "feature", "general", "other"] as const;
 type FeedbackType = (typeof ALLOWED_TYPES)[number];
@@ -152,6 +154,11 @@ function buildFeedbackEmailHtml({
 </html>`;
 }
 
+const MAX_MESSAGE_LENGTH = 2000;
+const MIN_MESSAGE_LENGTH = 5;
+/** Anything submitted faster than this was not typed by a person. */
+const MIN_FILL_MS = 1500;
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -162,44 +169,79 @@ export default async function handler(
     return;
   }
 
-  const { type, message, replyTo } = req.body as {
-    type?: string;
-    message?: string;
-    replyTo?: string;
-  };
+  const body = readJsonObject(req, res);
+  if (!body) return;
 
-  if (!type || !ALLOWED_TYPES.includes(type as FeedbackType)) {
+  const { type, message, replyTo, website, elapsedMs } = body;
+
+  if (
+    typeof type !== "string" ||
+    !ALLOWED_TYPES.includes(type as FeedbackType)
+  ) {
     res.status(400).json({ error: "Invalid feedback type." });
     return;
   }
 
-  if (!message || typeof message !== "string" || message.trim().length < 5) {
+  const trimmedMessage = typeof message === "string" ? message.trim() : "";
+  if (trimmedMessage.length < MIN_MESSAGE_LENGTH) {
     res.status(400).json({ error: "Message must be at least 5 characters." });
     return;
   }
 
-  if (message.trim().length > 2000) {
+  if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
     res.status(400).json({ error: "Message must be under 2000 characters." });
     return;
   }
 
-  if (replyTo) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(replyTo.trim())) {
-      res.status(400).json({ error: "Invalid reply-to email address." });
-      return;
-    }
+  if (
+    replyTo !== undefined &&
+    replyTo !== null &&
+    typeof replyTo !== "string"
+  ) {
+    res.status(400).json({ error: "Invalid reply-to email address." });
+    return;
   }
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const replyToAddress = replyTo?.trim() || undefined;
+  if (replyToAddress && !isValidEmail(replyToAddress)) {
+    res.status(400).json({ error: "Invalid reply-to email address." });
+    return;
+  }
+
+  // Bots fill the hidden field or submit instantly. Report success so they
+  // learn nothing, and send nothing.
+  const isBot =
+    (typeof website === "string" && website !== "") ||
+    (typeof elapsedMs === "number" && elapsedMs < MIN_FILL_MS);
+  if (isBot) {
+    res.status(200).json({ success: true });
+    return;
+  }
+
+  const allowed =
+    (await enforceRateLimit(res, {
+      bucket: "feedback-client",
+      key: clientAddress(req),
+      limit: 5,
+      windowSeconds: 3600,
+      whenUnavailable: "deny",
+    })) &&
+    (await enforceRateLimit(res, {
+      bucket: "feedback-global",
+      key: "all",
+      limit: 100,
+      windowSeconds: 86400,
+      whenUnavailable: "deny",
+    }));
+  if (!allowed) return;
+
   const feedbackType = type as FeedbackType;
   const label = TYPE_LABELS[feedbackType];
-  const trimmedMessage = message.trim();
-  const replyToAddress = replyTo?.trim() || undefined;
   const timestamp = new Date().toUTCString();
 
   try {
-    await resend.emails.send({
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
       from: "OZ Booster Packs <feedback@albertshih.org>",
       to: "albertshih3@gmail.com",
       replyTo: replyToAddress,
@@ -218,6 +260,15 @@ export default async function handler(
         timestamp,
       }),
     });
+
+    // Resend reports rejected requests in the result rather than by throwing.
+    if (error) {
+      console.error("[POST /api/feedback] rejected:", error.name);
+      res
+        .status(502)
+        .json({ error: "Failed to send feedback. Please try again." });
+      return;
+    }
 
     res.status(200).json({ success: true });
   } catch (err) {

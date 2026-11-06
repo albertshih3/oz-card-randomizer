@@ -10,11 +10,13 @@ let mockSignInResetPassword = vi.fn();
 let mockSetActive = vi.fn();
 let mockSignInLoaded = true;
 
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({
     isLoaded: true,
     isSignedIn: mockIsSignedIn,
   }),
+}));
+vi.mock("@clerk/react/legacy", () => ({
   useSignIn: () => ({
     isLoaded: mockSignInLoaded,
     signIn: {

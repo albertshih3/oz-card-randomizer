@@ -2,6 +2,7 @@ import { AnchorHTMLAttributes, PointerEvent, useRef, useState } from "react";
 import { Navbar } from "@/components/navbar";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import { M3Button } from "@/components/m3/button";
+import { readPreference, writePreference } from "@/lib/safe-storage";
 
 const VERSION_3_BANNER_DISMISSED_KEY = "oz-version-3-banner-dismissed";
 
@@ -10,13 +11,12 @@ export default function DefaultLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [showVersionBanner, setShowVersionBanner] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem(VERSION_3_BANNER_DISMISSED_KEY) !== "true";
-  });
+  const [showVersionBanner, setShowVersionBanner] = useState(
+    () => readPreference(VERSION_3_BANNER_DISMISSED_KEY) !== "true",
+  );
 
   const dismissVersionBanner = () => {
-    localStorage.setItem(VERSION_3_BANNER_DISMISSED_KEY, "true");
+    writePreference(VERSION_3_BANNER_DISMISSED_KEY, "true");
     setShowVersionBanner(false);
   };
 
@@ -65,7 +65,7 @@ export default function DefaultLayout({
           </div>
         </section>
       )}
-      <main className="mx-auto w-full max-w-7xl flex-grow px-4 pt-4 sm:px-6 md:pt-8">
+      <main className="mx-auto w-full max-w-7xl grow px-4 pt-4 sm:px-6 md:pt-8">
         {children}
       </main>
       <footer className="flex w-full items-center justify-center px-4 py-5">
@@ -112,6 +112,7 @@ function AnimatedAnnouncementLink({
       if (ripple.isConnected) ripple.remove();
     }, 650);
 
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     isPressedRef.current = true;
     element.style.transition =
       "border-radius 100ms cubic-bezier(0.4, 0, 1, 1), transform 100ms cubic-bezier(0.4, 0, 1, 1)";

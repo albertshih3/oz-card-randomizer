@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 
 const mockGeneratePacks = vi.fn();
+let mockMissingLabel = "";
 let mockBoosterPacks: Array<
   Array<{ id: string; name: string; number: string; collection: string }>
 > = [];
@@ -20,11 +21,35 @@ vi.mock("@/layouts/default", () => ({
 
 vi.mock("@/hooks/use-booster-pack-generation", () => ({
   useBoosterPackGeneration: () => ({
-    boosterPacks: mockBoosterPacks,
+    boosterPacks: mockBoosterPacks.map((cards) => ({
+      slots: cards
+        .map((card, index) => ({
+          kind: "base",
+          label: `Slot ${index + 1}`,
+          card,
+        }))
+        .concat(
+          mockMissingLabel
+            ? [
+                {
+                  kind: "spoonbill",
+                  label: mockMissingLabel,
+                  card: null as never,
+                },
+              ]
+            : [],
+        ),
+    })),
     packHistory: [],
     lastGenTime: null,
     generatePacks: mockGeneratePacks,
   }),
+}));
+
+vi.mock("@/utils/cards", () => ({
+  readCollections: vi
+    .fn()
+    .mockResolvedValue({ byCollection: {}, malformed: 0 }),
 }));
 
 vi.mock("@/hooks/use-excel-export", () => ({
@@ -48,11 +73,13 @@ vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("@/lib/gtag", () => ({ event: vi.fn(), exception: vi.fn() }));
 
 import IndexPage from "@/pages/index";
+import { getCategories } from "@/utils/categories";
 
 describe("IndexPage", () => {
   beforeEach(() => {
     mockGeneratePacks.mockClear();
     mockBoosterPacks = [];
+    mockMissingLabel = "";
   });
 
   it("presents the generator as a staff-first mobile flow", async () => {
@@ -80,6 +107,8 @@ describe("IndexPage", () => {
     const button = await screen.findByRole("button", {
       name: /generate pack/i,
     });
+    // The button is present but disabled until the catalog has loaded.
+    await waitFor(() => expect(button).toBeEnabled());
 
     fireEvent.click(button);
 
@@ -202,31 +231,58 @@ describe("IndexPage", () => {
     expect(await screen.findByText("Generate another")).toBeInTheDocument();
   });
 
-  it("celebrates when every card in the current pack has been pulled", async () => {
-    mockBoosterPacks = [
-      [
-        {
-          id: "card-1",
-          name: "African Elephant",
-          number: "42",
-          collection: "africansavanna",
-        },
-      ],
-    ];
+  const fullPack = Array.from({ length: 10 }, (_, i) => ({
+    id: `card-${i}`,
+    name: `Animal ${i}`,
+    number: String(i),
+    collection: "africansavanna",
+  }));
 
+  it("celebrates when every card in a full pack has been pulled", async () => {
+    mockBoosterPacks = [fullPack];
     render(<IndexPage />);
 
     expect(screen.queryByText("Pack ready")).not.toBeInTheDocument();
 
-    fireEvent.click(
-      await screen.findByRole("checkbox", {
-        name: /mark african elephant complete/i,
-      }),
-    );
+    for (const checkbox of await screen.findAllByRole("checkbox")) {
+      fireEvent.click(checkbox);
+    }
 
     expect(await screen.findByText("Pack ready")).toBeInTheDocument();
     expect(
       screen.getByText("All done! Time to generate another?"),
     ).toBeInTheDocument();
+  });
+
+  it("warns about an incomplete pack and never calls it ready", async () => {
+    mockBoosterPacks = [fullPack.slice(0, 9)];
+    mockMissingLabel = "Spoonbill";
+    render(<IndexPage />);
+
+    expect(
+      await screen.findByText("Incomplete pack: 9 of 10 cards"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/enough available cards for Spoonbill/),
+    ).toBeInTheDocument();
+
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      fireEvent.click(checkbox);
+    }
+
+    expect(await screen.findByText("9 of 9 pulled")).toBeInTheDocument();
+    expect(screen.queryByText("Pack ready")).not.toBeInTheDocument();
+  });
+
+  it("disables generation when the catalog failed to load", async () => {
+    vi.mocked(getCategories).mockRejectedValueOnce(new Error("offline"));
+    render(<IndexPage />);
+
+    expect(
+      await screen.findByText("Card data did not load"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate pack/i }),
+    ).toBeDisabled();
   });
 });

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import DefaultLayout from "@/layouts/default";
-import { collection, getDocs } from "firebase/firestore";
 import { M3Button } from "@/components/m3/button";
 import {
   Modal,
@@ -12,17 +11,18 @@ import {
 } from "@heroui/modal";
 import { Input } from "@heroui/input";
 import { Skeleton } from "@heroui/skeleton";
+import { toast } from "sonner";
 import { event, exception } from "@/lib/gtag";
-import { db } from "@/lib/firebase";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
+import { readCollections } from "@/utils/cards";
 import {
-  BASE_COLLECTION_IDS,
-  COLLECTION_IDS,
   COLLECTION_DISPLAY_NAMES,
+  REQUIRED_COLLECTION_IDS,
 } from "@/constants/collections";
 import {
   MAX_PACKS_PER_EXPORT,
   PACK_HISTORY_LIMIT,
+  PACK_SIZE,
 } from "@/constants/generation";
 import {
   Sparkles,
@@ -35,12 +35,23 @@ import {
   ClipboardList,
   CircleCheck,
   Check,
+  TriangleAlert,
 } from "lucide-react";
 import { CollectionBadge } from "@/components/collection-badge";
 import { M3Spinner } from "@/components/m3/spinner";
 import { useBoosterPackGeneration } from "@/hooks/use-booster-pack-generation";
 import { useExcelExport } from "@/hooks/use-excel-export";
-import type { Card, Collection } from "@/types/index";
+import {
+  isValidPackCount,
+  missingSlots,
+  packCards,
+} from "@/utils/pack-generation";
+import type {
+  Card,
+  CardsByCollection,
+  Collection,
+  GeneratedPack,
+} from "@/types/index";
 
 const M3_STANDARD_EASING: [number, number, number, number] = [0.2, 0, 0, 1];
 
@@ -49,11 +60,15 @@ const getPackCardKey = (card: Card, cardIndex: number) =>
 
 export default function IndexPage() {
   const [expandedPackId, setExpandedPackId] = useState<string | null>(null);
-  const [cardsData, setCardsData] = useState<{ [key: string]: Card[] }>({});
+  const [cardsData, setCardsData] = useState<CardsByCollection>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [numPacks, setNumPacks] = useState(1);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [unexportedPacks, setUnexportedPacks] = useState<
+    GeneratedPack[] | null
+  >(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [completedCardKeys, setCompletedCardKeys] = useState<Set<string>>(
     new Set(),
@@ -63,14 +78,16 @@ export default function IndexPage() {
   const { boosterPacks, packHistory, lastGenTime, generatePacks } =
     useBoosterPackGeneration(cardsData, collections);
   const { exportToExcel, isExporting } = useExcelExport();
-  const currentPack = boosterPacks[0] ?? [];
+  const currentPack = boosterPacks[0] ? packCards(boosterPacks[0]) : [];
+  const currentMissing = boosterPacks[0] ? missingSlots(boosterPacks[0]) : [];
   const hasCurrentPack = currentPack.length > 0;
   const currentPackSignature = currentPack
     .map((card, index) => getPackCardKey(card, index))
     .join("|");
   const completedCount = completedCardKeys.size;
-  const isCurrentPackComplete =
-    hasCurrentPack && completedCount === currentPack.length;
+  const isAllPulled = hasCurrentPack && completedCount === currentPack.length;
+  // "Pack ready" needs a full pack, not merely every available card pulled.
+  const isCurrentPackComplete = isAllPulled && currentPack.length === PACK_SIZE;
   const packProgress = hasCurrentPack
     ? Math.round((completedCount / currentPack.length) * 100)
     : 0;
@@ -96,29 +113,25 @@ export default function IndexPage() {
         const legacyCollections = categoriesToLegacyFormat(categories);
         setCollections(legacyCollections);
 
-        const data: { [key: string]: Card[] } = {};
-        // Ensure we always include base categories, even if not listed in Firestore categories
-        const categoryIds = Array.from(
-          new Set([
-            ...legacyCollections.map((c) => c.id),
-            ...BASE_COLLECTION_IDS,
-            COLLECTION_IDS.SPOONBILL,
-          ]),
+        // Always include required sets, even if metadata does not list them.
+        const { byCollection } = await readCollections(
+          Array.from(
+            new Set([
+              ...legacyCollections.map((c) => c.id),
+              ...REQUIRED_COLLECTION_IDS,
+            ]),
+          ),
         );
-        for (const col of categoryIds) {
-          const querySnapshot = await getDocs(collection(db, col));
-          data[col] = querySnapshot.docs
-            .map(
-              (doc) => ({ id: doc.id, collection: col, ...doc.data() }) as Card,
-            )
-            .filter((card) => card.active !== false); // Consider cards active if 'active' is true or null/undefined
+        const data: CardsByCollection = {};
+        for (const [col, cards] of Object.entries(byCollection)) {
+          data[col] = cards.filter((card) => card.active);
         }
         setCardsData(data);
         setLoading(false);
       } catch (err) {
         console.error("Error fetching data:", err);
         exception({
-          description: `Failed to load card data: ${err}`,
+          description: "Failed to load card data",
           fatal: false,
         });
         setError("Failed to load card data. Please try again later.");
@@ -142,18 +155,49 @@ export default function IndexPage() {
     setShowModal(true);
   };
 
+  const closeExportModal = () => {
+    setShowModal(false);
+    setExportError(null);
+    setUnexportedPacks(null);
+  };
+
+  const exportPacks = async (packs: GeneratedPack[]) => {
+    setExportError(null);
+    try {
+      await exportToExcel(packs);
+    } catch (err) {
+      console.error("Error exporting packs:", err);
+      exception({ description: "Failed to export packs", fatal: false });
+      // Keep these packs so Retry exports the same set rather than new ones.
+      setUnexportedPacks(packs);
+      setExportError(
+        "The spreadsheet could not be created. Your packs are safe. Try again.",
+      );
+      return;
+    }
+
+    const incomplete = packs.filter((p) => missingSlots(p).length > 0).length;
+    if (incomplete > 0) {
+      toast.warning(
+        `${incomplete} of ${packs.length} packs are incomplete. See the Warnings column.`,
+      );
+    }
+    closeExportModal();
+  };
+
   // Function to generate packs and export
   const handleGenerateAndExport = async () => {
     if (isExporting) return;
-    if (!numPacks || numPacks < 1) return;
-    try {
-      const packs = generatePacks(numPacks);
-      if (packs.length > 0) {
-        await exportToExcel(packs);
-      }
-    } finally {
-      setShowModal(false);
+    if (unexportedPacks) {
+      await exportPacks(unexportedPacks);
+      return;
     }
+    if (!isValidPackCount(numPacks)) {
+      setExportError(`Enter a whole number from 1 to ${MAX_PACKS_PER_EXPORT}.`);
+      return;
+    }
+    const packs = generatePacks(numPacks);
+    if (packs.length > 0) await exportPacks(packs);
   };
 
   const getCollectionName = (id: string) => {
@@ -186,7 +230,7 @@ export default function IndexPage() {
           initial={entrance.initial}
           animate={entrance.animate}
           transition={{ duration: 0.42, ease: [0.2, 0, 0, 1] }}
-          className="flex flex-col gap-4 rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-5 shadow-sm sm:p-6 md:flex-row md:items-end md:justify-between"
+          className="flex flex-col gap-4 rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-5 shadow-xs sm:p-6 md:flex-row md:items-end md:justify-between"
         >
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-label-large text-[var(--md-sys-color-primary)]">
@@ -207,6 +251,7 @@ export default function IndexPage() {
             <M3Button
               variant="filled"
               isLoading={loading}
+              isDisabled={!!error}
               spinner={<M3Spinner size="sm" color="currentColor" />}
               onPress={() => {
                 handleGenerateSinglePack();
@@ -220,6 +265,7 @@ export default function IndexPage() {
             <M3Button
               variant="outlined"
               isLoading={loading}
+              isDisabled={!!error}
               spinner={<M3Spinner size="sm" color="currentColor" />}
               onPress={handleOpenModal}
               size="lg"
@@ -253,7 +299,7 @@ export default function IndexPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm sm:p-5">
+            <div className="rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-4 shadow-xs sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-title-large text-[var(--md-sys-color-on-surface)]">
@@ -298,6 +344,13 @@ export default function IndexPage() {
                 </div>
               )}
 
+              {currentMissing.length > 0 && (
+                <PackShortageNotice
+                  cardCount={currentPack.length}
+                  missing={currentMissing}
+                />
+              )}
+
               <AnimatePresence>
                 {isCurrentPackComplete && (
                   <PackReadyCelebration
@@ -335,7 +388,7 @@ export default function IndexPage() {
                     transition={{ duration: 0.3, ease: M3_STANDARD_EASING }}
                     className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl bg-[var(--md-sys-color-primary-container)]/45 px-5 py-10 text-center"
                   >
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-sm">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs">
                       <PackageOpen className="h-8 w-8" />
                     </div>
                     <p className="text-title-medium text-[var(--md-sys-color-on-surface)]">
@@ -352,7 +405,7 @@ export default function IndexPage() {
 
             {hasCurrentPack && (
               <MobilePackAction
-                isComplete={isCurrentPackComplete}
+                isComplete={isAllPulled}
                 shouldReduceMotion={shouldReduceMotion}
                 onGenerate={handleGenerateSinglePack}
               />
@@ -378,7 +431,7 @@ export default function IndexPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className={`overflow-hidden rounded-3xl border transition-all duration-200 ${
                         expandedPackId === packItem.id
-                          ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-sm"
+                          ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-xs"
                           : "border-[var(--md-sys-color-outline-variant)] bg-transparent hover:border-[var(--md-sys-color-primary)]"
                       }`}
                     >
@@ -403,6 +456,8 @@ export default function IndexPage() {
                             <div className="flex items-center gap-1 text-label-medium text-[var(--md-sys-color-on-surface-variant)]">
                               <Clock className="h-3 w-3" />
                               {packItem.timestamp.toLocaleTimeString()}
+                              {packItem.missing.length > 0 &&
+                                ` · ${packItem.cards.length} of ${PACK_SIZE} cards`}
                             </div>
                           </div>
                         </div>
@@ -421,6 +476,12 @@ export default function IndexPage() {
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.3, ease: "easeInOut" }}
                           >
+                            {packItem.missing.length > 0 && (
+                              <p className="border-t border-[var(--md-sys-color-outline-variant)] px-4 pt-3 text-body-medium text-[var(--md-sys-color-error)]">
+                                {packItem.cards.length} of {PACK_SIZE} cards.
+                                Missing: {packItem.missing.join(", ")}
+                              </p>
+                            )}
                             <ol className="grid gap-2 border-t border-[var(--md-sys-color-outline-variant)] p-3">
                               {packItem.cards.map((card, cardIndex) => (
                                 <li
@@ -454,7 +515,7 @@ export default function IndexPage() {
       {/* Modal for user input */}
       <Modal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={closeExportModal}
         backdrop="blur"
         classNames={{
           base: "bg-card border border-border shadow-xl",
@@ -477,20 +538,28 @@ export default function IndexPage() {
               min="1"
               max={MAX_PACKS_PER_EXPORT.toString()}
               value={numPacks.toString()}
-              onChange={(e) => setNumPacks(Number(e.target.value))}
+              onChange={(e) => {
+                setNumPacks(Number(e.target.value));
+                setExportError(null);
+                setUnexportedPacks(null);
+              }}
               variant="bordered"
               description="How many booster packs do you want to generate?"
               startContent={
                 <PackageOpen className="w-4 h-4 text-muted-foreground" />
               }
             />
+            {exportError && (
+              <p
+                role="alert"
+                className="text-body-medium text-[var(--md-sys-color-error)]"
+              >
+                {exportError}
+              </p>
+            )}
           </ModalBody>
           <ModalFooter>
-            <M3Button
-              variant="tonal"
-              color="error"
-              onPress={() => setShowModal(false)}
-            >
+            <M3Button variant="tonal" color="error" onPress={closeExportModal}>
               Cancel
             </M3Button>
             <M3Button
@@ -502,7 +571,7 @@ export default function IndexPage() {
                 !isExporting && <FileSpreadsheet className="w-4 h-4" />
               }
             >
-              Generate & Export
+              {unexportedPacks ? "Retry export" : "Generate & Export"}
             </M3Button>
           </ModalFooter>
         </ModalContent>
@@ -614,6 +683,31 @@ function PackCardRow({
         </div>
       </motion.button>
     </motion.li>
+  );
+}
+
+function PackShortageNotice({
+  cardCount,
+  missing,
+}: {
+  cardCount: number;
+  missing: string[];
+}) {
+  return (
+    <div
+      role="status"
+      className="mb-4 flex items-start gap-3 rounded-3xl bg-[var(--md-sys-color-error-container)] px-4 py-3 text-[var(--md-sys-color-on-error-container)]"
+    >
+      <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+      <div className="min-w-0">
+        <p className="text-title-medium">
+          Incomplete pack: {cardCount} of {PACK_SIZE} cards
+        </p>
+        <p className="text-body-medium">
+          Not enough available cards for {missing.join(", ")}.
+        </p>
+      </div>
+    </div>
   );
 }
 

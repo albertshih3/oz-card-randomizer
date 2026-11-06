@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 const mockNextStep = vi.fn();
 const mockPrevStep = vi.fn();
@@ -47,6 +47,7 @@ vi.mock("@/components/admin/tutorial/steps", () => ({
 }));
 
 vi.mock("framer-motion", () => ({
+  useReducedMotion: () => false,
   AnimatePresence: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
@@ -128,25 +129,28 @@ beforeEach(() => {
   });
 });
 
+const READY = { status: "ready", rect: null } as const;
+
 describe("TutorialPopover", () => {
   beforeEach(() => {
     vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   it("renders step title, description, and step counter on first step", () => {
-    render(<TutorialPopover />);
+    render(<TutorialPopover target={READY} />);
     expect(screen.getByText("First Step")).toBeInTheDocument();
     expect(screen.getByText("Description of step one.")).toBeInTheDocument();
     expect(screen.getByText("Step 1 of 3")).toBeInTheDocument();
   });
 
   it("hides Back button on first step", () => {
-    render(<TutorialPopover />);
+    render(<TutorialPopover target={READY} />);
     expect(screen.queryByText("Back")).not.toBeInTheDocument();
   });
 
   it("shows Skip button on first step and calls skipTutorial on click", () => {
-    render(<TutorialPopover />);
+    render(<TutorialPopover target={READY} />);
     const skipBtn = screen.getByText("Skip");
     expect(skipBtn).toBeInTheDocument();
     fireEvent.click(skipBtn);
@@ -154,7 +158,7 @@ describe("TutorialPopover", () => {
   });
 
   it("shows Next button and calls nextStep on click", () => {
-    render(<TutorialPopover />);
+    render(<TutorialPopover target={READY} />);
     const nextBtn = screen.getByText("Next");
     expect(nextBtn).toBeInTheDocument();
     fireEvent.click(nextBtn);
@@ -163,7 +167,7 @@ describe("TutorialPopover", () => {
 
   it("on last step: Skip hidden, Finish shown, calls completeTutorial", () => {
     mockCurrentStep = 2;
-    render(<TutorialPopover />);
+    render(<TutorialPopover target={READY} />);
     expect(screen.queryByText("Skip")).not.toBeInTheDocument();
     expect(screen.queryByText("Next")).not.toBeInTheDocument();
     const finishBtn = screen.getByText("Finish");
@@ -174,7 +178,7 @@ describe("TutorialPopover", () => {
 
   it("shows Back button on non-first step and calls prevStep on click", () => {
     mockCurrentStep = 1;
-    render(<TutorialPopover />);
+    render(<TutorialPopover target={READY} />);
     const backBtn = screen.getByText("Back");
     expect(backBtn).toBeInTheDocument();
     fireEvent.click(backBtn);
@@ -182,25 +186,7 @@ describe("TutorialPopover", () => {
   });
 
   it("keeps the popover controls inside the viewport when the target is low on the page", () => {
-    vi.useFakeTimers();
     mockCurrentStep = 1;
-    const target = document.createElement("div");
-    target.dataset.tutorialId = "some-target";
-    target.getBoundingClientRect = vi.fn(
-      () =>
-        ({
-          x: 500,
-          y: 500,
-          top: 500,
-          right: 620,
-          bottom: 540,
-          left: 500,
-          width: 120,
-          height: 40,
-          toJSON: vi.fn(),
-        }) as DOMRect,
-    );
-    document.body.appendChild(target);
     Object.defineProperty(window, "innerHeight", {
       configurable: true,
       value: 600,
@@ -214,19 +200,19 @@ describe("TutorialPopover", () => {
       get: () => 360,
     });
 
-    render(<TutorialPopover />);
-    act(() => {
-      vi.advanceTimersByTime(250);
-    });
+    render(
+      <TutorialPopover
+        target={{
+          status: "ready",
+          rect: { x: 500, y: 500, width: 120, height: 40 },
+        }}
+      />,
+    );
 
-    const dialogCard = screen.getByRole("dialog").firstElementChild;
-    expect(dialogCard).toHaveStyle({ top: "124px" });
-
-    target.remove();
+    expect(screen.getByRole("dialog")).toHaveStyle({ top: "124px" });
   });
 
-  it("remeasures after a routed step target appears late", () => {
-    vi.useFakeTimers();
+  it("centers on a wrapper, leaving the card transform to Framer Motion", () => {
     mockCurrentStep = 1;
     Object.defineProperty(window, "innerHeight", {
       configurable: true,
@@ -237,46 +223,56 @@ describe("TutorialPopover", () => {
       value: 900,
     });
 
-    render(<TutorialPopover />);
-    act(() => {
-      vi.advanceTimersByTime(250);
-    });
+    render(<TutorialPopover target={{ status: "pending", rect: null }} />);
 
-    const dialogCard = screen.getByRole("dialog").firstElementChild;
-    expect(dialogCard).toHaveStyle({
+    expect(screen.getByRole("dialog")).toHaveStyle({
       top: "400px",
       left: "450px",
       transform: "translate(-50%, -50%)",
     });
+  });
 
-    const target = document.createElement("div");
-    target.dataset.tutorialId = "some-target";
-    target.getBoundingClientRect = vi.fn(
-      () =>
-        ({
-          x: 100,
-          y: 120,
-          top: 120,
-          right: 220,
-          bottom: 160,
-          left: 100,
-          width: 120,
-          height: 40,
-          toJSON: vi.fn(),
-        }) as DOMRect,
-    );
-    document.body.appendChild(target);
+  it("blocks Next and Back while a step loads but keeps Skip available", () => {
+    mockCurrentStep = 1;
+    render(<TutorialPopover target={{ status: "pending", rect: null }} />);
 
-    act(() => {
-      vi.advanceTimersByTime(150);
-    });
+    expect(screen.getByRole("status")).toHaveTextContent("Loading this page");
+    expect(screen.getByRole("button", { name: /next/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /back/i })).toBeDisabled();
 
-    expect(dialogCard).toHaveStyle({
-      top: "176px",
-      left: "16px",
-      transform: "",
-    });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(mockNextStep).not.toHaveBeenCalled();
 
-    target.remove();
+    fireEvent.click(screen.getByRole("button", { name: /skip/i }));
+    expect(mockSkipTutorial).toHaveBeenCalled();
+  });
+
+  it("explains an unavailable target and lets the tour continue", () => {
+    mockCurrentStep = 1;
+    render(<TutorialPopover target={{ status: "unavailable", rect: null }} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("isn’t available");
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    expect(mockNextStep).toHaveBeenCalled();
+  });
+
+  it("leaves arrow keys to fields being edited", () => {
+    mockCurrentStep = 1;
+    render(<TutorialPopover target={READY} />);
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+    expect(mockNextStep).not.toHaveBeenCalled();
+
+    input.remove();
+  });
+
+  it("ignores key repeat so a held arrow cannot race the route", () => {
+    mockCurrentStep = 1;
+    render(<TutorialPopover target={READY} />);
+
+    fireEvent.keyDown(window, { key: "ArrowRight", repeat: true });
+    expect(mockNextStep).not.toHaveBeenCalled();
   });
 });

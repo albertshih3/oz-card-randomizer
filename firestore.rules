@@ -1,10 +1,108 @@
+rules_version = '2';
+
+// The catalog is public to read. Writes require a server-issued Firebase session
+// with a live approval lease (see api/auth/firebase-token.ts). Holding any other
+// Firebase identity grants nothing. Clients never delete categories: that runs
+// server-side so the "must be empty" check is enforceable (api/categories/delete.ts).
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // Allow read access to all users
+
+    function isApproved() {
+      return request.auth != null
+        && request.auth.token.approved == true
+        && request.auth.token.approvedUntil is int
+        && request.auth.token.approvedUntil > request.time.toMillis() / 1000;
+    }
+
+    function isRequiredSet(id) {
+      return id in [
+        'tropicalrainforest',
+        'childrenszoo',
+        'californiatrail',
+        'africansavanna',
+        'spoonbill'
+      ];
+    }
+
+    function isReservedId(id) {
+      return id in ['categories', 'admin', 'approvals', 'users', 'settings', 'rateLimits'];
+    }
+
+    function categoryPath(id) {
+      return /databases/$(database)/documents/categories/$(id);
+    }
+
+    function isCatalogSet(id) {
+      return !isReservedId(id) && (isRequiredSet(id) || exists(categoryPath(id)));
+    }
+
+    // Set by the server while it confirms a category is empty, so no card can
+    // land in a category between that check and the delete.
+    function isDeleting(id) {
+      return exists(categoryPath(id))
+        && get(categoryPath(id)).data.get('deleting', false) == true;
+    }
+
+    function validDisplayName(value) {
+      return value is string && value.size() > 0 && value.size() <= 100;
+    }
+
+    function validCardName(value) {
+      return value is string && value.size() > 0 && value.size() <= 200;
+    }
+
+    function validCardNumber(value) {
+      return value is string && value.matches('^[0-9]{1,10}$');
+    }
+
+    match /categories/{categoryId} {
       allow read: if true;
-      // Allow write access only to authenticated users
-      allow write: if request.auth != null;
+
+      allow create: if isApproved()
+        && !isReservedId(categoryId)
+        && categoryId.matches('^[a-z0-9]{1,64}$')
+        && request.resource.data.keys().hasOnly(['name', 'displayName', 'isWildcardEligible'])
+        && request.resource.data.keys().hasAll(['name', 'displayName', 'isWildcardEligible'])
+        && request.resource.data.name == categoryId
+        && validDisplayName(request.resource.data.displayName)
+        && request.resource.data.isWildcardEligible is bool;
+
+      allow update: if isApproved()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['displayName', 'isWildcardEligible'])
+        && validDisplayName(request.resource.data.displayName)
+        && request.resource.data.get('isWildcardEligible', false) is bool;
+
+      allow delete: if false;
+    }
+
+    match /{setId}/{cardId} {
+      allow read: if isCatalogSet(setId);
+
+      allow create: if isApproved()
+        && isCatalogSet(setId)
+        && !isDeleting(setId)
+        && request.resource.data.keys().hasOnly(['name', 'number', 'active'])
+        && request.resource.data.keys().hasAll(['name', 'number', 'active'])
+        && validCardName(request.resource.data.name)
+        && validCardNumber(request.resource.data.number)
+        && request.resource.data.active is bool;
+
+      // Legacy cards carry extra fields and integer numbers, so only the fields
+      // being changed are validated, and only editable fields may change.
+      allow update: if isApproved()
+        && isCatalogSet(setId)
+        && !isDeleting(setId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name', 'number', 'active'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['name'])
+            || validCardName(request.resource.data.name))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['number'])
+            || validCardNumber(request.resource.data.number))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['active'])
+            || request.resource.data.active is bool);
+
+      allow delete: if isApproved() && isCatalogSet(setId);
     }
   }
 }

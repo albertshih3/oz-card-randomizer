@@ -7,7 +7,7 @@ const { mockGetToken, mockListUsers, mockInviteUser } = vi.hoisted(() => ({
 }));
 let mockIsMobile = false;
 
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({ getToken: mockGetToken }),
   useUser: () => ({ user: null, isLoaded: true }),
 }));

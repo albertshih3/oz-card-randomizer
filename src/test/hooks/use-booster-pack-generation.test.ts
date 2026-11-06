@@ -2,7 +2,8 @@ import { renderHook, act } from "@testing-library/react";
 import { useBoosterPackGeneration } from "@/hooks/use-booster-pack-generation";
 import { BASE_COLLECTION_IDS, COLLECTION_IDS } from "@/constants/collections";
 import { PACK_HISTORY_LIMIT } from "@/constants/generation";
-import type { Card, Collection } from "@/types/index";
+import { packCards } from "@/utils/pack-generation";
+import type { Card, Collection, GeneratedPack } from "@/types/index";
 
 vi.mock("@/lib/gtag", () => ({
   event: vi.fn(),
@@ -43,6 +44,8 @@ function makeStandardCollections(): Collection[] {
   ];
 }
 
+const cardsOf = (packs: GeneratedPack[]): Card[][] => packs.map(packCards);
+
 // --- Setup ---
 
 beforeEach(() => {
@@ -65,7 +68,7 @@ describe("pack card counts", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     expect(packs[0].length).toBe(10);
   });
@@ -79,7 +82,7 @@ describe("pack card counts", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     for (const id of BASE_COLLECTION_IDS) {
       expect(packs[0].filter((c) => c.collection === id).length).toBe(2);
@@ -95,7 +98,7 @@ describe("pack card counts", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     expect(
       packs[0].filter((c) => c.collection === COLLECTION_IDS.SPOONBILL).length,
@@ -111,7 +114,7 @@ describe("pack card counts", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     const wildcardCard = packs[0].filter(
       (c) =>
@@ -130,7 +133,7 @@ describe("pack card counts", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(3);
+      packs = cardsOf(result.current.generatePacks(3));
     });
     expect(packs.length).toBe(3);
     for (const pack of packs) {
@@ -149,7 +152,7 @@ describe("no duplicate cards within a single pack", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     const set = new Set(packs[0].map((c) => `${c.collection}-${c.id}`));
     expect(set.size).toBe(packs[0].length);
@@ -164,7 +167,7 @@ describe("no duplicate cards within a single pack", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(5);
+      packs = cardsOf(result.current.generatePacks(5));
     });
     for (const pack of packs) {
       const set = new Set(pack.map((c) => c.collection + "-" + c.id));
@@ -183,7 +186,7 @@ describe("wildcard selection", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     const wildcardCard = packs[0].find(
       (c) =>
@@ -202,7 +205,7 @@ describe("wildcard selection", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     const wildcardCard = packs[0].find(
       (c) =>
@@ -225,7 +228,7 @@ describe("wildcard selection", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     const wildcardCard = packs[0].find(
       (c) =>
@@ -261,7 +264,7 @@ describe("wildcard selection", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(1);
+      packs = cardsOf(result.current.generatePacks(1));
     });
     expect(exception).toHaveBeenCalled();
     expect(packs[0].length).toBe(9);
@@ -310,7 +313,7 @@ describe("empty and undersized collections", () => {
     let packs: Card[][] = [];
     expect(() => {
       act(() => {
-        packs = result.current.generatePacks(1);
+        packs = cardsOf(result.current.generatePacks(1));
       });
     }).not.toThrow();
     expect(
@@ -331,7 +334,7 @@ describe("empty and undersized collections", () => {
     let packs: Card[][] = [];
     expect(() => {
       act(() => {
-        packs = result.current.generatePacks(1);
+        packs = cardsOf(result.current.generatePacks(1));
       });
     }).not.toThrow();
     expect(packs[0].filter((c) => c.collection === targetCol).length).toBe(1);
@@ -347,7 +350,7 @@ describe("empty and undersized collections", () => {
     let packs: Card[][] = [];
     expect(() => {
       act(() => {
-        packs = result.current.generatePacks(1);
+        packs = cardsOf(result.current.generatePacks(1));
       });
     }).not.toThrow();
     expect(
@@ -361,7 +364,7 @@ describe("empty and undersized collections", () => {
     let packs: Card[][] = [];
     expect(() => {
       act(() => {
-        packs = result.current.generatePacks(1);
+        packs = cardsOf(result.current.generatePacks(1));
       });
     }).not.toThrow();
     expect(Array.isArray(packs)).toBe(true);
@@ -380,7 +383,7 @@ describe("multiple pack generation — distinct packs", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(10);
+      packs = cardsOf(result.current.generatePacks(10));
     });
     expect(packs.length).toBe(10);
     for (const pack of packs) {
@@ -393,7 +396,7 @@ describe("multiple pack generation — distinct packs", () => {
     expect(serialized.size).toBeGreaterThan(1);
   });
 
-  it("generatePacks returns the packs directly as Card[][]", () => {
+  it("generatePacks returns one result per requested pack", () => {
     const { result } = renderHook(() =>
       useBoosterPackGeneration(
         makeStandardCardsData(),
@@ -402,7 +405,7 @@ describe("multiple pack generation — distinct packs", () => {
     );
     let packs: Card[][] = [];
     act(() => {
-      packs = result.current.generatePacks(3);
+      packs = cardsOf(result.current.generatePacks(3));
     });
     expect(Array.isArray(packs)).toBe(true);
     expect(packs.length).toBe(3);
@@ -552,5 +555,56 @@ describe("analytics calls", () => {
       result.current.generatePacks(5);
     });
     expect(vi.mocked(timing).mock.calls.length).toBe(1);
+  });
+});
+
+describe("generation boundary", () => {
+  it.each([0, -3, 1.5, 1001, NaN])(
+    "rejects a count of %s without touching state or analytics",
+    async (count) => {
+      const { event } = await import("@/lib/gtag");
+      const { result } = renderHook(() =>
+        useBoosterPackGeneration(
+          makeStandardCardsData(),
+          makeStandardCollections(),
+        ),
+      );
+      act(() => {
+        result.current.generatePacks(1);
+      });
+      vi.mocked(event).mockClear();
+
+      let packs: GeneratedPack[] = [];
+      act(() => {
+        packs = result.current.generatePacks(count);
+      });
+
+      expect(packs).toEqual([]);
+      expect(result.current.boosterPacks).toHaveLength(1);
+      expect(result.current.packHistory).toHaveLength(0);
+      expect(event).not.toHaveBeenCalled();
+    },
+  );
+
+  it("records missing slots in history", () => {
+    const { result } = renderHook(() =>
+      useBoosterPackGeneration({}, makeStandardCollections()),
+    );
+    act(() => {
+      result.current.generatePacks(1);
+    });
+    act(() => {
+      result.current.generatePacks(1);
+    });
+    expect(result.current.packHistory[0].missing).toHaveLength(10);
+  });
+
+  it("sends one analytics exception for a run of incomplete packs", async () => {
+    const { exception } = await import("@/lib/gtag");
+    const { result } = renderHook(() => useBoosterPackGeneration({}, []));
+    act(() => {
+      result.current.generatePacks(50);
+    });
+    expect(exception).toHaveBeenCalledTimes(1);
   });
 });

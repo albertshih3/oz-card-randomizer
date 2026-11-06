@@ -8,6 +8,10 @@
 
 # testing
 /coverage
+/test-results
+*-debug.log
+categories-backup-*.json
+/playwright-report
 
 # next.js
 /.next/
@@ -38,3 +42,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*
+!.env.example

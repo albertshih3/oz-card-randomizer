@@ -1,11 +1,17 @@
 let mockUserId: string | null = "user_123";
 let mockIsLoaded = true;
 
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isLoaded: mockIsLoaded, userId: mockUserId }),
+  useUser: () => ({
+    isLoaded: true,
+    user: { publicMetadata: mockPublicMetadata },
+  }),
+  useClerk: () => ({ signOut: vi.fn() }),
   UserButton: () => <div data-testid="user-button" />,
 }));
 
+let mockPublicMetadata: Record<string, unknown> = { approved: true };
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
@@ -32,6 +38,7 @@ vi.mock("@/lib/motion", () => ({
 }));
 
 vi.mock("framer-motion", () => ({
+  useReducedMotion: () => false,
   AnimatePresence: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
@@ -101,6 +108,17 @@ beforeEach(() => {
 });
 
 describe("AdminLayout — OAK-53", () => {
+  beforeEach(() => {
+    mockPublicMetadata = { approved: true };
+  });
+
+  it("shows the not-approved state to a signed-in unapproved user", () => {
+    mockPublicMetadata = {};
+    render(<AdminLayout />);
+    expect(screen.getByRole("alert")).toHaveTextContent("isn't approved");
+    expect(screen.queryByTestId("outlet")).not.toBeInTheDocument();
+  });
+
   it("redirects to /sign-in when userId is null", () => {
     mockUserId = null;
     render(<AdminLayout />);

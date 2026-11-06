@@ -1,25 +1,38 @@
 import { createPortal } from "react-dom";
 import { useTutorial } from "@/contexts/tutorial-context";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { SpotlightOverlay } from "./spotlight-overlay";
 import { TutorialPopover } from "./tutorial-popover";
 import { TUTORIAL_STEPS } from "./steps";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useTutorialTarget } from "./use-tutorial-target";
+
+function ActiveTutorial() {
+  const { currentStep } = useTutorial();
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const step = TUTORIAL_STEPS[currentStep];
+  const targetId =
+    !isDesktop && step.mobileTargetId ? step.mobileTargetId : step.targetId;
+  const target = useTutorialTarget(targetId, step.route);
+
+  return (
+    <>
+      <SpotlightOverlay target={target} />
+      <TutorialPopover target={target} />
+    </>
+  );
+}
 
 export function TutorialOverlay() {
-  const { isActive, currentStep } = useTutorial();
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const { isActive, abortTutorial } = useTutorial();
 
   if (!isActive) return null;
 
-  const step = TUTORIAL_STEPS[currentStep];
-  const effectiveTargetId =
-    !isDesktop && step.mobileTargetId ? step.mobileTargetId : step.targetId;
-
+  // A tour failure ends the tour and leaves the admin page usable.
   return createPortal(
-    <>
-      <SpotlightOverlay targetId={effectiveTargetId} />
-      <TutorialPopover />
-    </>,
+    <ErrorBoundary fallback={null} onError={abortTutorial}>
+      <ActiveTutorial />
+    </ErrorBoundary>,
     document.body,
   );
 }

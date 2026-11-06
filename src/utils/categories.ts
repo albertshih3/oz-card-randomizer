@@ -1,10 +1,9 @@
 import {
   collection,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
   doc,
+  getDocs,
+  runTransaction,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ensureFirebaseAuth } from "@/lib/firebase-auth";
@@ -17,150 +16,63 @@ export interface Category {
   isWildcardEligible?: boolean;
 }
 
-// Cache categories to avoid repeated Firebase calls
+// Only confirmed reads are cached, so a transient failure is retried next time.
 let cachedCategories: Category[] | null = null;
+let pendingRead: Promise<Category[]> | null = null;
+/** Bumped on invalidation so a read already in flight is not cached afterward. */
+let cacheVersion = 0;
 
-export const getCategories = async (): Promise<Category[]> => {
-  if (cachedCategories) {
-    return cachedCategories;
-  }
+const readCategories = async (): Promise<Category[]> => {
+  const snapshot = await getDocs(collection(db, "categories"));
+  const categories: Category[] = [];
+  const seenNames = new Set<string>();
 
-  try {
-    const querySnapshot = await getDocs(collection(db, "categories"));
-    const categories: Category[] = [];
-    const seenNames = new Set<string>();
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    const name =
+      typeof data.name === "string" && data.name ? data.name : docSnap.id;
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const name = data.name || doc.id;
-
-      // Deduplicate based on name
-      if (!seenNames.has(name)) {
-        seenNames.add(name);
-        categories.push({
-          id: doc.id,
-          name: name,
-          displayName: data.displayName || data.name || doc.id,
-          isWildcardEligible: data.isWildcardEligible || false,
-        });
-      }
+    // Legacy data has several documents per name. First in document order wins.
+    if (seenNames.has(name)) return;
+    seenNames.add(name);
+    categories.push({
+      id: docSnap.id,
+      name,
+      displayName: data.displayName || data.name || docSnap.id,
+      isWildcardEligible: data.isWildcardEligible === true,
     });
+  });
 
-    // If no categories exist in Firebase, create and return the default ones
-    if (categories.length === 0) {
-      cachedCategories = await createDefaultCategories();
-      return cachedCategories;
-    }
-
-    cachedCategories = categories;
-    return categories;
-  } catch (err) {
-    console.error("Error fetching categories:", err);
-    cachedCategories = getDefaultCategories();
-    return cachedCategories;
-  }
+  return categories;
 };
 
-const createDefaultCategories = async (): Promise<Category[]> => {
-  const defaultCategories = [
-    { name: "africansavanna", displayName: "African Savannah" },
-    { name: "californiatrail", displayName: "California Trail" },
-    { name: "childrenszoo", displayName: "Children's Zoo" },
-    { name: "tropicalrainforest", displayName: "Tropical Rainforest" },
-    { name: "specialedition", displayName: "Special Edition" },
-    { name: "booatthezoo", displayName: "Boo at the Zoo" },
-    { name: "arcas", displayName: "ARCAS" },
-    { name: "newnaturefoundation", displayName: "New Nature Foundation" },
-    { name: "disney", displayName: "Disney" },
-  ];
+/**
+ * Reads category metadata. Read-only: an empty result is returned as empty, and
+ * failures reject so callers can show an error instead of mistaking them for
+ * valid data. Concurrent callers share one request.
+ */
+export const getCategories = async (): Promise<Category[]> => {
+  if (cachedCategories) return cachedCategories;
+  if (pendingRead) return pendingRead;
 
-  try {
-    const newCategories: Category[] = [];
-    for (const category of defaultCategories) {
-      // Use setDoc with the category name as ID to prevent duplicates
-      await setDoc(doc(db, "categories", category.name), {
-        name: category.name,
-        displayName: category.displayName,
-        isWildcardEligible: false,
-      });
-
-      newCategories.push({
-        id: category.name,
-        name: category.name,
-        displayName: category.displayName,
-        isWildcardEligible: false,
-      });
-    }
-    cachedCategories = newCategories;
-    return newCategories;
-  } catch (err) {
-    console.error("Error creating default categories:", err);
-    return getDefaultCategories();
-  }
-};
-
-export const getDefaultCategories = (): Category[] => {
-  return [
-    {
-      id: "africansavanna",
-      name: "africansavanna",
-      displayName: "African Savannah",
-      isWildcardEligible: false,
-    },
-    {
-      id: "californiatrail",
-      name: "californiatrail",
-      displayName: "California Trail",
-      isWildcardEligible: false,
-    },
-    {
-      id: "childrenszoo",
-      name: "childrenszoo",
-      displayName: "Children's Zoo",
-      isWildcardEligible: false,
-    },
-    {
-      id: "tropicalrainforest",
-      name: "tropicalrainforest",
-      displayName: "Tropical Rainforest",
-      isWildcardEligible: false,
-    },
-    {
-      id: "specialedition",
-      name: "specialedition",
-      displayName: "Special Edition",
-      isWildcardEligible: false,
-    },
-    {
-      id: "booatthezoo",
-      name: "booatthezoo",
-      displayName: "Boo at the Zoo",
-      isWildcardEligible: false,
-    },
-    {
-      id: "arcas",
-      name: "arcas",
-      displayName: "ARCAS",
-      isWildcardEligible: false,
-    },
-    {
-      id: "newnaturefoundation",
-      name: "newnaturefoundation",
-      displayName: "New Nature Foundation",
-      isWildcardEligible: false,
-    },
-    {
-      id: "disney",
-      name: "disney",
-      displayName: "Disney",
-      isWildcardEligible: false,
-    },
-  ];
+  const startedAt = cacheVersion;
+  const read = readCategories()
+    .then((categories) => {
+      if (startedAt === cacheVersion) cachedCategories = categories;
+      return categories;
+    })
+    .finally(() => {
+      if (pendingRead === read) pendingRead = null;
+    });
+  pendingRead = read;
+  return read;
 };
 
 // Clear cache when categories are updated
 export const clearCategoriesCache = (): void => {
   cachedCategories = null;
+  pendingRead = null;
+  cacheVersion += 1;
 };
 
 // Convert categories to the legacy format for compatibility
@@ -172,16 +84,40 @@ export const categoriesToLegacyFormat = (categories: Category[]) => {
   }));
 };
 
+/** Thrown for a problem the person can act on. The message is safe to show. */
+export class CategoryError extends Error {}
+
+/**
+ * Creates a category, refusing to overwrite. The transaction makes concurrent
+ * creates safe, and the name check covers legacy auto-ID documents.
+ */
 export const createCategory = async (
   displayName: string,
   categoryId: string,
   getToken: GetToken,
 ): Promise<void> => {
   await ensureFirebaseAuth(getToken);
-  await setDoc(doc(db, "categories", categoryId), {
-    name: categoryId,
-    displayName,
-    isWildcardEligible: false,
+
+  clearCategoriesCache();
+  const existing = await getCategories();
+  if (existing.some((c) => c.name === categoryId)) {
+    throw new CategoryError(
+      `A category with ID "${categoryId}" already exists.`,
+    );
+  }
+
+  const ref = doc(db, "categories", categoryId);
+  await runTransaction(db, async (tx) => {
+    if ((await tx.get(ref)).exists()) {
+      throw new CategoryError(
+        `A category with ID "${categoryId}" already exists.`,
+      );
+    }
+    tx.set(ref, {
+      name: categoryId,
+      displayName,
+      isWildcardEligible: false,
+    });
   });
   clearCategoriesCache();
 };
@@ -208,11 +144,26 @@ export const toggleWildcardEligible = async (
   clearCategoriesCache();
 };
 
+/** Deletion runs on the server, which can guarantee the category is empty. */
 export const deleteCategory = async (
   categoryId: string,
   getToken: GetToken,
 ): Promise<void> => {
-  await ensureFirebaseAuth(getToken);
-  await deleteDoc(doc(db, "categories", categoryId));
+  const token = await getToken();
+  if (!token)
+    throw new CategoryError("Your session has expired. Sign in again.");
+
+  const res = await fetch("/api/categories/delete", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id: categoryId }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new CategoryError(body.error ?? "Failed to delete category.");
+  }
   clearCategoriesCache();
 };

@@ -1,6 +1,5 @@
 import {
   getCategories,
-  getDefaultCategories,
   clearCategoriesCache,
   categoriesToLegacyFormat,
 } from "@/utils/categories";
@@ -148,90 +147,52 @@ describe("getCategories() — cache behavior", () => {
   });
 });
 
-describe("getCategories() — empty Firestore fallback", () => {
-  it("calls setDoc 9 times when Firestore returns zero documents", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce(makeFakeSnapshot([]) as never);
-    vi.mocked(setDoc).mockResolvedValue(undefined);
+describe("getCategories() — read-only, honest results", () => {
+  it("returns an empty list without writing when Firestore is empty", async () => {
+    vi.mocked(getDocs).mockResolvedValue(makeFakeSnapshot([]) as never);
+    await expect(getCategories()).resolves.toEqual([]);
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+
+  it("rejects on a read failure instead of inventing defaults", async () => {
+    vi.mocked(getDocs).mockRejectedValue(new Error("offline"));
+    await expect(getCategories()).rejects.toThrow("offline");
+  });
+
+  it("does not cache a failure", async () => {
+    const doc1 = { id: "a", data: { name: "a", displayName: "A" } };
+    vi.mocked(getDocs)
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(makeFakeSnapshot([doc1]) as never);
+    await expect(getCategories()).rejects.toThrow();
+    await expect(getCategories()).resolves.toHaveLength(1);
+  });
+
+  it("shares one request between concurrent callers", async () => {
+    vi.mocked(getDocs).mockResolvedValue(makeFakeSnapshot([]) as never);
+    await Promise.all([getCategories(), getCategories()]);
+    expect(getDocs).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache a read that was invalidated while in flight", async () => {
+    const doc1 = { id: "a", data: { name: "a", displayName: "A" } };
+    vi.mocked(getDocs).mockResolvedValue(makeFakeSnapshot([doc1]) as never);
+    const stale = getCategories();
+    clearCategoriesCache();
+    await stale;
     await getCategories();
-    expect(vi.mocked(setDoc).mock.calls.length).toBe(9);
+    expect(getDocs).toHaveBeenCalledTimes(2);
   });
 
-  it("returns 9 categories when Firestore is empty and setDoc succeeds", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce(makeFakeSnapshot([]) as never);
-    vi.mocked(setDoc).mockResolvedValue(undefined);
-    const result = await getCategories();
-    expect(result.length).toBe(9);
-    expect(result.every((c) => c.isWildcardEligible === false)).toBe(true);
-  });
-
-  it("returns getDefaultCategories() result when setDoc fails", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce(makeFakeSnapshot([]) as never);
-    vi.mocked(setDoc).mockRejectedValue(new Error("write failed"));
-    const result = await getCategories();
-    const defaults = getDefaultCategories();
-    expect(result.length).toBe(defaults.length);
-    const resultIds = result.map((c) => c.id).sort();
-    const defaultIds = defaults.map((c) => c.id).sort();
-    expect(resultIds).toEqual(defaultIds);
-  });
-});
-
-describe("getCategories() — getDocs error handling", () => {
-  it("returns getDefaultCategories() result when getDocs throws", async () => {
-    vi.mocked(getDocs).mockRejectedValueOnce(new Error("network error"));
-    const result = await getCategories();
-    const defaults = getDefaultCategories();
-    expect(result.length).toBe(defaults.length);
-    const resultIds = result.map((c) => c.id).sort();
-    const defaultIds = defaults.map((c) => c.id).sort();
-    expect(resultIds).toEqual(defaultIds);
-  });
-
-  it("does not throw when getDocs fails", async () => {
-    vi.mocked(getDocs).mockRejectedValueOnce(new Error("network error"));
-    await expect(getCategories()).resolves.not.toThrow();
-  });
-});
-
-describe("getDefaultCategories()", () => {
-  it("returns exactly 9 categories", () => {
-    expect(getDefaultCategories().length).toBe(9);
-  });
-
-  it("returns all expected collection IDs", () => {
-    const expectedIds = [
-      "africansavanna",
-      "californiatrail",
-      "childrenszoo",
-      "tropicalrainforest",
-      "specialedition",
-      "booatthezoo",
-      "arcas",
-      "newnaturefoundation",
-      "disney",
-    ];
-    const result = getDefaultCategories();
-    const idSet = new Set(result.map((c) => c.id));
-    for (const id of expectedIds) {
-      expect(idSet.has(id)).toBe(true);
-    }
-  });
-
-  it("all returned categories have isWildcardEligible: false", () => {
-    const result = getDefaultCategories();
-    expect(result.every((c) => c.isWildcardEligible === false)).toBe(true);
-  });
-
-  it("id and name fields are identical for each category", () => {
-    const result = getDefaultCategories();
-    expect(result.every((c) => c.id === c.name)).toBe(true);
-  });
-
-  it("is a pure function — returns a new array on each call", () => {
-    const result1 = getDefaultCategories();
-    const result2 = getDefaultCategories();
-    expect(result1).not.toBe(result2);
-    expect(result1.map((c) => c.id)).toEqual(result2.map((c) => c.id));
+  it("keeps the first document's values when legacy duplicates disagree", async () => {
+    vi.mocked(getDocs).mockResolvedValue(
+      makeFakeSnapshot([
+        { id: "0abc", data: { name: "dup", isWildcardEligible: true } },
+        { id: "1abc", data: { name: "dup", isWildcardEligible: false } },
+      ]) as never,
+    );
+    const [category] = await getCategories();
+    expect(category.isWildcardEligible).toBe(true);
   });
 });
 

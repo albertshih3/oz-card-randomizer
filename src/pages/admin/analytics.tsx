@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { M3Button } from "@/components/m3/button";
 import { Skeleton } from "@heroui/skeleton";
 import { LinearProgress } from "@/components/m3/linear-progress";
@@ -134,7 +134,7 @@ function BarChart({ series }: BarChartProps) {
     <svg
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
       width="100%"
-      aria-label="Pack generations and exports over time"
+      aria-label="Generation runs and exports over time"
       role="img"
       style={{ overflow: "visible" }}
     >
@@ -299,7 +299,7 @@ function BarChart({ series }: BarChartProps) {
               />
               <text x={tx + 22} y={ty + 30} fontSize="10">
                 <tspan fill="var(--md-sys-color-on-surface-variant)">
-                  Packs:{" "}
+                  Runs:{" "}
                 </tspan>
                 <tspan fill="var(--md-sys-color-primary)" fontWeight="600">
                   {hoveredEntry.packGenerations}
@@ -340,7 +340,7 @@ function BarChart({ series }: BarChartProps) {
         fontSize="10"
         fill="var(--md-sys-color-on-surface-variant)"
       >
-        Pack Generations
+        Generation Runs
       </text>
       <rect
         x={CHART_WIDTH - 140}
@@ -414,7 +414,7 @@ export default function AdminAnalyticsPage() {
           highlighted: false,
         },
         {
-          title: "Pack Generations",
+          title: "Generation Runs",
           value: summary.current.packGenerations,
           changePct: computeChangePct(
             summary.current.packGenerations,

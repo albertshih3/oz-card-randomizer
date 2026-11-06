@@ -5,7 +5,7 @@ const { mockGetToken, mockGetAnalyticsSummary } = vi.hoisted(() => ({
   mockGetAnalyticsSummary: vi.fn(),
 }));
 
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({ getToken: mockGetToken }),
 }));
 vi.mock("@/utils/admin-api", () => ({
@@ -72,7 +72,7 @@ describe("AdminAnalyticsPage — OAK-95", () => {
     );
     expect(screen.getByText("Sessions")).toBeInTheDocument();
     expect(
-      screen.getAllByText("Pack Generations").length,
+      screen.getAllByText("Generation Runs").length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Exports").length).toBeGreaterThanOrEqual(1);
   });

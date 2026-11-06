@@ -42,7 +42,14 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  /** Replaces the full-page fallback, so a failure can stay local to a region. */
+  fallback?: ReactNode;
+  onError?: (error: Error) => void;
+}
+
+export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
   state: State = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -51,6 +58,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("[ErrorBoundary]", error, info.componentStack);
+    this.props.onError?.(error);
   }
 
   // handleReset clears boundary state, but the only current call site always
@@ -64,6 +72,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   render() {
     if (this.state.hasError && this.state.error) {
+      if (this.props.fallback !== undefined) return this.props.fallback;
       return (
         <ErrorFallback error={this.state.error} onReset={this.handleReset} />
       );

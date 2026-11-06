@@ -19,9 +19,10 @@ import {
   Moon,
   HelpCircle,
 } from "lucide-react";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/react";
 import { useTheme } from "@/hooks/use-theme";
 import { useTutorial } from "@/contexts/tutorial-context";
+import { ModalSurface } from "@/components/m3/modal-surface";
 import { getCategories } from "@/utils/categories";
 import type { Category } from "@/utils/categories";
 import { useAdminFiltersContext } from "@/contexts/admin-filters-context";
@@ -303,7 +304,7 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
       {/* Mobile overlay drawer */}
       <AnimatePresence>
         {isOpen && (
-          <>
+          <ModalSurface key="admin-drawer-surface" onEscape={onClose}>
             <motion.div
               key="admin-drawer-backdrop"
               className="fixed inset-0 z-40 lg:hidden"
@@ -337,7 +338,7 @@ export function NavDrawer({ isOpen, onClose }: NavDrawerProps) {
               />
               <DrawerContent {...contentProps} />
             </motion.aside>
-          </>
+          </ModalSurface>
         )}
       </AnimatePresence>
     </>

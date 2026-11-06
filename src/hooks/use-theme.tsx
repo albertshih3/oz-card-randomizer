@@ -1,3 +1,4 @@
+import { readPreference, writePreference } from "@/lib/safe-storage";
 // originally written by @imoaazahmed
 
 import React, {
@@ -29,7 +30,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const applyThemeToDOM = (newTheme: Theme): void => {
-  localStorage.setItem(ThemeProps.key, newTheme);
+  writePreference(ThemeProps.key, newTheme);
   document.documentElement.classList.remove(ThemeProps.light, ThemeProps.dark);
   document.documentElement.classList.add(newTheme);
 };
@@ -39,7 +40,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") return ThemeProps.light;
-    const raw = localStorage.getItem(ThemeProps.key);
+    const raw = readPreference(ThemeProps.key);
     return raw === ThemeProps.dark ? ThemeProps.dark : ThemeProps.light;
   });
 

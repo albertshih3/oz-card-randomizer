@@ -16,7 +16,7 @@ const {
   mockOnSaved: vi.fn(),
 }));
 
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({ getToken: mockGetToken }),
 }));
 vi.mock("@/utils/categories", () => ({
