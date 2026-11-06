@@ -139,6 +139,13 @@ describe("write authorization", () => {
     );
   });
 
+  it("keeps rate limit counters away from every client", async () => {
+    await assertFails(getDoc(doc(approved(), "rateLimits", "any")));
+    await assertFails(
+      setDoc(doc(approved(), "rateLimits", "any"), { count: 0 }),
+    );
+  });
+
   it("denies approved writes to unknown collections", async () => {
     await assertFails(addDoc(collection(approved(), "unknown"), CARD));
     await assertFails(

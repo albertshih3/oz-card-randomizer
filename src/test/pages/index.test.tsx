@@ -107,6 +107,8 @@ describe("IndexPage", () => {
     const button = await screen.findByRole("button", {
       name: /generate pack/i,
     });
+    // The button is present but disabled until the catalog has loaded.
+    await waitFor(() => expect(button).toBeEnabled());
 
     fireEvent.click(button);
 
