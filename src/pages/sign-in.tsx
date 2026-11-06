@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth, useSignIn } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
+import { useSignIn } from "@clerk/react/legacy";
 import { AnimatePresence, motion } from "framer-motion";
 import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";

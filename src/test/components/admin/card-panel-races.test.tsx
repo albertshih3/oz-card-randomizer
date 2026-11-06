@@ -21,7 +21,7 @@ vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("@/lib/firebase-auth", () => ({
   ensureFirebaseAuth: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({ getToken: vi.fn() }),
 }));
 vi.mock("@/components/admin/card-edit-sheet", () => ({

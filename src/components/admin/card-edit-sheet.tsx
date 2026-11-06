@@ -12,7 +12,7 @@ import {
   doc,
   writeBatch,
 } from "firebase/firestore";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { db } from "@/lib/firebase";
 import { ensureFirebaseAuth } from "@/lib/firebase-auth";
 import { event } from "@/lib/gtag";

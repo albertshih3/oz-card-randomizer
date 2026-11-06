@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { syncFirebaseIdentity } from "@/lib/firebase-auth";
 
 /** Signs Firebase out whenever Clerk signs out or switches user. */

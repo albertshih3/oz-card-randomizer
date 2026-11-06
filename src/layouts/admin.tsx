@@ -1,6 +1,6 @@
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { pageVariants } from "@/lib/motion";
 import { ErrorBoundary } from "@/components/error-boundary";

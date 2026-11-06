@@ -33,10 +33,13 @@ export const useSignIn = () => ({
   signIn: null,
   setActive: null,
 });
-export const SignedIn = ({ children }: { children: ReactNode }) => (
-  <>{children}</>
-);
-export const SignedOut = () => null;
+export const Show = ({
+  when,
+  children,
+}: {
+  when: string;
+  children: ReactNode;
+}) => (when === "signed-in" ? <>{children}</> : null);
 export const UserButton = () => <span data-testid="user-button" />;
 export const SignInButton = ({ children }: { children: ReactNode }) => (
   <>{children}</>

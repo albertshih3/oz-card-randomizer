@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
 import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { BottomSheet } from "@/components/m3/bottom-sheet";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { validateCategoryForm, normalizeCategoryId } from "@/utils/validation";

@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { SignedOut, SignedIn, UserButton, useUser } from "@clerk/clerk-react";
+import { Show, UserButton, useUser } from "@clerk/react";
 import { isApprovedUser } from "@/lib/approval";
 import { M3Button } from "@/components/m3/button";
 import { FeedbackDialog } from "@/components/feedback-dialog";
@@ -115,7 +115,7 @@ export const Navbar = () => {
             <ThemeSwitch />
           </NavbarItem>
           <NavbarItem className="hidden md:flex">
-            <SignedOut>
+            <Show when="signed-out">
               <M3Button
                 variant="tonal"
                 className="bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]"
@@ -126,8 +126,8 @@ export const Navbar = () => {
               >
                 Sign In
               </M3Button>
-            </SignedOut>
-            <SignedIn>
+            </Show>
+            <Show when="signed-in">
               <UserButton
                 appearance={{
                   elements: {
@@ -135,7 +135,7 @@ export const Navbar = () => {
                   },
                 }}
               />
-            </SignedIn>
+            </Show>
           </NavbarItem>
         </NavbarContent>
 
@@ -181,7 +181,7 @@ export const Navbar = () => {
             >
               Submit Feedback
             </M3Button>
-            <SignedOut>
+            <Show when="signed-out">
               <M3Button
                 variant="filled"
                 className="w-full"
@@ -192,13 +192,13 @@ export const Navbar = () => {
               >
                 Sign In
               </M3Button>
-            </SignedOut>
-            <SignedIn>
+            </Show>
+            <Show when="signed-in">
               <div className="flex items-center gap-4 p-2">
                 <UserButton />
                 <span className="text-label-large">Account</span>
               </div>
-            </SignedIn>
+            </Show>
           </div>
         </NavbarMenu>
       </HeroUINavbar>

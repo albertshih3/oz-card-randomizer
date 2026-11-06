@@ -5,7 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.tsx";
 import { Provider } from "./provider.tsx";
 import "@/styles/globals.css";
-import { ClerkProvider } from "@clerk/clerk-react";
+import { ClerkProvider } from "@clerk/react";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { FirebaseSessionSync } from "@/components/firebase-session-sync";
 

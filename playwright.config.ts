@@ -5,6 +5,8 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,
+  // A cold Vite dependency scan can outlast the first test on a fresh machine.
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   use: {
     baseURL: "http://localhost:5199",

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { M3Button } from "@/components/m3/button";
 import { Skeleton } from "@heroui/skeleton";
 import { LinearProgress } from "@/components/m3/linear-progress";

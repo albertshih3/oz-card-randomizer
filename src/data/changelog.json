@@ -8,7 +8,7 @@
         "title": "Security Patches",
         "type": "chore",
         "items": [
-          "Updated @clerk/backend and @clerk/clerk-react to patch auth bypass vulnerabilities (CVSS 8.1) affecting organization and billing permission checks",
+          "Updated @clerk/backend and @clerk/react to patch auth bypass vulnerabilities (CVSS 8.1) affecting organization and billing permission checks",
           "Updated react-router-dom to patch XSS via open redirects (CVSS 8.0)",
           "Resolved 20 additional transitive dependency vulnerabilities via npm audit fix — total vulnerability count reduced from 60 to 40, with 0 critical remaining"
         ]

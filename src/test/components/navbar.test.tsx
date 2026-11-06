@@ -2,11 +2,14 @@ import React from "react";
 
 let mockIsSignedIn = false;
 
-vi.mock("@clerk/clerk-react", () => ({
-  SignedIn: ({ children }: { children: React.ReactNode }) =>
-    mockIsSignedIn ? <>{children}</> : null,
-  SignedOut: ({ children }: { children: React.ReactNode }) =>
-    mockIsSignedIn ? null : <>{children}</>,
+vi.mock("@clerk/react", () => ({
+  Show: ({
+    when,
+    children,
+  }: {
+    when: "signed-in" | "signed-out";
+    children: React.ReactNode;
+  }) => ((when === "signed-in") === mockIsSignedIn ? <>{children}</> : null),
   UserButton: () => <div data-testid="user-button" />,
   useUser: () => ({
     user: mockIsSignedIn ? { publicMetadata: { approved: true } } : null,

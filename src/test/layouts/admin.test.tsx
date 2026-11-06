@@ -1,7 +1,7 @@
 let mockUserId: string | null = "user_123";
 let mockIsLoaded = true;
 
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isLoaded: mockIsLoaded, userId: mockUserId }),
   useUser: () => ({
     isLoaded: true,

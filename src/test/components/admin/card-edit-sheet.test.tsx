@@ -19,7 +19,7 @@ vi.mock("@/lib/firebase", () => ({ db: {}, auth: { currentUser: {} } }));
 vi.mock("@/lib/firebase-auth", () => ({
   ensureFirebaseAuth: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useAuth: () => ({ getToken: vi.fn().mockResolvedValue("fake-token") }),
 }));
 vi.mock("framer-motion", () => ({

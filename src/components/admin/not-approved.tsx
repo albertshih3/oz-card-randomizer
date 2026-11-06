@@ -1,4 +1,4 @@
-import { useClerk } from "@clerk/clerk-react";
+import { useClerk } from "@clerk/react";
 import { M3Button } from "@/components/m3/button";
 
 /** Shown to signed-in accounts that have not been approved for admin access. */

@@ -20,7 +20,7 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      { find: /^@clerk\/(clerk-)?react$/, replacement: stub("clerk.tsx") },
+      { find: /^@clerk\/react(\/legacy)?$/, replacement: stub("clerk.tsx") },
       { find: "firebase/app", replacement: stub("firebase-app.ts") },
       { find: "firebase/auth", replacement: stub("firebase-auth.ts") },
       {

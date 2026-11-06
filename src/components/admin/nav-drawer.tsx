@@ -19,7 +19,7 @@ import {
   Moon,
   HelpCircle,
 } from "lucide-react";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/react";
 import { useTheme } from "@/hooks/use-theme";
 import { useTutorial } from "@/contexts/tutorial-context";
 import { getCategories } from "@/utils/categories";
