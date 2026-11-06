@@ -2,6 +2,7 @@ import { AnchorHTMLAttributes, PointerEvent, useRef, useState } from "react";
 import { Navbar } from "@/components/navbar";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import { M3Button } from "@/components/m3/button";
+import { readPreference, writePreference } from "@/lib/safe-storage";
 
 const VERSION_3_BANNER_DISMISSED_KEY = "oz-version-3-banner-dismissed";
 
@@ -10,13 +11,12 @@ export default function DefaultLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [showVersionBanner, setShowVersionBanner] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem(VERSION_3_BANNER_DISMISSED_KEY) !== "true";
-  });
+  const [showVersionBanner, setShowVersionBanner] = useState(
+    () => readPreference(VERSION_3_BANNER_DISMISSED_KEY) !== "true",
+  );
 
   const dismissVersionBanner = () => {
-    localStorage.setItem(VERSION_3_BANNER_DISMISSED_KEY, "true");
+    writePreference(VERSION_3_BANNER_DISMISSED_KEY, "true");
     setShowVersionBanner(false);
   };
 

@@ -28,3 +28,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:run
       - run: npx vite build
+      - run: npx playwright install --with-deps chromium-headless-shell
+      - run: npm run test:e2e

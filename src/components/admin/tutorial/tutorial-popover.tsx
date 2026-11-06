@@ -1,33 +1,35 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useLayoutEffect, useState, useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useTutorial } from "@/contexts/tutorial-context";
 import { TUTORIAL_STEPS } from "./steps";
+import type { TutorialTarget } from "./use-tutorial-target";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { M3Button } from "@/components/m3/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Position {
   top?: number;
-  bottom?: number;
   left?: number;
-  right?: number;
   transform?: string;
 }
 
-const popoverVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-};
-
 const VIEWPORT_MARGIN = 16;
-const ROUTED_TARGET_RETRY_MS = 50;
-const ROUTED_TARGET_RETRY_LIMIT = 20;
+const GAP = 16;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-export function TutorialPopover() {
+const isEditable = (el: EventTarget | null) =>
+  el instanceof HTMLElement &&
+  (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+
+const centered = (): Position => ({
+  top: window.innerHeight / 2,
+  left: window.innerWidth / 2,
+  transform: "translate(-50%, -50%)",
+});
+
+export function TutorialPopover({ target }: { target: TutorialTarget }) {
   const {
     currentStep,
     totalSteps,
@@ -37,104 +39,71 @@ export function TutorialPopover() {
     completeTutorial,
   } = useTutorial();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const [position, setPosition] = useState<Position>({});
+  const shouldReduceMotion = useReducedMotion();
+  const [position, setPosition] = useState<Position>(centered);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const step = TUTORIAL_STEPS[currentStep];
   const isFirst = currentStep === 0;
   const isLast = currentStep === totalSteps - 1;
-  const effectiveTargetId =
-    !isDesktop && step.mobileTargetId ? step.mobileTargetId : step.targetId;
-  const effectiveDescription =
+  const isPending = target.status === "pending";
+  const description =
     !isDesktop && step.mobileDescription
       ? step.mobileDescription
       : step.description;
+  const { rect } = target;
 
-  const computePosition = useCallback(() => {
-    if (!isDesktop) return true;
-    if (!effectiveTargetId) {
-      setPosition({
-        top: window.innerHeight / 2,
-        left: window.innerWidth / 2,
-        transform: "translate(-50%, -50%)",
-      });
-      return true;
-    }
-    const el = document.querySelector(
-      `[data-tutorial-id="${effectiveTargetId}"]`,
-    );
-    if (!el) {
-      setPosition({
-        top: window.innerHeight / 2,
-        left: window.innerWidth / 2,
-        transform: "translate(-50%, -50%)",
-      });
-      return false;
-    }
-    const r = el.getBoundingClientRect();
-    const popoverWidth = popoverRef.current?.offsetWidth || 320;
-    const popoverHeight = popoverRef.current?.offsetHeight || 240;
-    const gap = 16;
-    const maxTop = Math.max(
-      VIEWPORT_MARGIN,
-      window.innerHeight - popoverHeight - VIEWPORT_MARGIN,
-    );
-
-    // Right placement: position popover to the right of the target
-    if (step.placement === "right") {
-      const left = clamp(
-        r.right + gap,
-        VIEWPORT_MARGIN,
-        window.innerWidth - popoverWidth - VIEWPORT_MARGIN,
-      );
-      const top = clamp(r.top + VIEWPORT_MARGIN, VIEWPORT_MARGIN, maxTop);
-      setPosition({ top, left, transform: undefined });
-      return true;
-    }
-
-    const spaceBelow = window.innerHeight - r.bottom;
-    let top: number;
-    if (spaceBelow >= popoverHeight + gap + VIEWPORT_MARGIN) {
-      top = r.bottom + gap;
-    } else {
-      top = r.top - gap - popoverHeight;
-    }
-    let left = r.left + r.width / 2 - popoverWidth / 2;
-    left = clamp(
-      left,
-      VIEWPORT_MARGIN,
-      window.innerWidth - popoverWidth - VIEWPORT_MARGIN,
-    );
-    top = clamp(top, VIEWPORT_MARGIN, maxTop);
-    setPosition({ top, left, transform: undefined });
-    return true;
-  }, [isDesktop, effectiveTargetId, step.placement]);
-
-  useEffect(() => {
-    let attempts = 0;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const measureUntilReady = () => {
-      const targetReady = computePosition();
-      attempts += 1;
-      if (!targetReady && attempts < ROUTED_TARGET_RETRY_LIMIT) {
-        retryTimer = setTimeout(measureUntilReady, ROUTED_TARGET_RETRY_MS);
+  useLayoutEffect(() => {
+    if (!isDesktop) return;
+    const place = () => {
+      if (!rect) {
+        setPosition(centered());
+        return;
       }
-    };
+      const width = popoverRef.current?.offsetWidth || 320;
+      const height = popoverRef.current?.offsetHeight || 240;
+      const maxLeft = window.innerWidth - width - VIEWPORT_MARGIN;
+      const maxTop = Math.max(
+        VIEWPORT_MARGIN,
+        window.innerHeight - height - VIEWPORT_MARGIN,
+      );
 
-    const timer = setTimeout(measureUntilReady, 250);
-    return () => {
-      clearTimeout(timer);
-      if (retryTimer) clearTimeout(retryTimer);
-    };
-  }, [computePosition]);
+      if (step.placement === "right") {
+        setPosition({
+          top: clamp(rect.y + VIEWPORT_MARGIN, VIEWPORT_MARGIN, maxTop),
+          left: clamp(rect.x + rect.width + GAP, VIEWPORT_MARGIN, maxLeft),
+        });
+        return;
+      }
 
+      const bottom = rect.y + rect.height;
+      const fitsBelow =
+        window.innerHeight - bottom >= height + GAP + VIEWPORT_MARGIN;
+      setPosition({
+        top: clamp(
+          fitsBelow ? bottom + GAP : rect.y - GAP - height,
+          VIEWPORT_MARGIN,
+          maxTop,
+        ),
+        left: clamp(
+          rect.x + rect.width / 2 - width / 2,
+          VIEWPORT_MARGIN,
+          maxLeft,
+        ),
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [isDesktop, rect, step.placement, currentStep]);
+
+  // Move focus into the tour so keyboard and screen reader users follow it.
   useEffect(() => {
-    window.addEventListener("resize", computePosition);
-    return () => window.removeEventListener("resize", computePosition);
-  }, [computePosition]);
+    popoverRef.current?.focus({ preventScroll: true });
+  }, [currentStep]);
 
-  // Keyboard navigation
+  // Keyboard navigation. Arrow keys belong to any field being edited, and are
+  // ignored while a step is still loading so input cannot outrun the route.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -143,7 +112,10 @@ export function TutorialPopover() {
         } else {
           skipTutorial();
         }
-      } else if (e.key === "ArrowRight") {
+        return;
+      }
+      if (isPending || e.repeat || isEditable(e.target)) return;
+      if (e.key === "ArrowRight") {
         nextStep();
       } else if (e.key === "ArrowLeft") {
         prevStep();
@@ -151,14 +123,15 @@ export function TutorialPopover() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLast, completeTutorial, skipTutorial, nextStep, prevStep]);
+  }, [isLast, isPending, completeTutorial, skipTutorial, nextStep, prevStep]);
+
+  // Positioning lives on a plain wrapper: Framer Motion owns the transform of
+  // the animated card, so a centering transform there would be overwritten.
+  const wrapperStyle: React.CSSProperties = isDesktop
+    ? { position: "fixed", zIndex: 51, width: 320, ...position }
+    : { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 51 };
 
   const mobileStyle: React.CSSProperties = {
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 51,
     borderRadius: "28px 28px 0 0",
     padding: "24px",
     paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
@@ -167,15 +140,11 @@ export function TutorialPopover() {
   };
 
   const desktopStyle: React.CSSProperties = {
-    position: "fixed",
-    zIndex: 51,
-    width: 320,
     maxHeight: "calc(100vh - 32px)",
     overflowY: "auto",
     borderRadius: 28,
     padding: 24,
     background: "var(--md-sys-color-surface)",
-    ...position,
   };
 
   return (
@@ -183,76 +152,86 @@ export function TutorialPopover() {
       role="dialog"
       aria-label="Admin tutorial"
       aria-modal="true"
-      style={{ pointerEvents: "auto" }}
+      style={wrapperStyle}
     >
-      <AnimatePresence mode="wait">
-        <motion.div
-          ref={popoverRef}
-          key={currentStep}
-          variants={popoverVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ duration: 0.2 }}
-          className="shadow-elevation-2"
-          style={isDesktop ? desktopStyle : mobileStyle}
+      <motion.div
+        ref={popoverRef}
+        key={currentStep}
+        tabIndex={-1}
+        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="shadow-elevation-2 outline-none"
+        style={isDesktop ? desktopStyle : mobileStyle}
+      >
+        <p
+          className="text-label-small mb-2"
+          style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+          aria-live="polite"
         >
-          <p
-            className="text-label-small mb-2"
-            style={{ color: "var(--md-sys-color-on-surface-variant)" }}
-            aria-live="polite"
-          >
-            Step {currentStep + 1} of {totalSteps}
-          </p>
-          <h2
-            className="text-title-medium mb-1"
-            style={{ color: "var(--md-sys-color-on-surface)" }}
-          >
-            {step.title}
-          </h2>
+          Step {currentStep + 1} of {totalSteps}
+        </p>
+        <h2
+          className="text-title-medium mb-1"
+          style={{ color: "var(--md-sys-color-on-surface)" }}
+        >
+          {step.title}
+        </h2>
+        <p
+          className="text-body-medium mb-6"
+          style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+        >
+          {description}
+        </p>
+        {target.status !== "ready" && (
           <p
             className="text-body-medium mb-6"
+            role="status"
             style={{ color: "var(--md-sys-color-on-surface-variant)" }}
           >
-            {effectiveDescription}
+            {isPending
+              ? "Loading this page…"
+              : "This section isn’t available right now. You can continue the tour or skip it."}
           </p>
-          <div className="flex items-center justify-between">
-            <div>
-              {!isLast && (
-                <M3Button variant="text" size="sm" onPress={skipTutorial}>
-                  Skip
-                </M3Button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {!isFirst && (
-                <M3Button
-                  variant="tonal"
-                  size="sm"
-                  onPress={prevStep}
-                  startContent={<ChevronLeft size={16} />}
-                >
-                  Back
-                </M3Button>
-              )}
-              {isLast ? (
-                <M3Button variant="filled" size="sm" onPress={completeTutorial}>
-                  Finish
-                </M3Button>
-              ) : (
-                <M3Button
-                  variant="filled"
-                  size="sm"
-                  onPress={nextStep}
-                  endContent={<ChevronRight size={16} />}
-                >
-                  Next
-                </M3Button>
-              )}
-            </div>
+        )}
+        <div className="flex items-center justify-between">
+          <div>
+            {!isLast && (
+              <M3Button variant="text" size="sm" onPress={skipTutorial}>
+                Skip
+              </M3Button>
+            )}
           </div>
-        </motion.div>
-      </AnimatePresence>
+          <div className="flex items-center gap-2">
+            {!isFirst && (
+              <M3Button
+                variant="tonal"
+                size="sm"
+                onPress={prevStep}
+                isDisabled={isPending}
+                startContent={<ChevronLeft size={16} />}
+              >
+                Back
+              </M3Button>
+            )}
+            {isLast ? (
+              <M3Button variant="filled" size="sm" onPress={completeTutorial}>
+                Finish
+              </M3Button>
+            ) : (
+              <M3Button
+                variant="filled"
+                size="sm"
+                onPress={nextStep}
+                isDisabled={isPending}
+                endContent={<ChevronRight size={16} />}
+              >
+                Next
+              </M3Button>
+            )}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
