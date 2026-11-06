@@ -35,7 +35,8 @@ and exporting packs is unaffected throughout.
    throwaway category and delete it afterward.
 5. **Migrate categories, then deploy rules, in that order.** Back up Firestore, run
    `scripts/migrate-categories.mjs` (preview) and review it, then `--apply`, then
-   `firebase deploy --only firestore:rules`. Rules before migration breaks the public
+   `firebase deploy --only firestore:rules`. The preview counts every collection, and
+   `--apply` stops if any has no category, because the rules would hide it. Rules before migration breaks the public
    catalog. Existing clients keep working on the old rules until you deploy.
 6. **Promote to production.**
 7. **Follow up:** add a TTL policy on `rateLimits.expiresAt`; check the browser

@@ -5,10 +5,15 @@
 // Production has auto-generated document IDs and several duplicates per
 // category. The app uses the first document per name in document ID order, so
 // that document's values are kept: live behavior does not change. Card
-// collections are not touched.
+// collections are never written to.
 //
-//   node --env-file=.env.local scripts/migrate-categories.mjs           # preview
-//   node --env-file=.env.local scripts/migrate-categories.mjs --apply
+// The preview counts the cards in every collection. A collection with no category
+// would become unreadable once the new rules deploy, so --apply stops until it is
+// resolved: add a category for it, or pass --allow-unlisted to accept that.
+//
+//   FIREBASE_SERVICE_ACCOUNT_JSON=$(base64 -i key.json | tr -d '\n') \
+//     node scripts/migrate-categories.mjs                # preview
+//   ...same, with --apply to write
 import fs from "node:fs";
 import { cert, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -22,6 +27,9 @@ const REQUIRED = [
 ];
 
 const apply = process.argv.includes("--apply");
+const allowUnlisted = process.argv.includes("--allow-unlisted");
+/** Holds app data rather than cards, so it needs no category. */
+const INTERNAL_COLLECTIONS = new Set(["categories", "rateLimits"]);
 const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 if (!encoded) {
   console.error("FIREBASE_SERVICE_ACCOUNT_JSON is not set");
@@ -65,9 +73,47 @@ for (const entry of writes) {
 }
 console.log(`  remove ${removals.length} superseded documents`);
 
+const countCards = async () => {
+  const counts = new Map();
+  for (const ref of await db.listCollections()) {
+    if (INTERNAL_COLLECTIONS.has(ref.id)) continue;
+    counts.set(ref.id, (await ref.count().get()).data().count);
+  }
+  return counts;
+};
+
+const cardsBefore = await countCards();
+const listed = [...canonical.keys()];
+const unlisted = [...cardsBefore.keys()].filter((id) => !canonical.has(id));
+const total = (counts) => [...counts.values()].reduce((a, b) => a + b, 0);
+
+console.log(`\nCards found: ${total(cardsBefore)}`);
+for (const id of listed) {
+  console.log(`  ${id}: ${cardsBefore.get(id) ?? 0}`);
+}
+
+if (unlisted.length > 0) {
+  console.log("\nWARNING: collections with no category:");
+  for (const id of unlisted) {
+    console.log(`  ${id}: ${cardsBefore.get(id)} documents`);
+  }
+  console.log(
+    "Nothing here is deleted, but the new rules would hide these from the app.",
+  );
+} else {
+  console.log("\nEvery collection has a category.");
+}
+
 if (!apply) {
-  console.log("Preview only. Re-run with --apply.");
+  console.log("\nPreview only. Re-run with --apply.");
   process.exit(0);
+}
+
+if (unlisted.length > 0 && !allowUnlisted) {
+  console.error(
+    "\nStopped. Add a category for these, or pass --allow-unlisted to continue.",
+  );
+  process.exit(1);
 }
 
 fs.writeFileSync(backup, JSON.stringify(originals, null, 2));
@@ -82,4 +128,16 @@ for (const { id } of removals) {
   batch.delete(db.collection("categories").doc(id));
 }
 await batch.commit();
-console.log("Migration complete.");
+
+const cardsAfter = await countCards();
+const changed = [
+  ...new Set([...cardsBefore.keys(), ...cardsAfter.keys()]),
+].filter((id) => cardsBefore.get(id) !== cardsAfter.get(id));
+if (changed.length > 0) {
+  // Staff may have edited cards during the run, but never assume that.
+  console.error(`Card counts changed in: ${changed.join(", ")}. Investigate.`);
+  process.exit(1);
+}
+console.log(
+  `Migration complete. ${total(cardsAfter)} cards, counts unchanged.`,
+);
