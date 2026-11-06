@@ -40,11 +40,7 @@ type ViewState =
   | { view: "forgot-success" };
 
 type PanelKey =
-  | "sign-in"
-  | "email-code"
-  | "forgot-email"
-  | "forgot-code"
-  | "forgot-success";
+  "sign-in" | "email-code" | "forgot-email" | "forgot-code" | "forgot-success";
 
 function getPanelKey(view: ViewState["view"]): PanelKey {
   if (view === "idle" || view === "loading" || view === "error")

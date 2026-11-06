@@ -10,8 +10,8 @@
     "dev": "vite",
     "dev:full": "vercel dev",
     "build": "npm run typecheck && vite build",
-    "lint": "eslint -c .eslintrc.json src api --ext .ts,.tsx",
-    "lint:fix": "eslint -c .eslintrc.json src api --ext .ts,.tsx --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "typecheck": "npm run typecheck:app && npm run typecheck:api && npm run typecheck:test",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
@@ -70,6 +70,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.65.0",
     "@testing-library/dom": "^10.4.2",
@@ -79,38 +80,36 @@
     "@types/node": "24.10.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@typescript-eslint/eslint-plugin": "8.48.0",
-    "@typescript-eslint/parser": "8.48.0",
     "@vercel/node": "^5.6.20",
     "@vitejs/plugin-react": "^6.2.1",
     "@vitest/coverage-v8": "^5.1.0",
     "autoprefixer": "10.4.22",
     "baseline-browser-mapping": "^2.10.0",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "9.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jsx-a11y": "^6.4.1",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-prettier": "5.5.4",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.5.7",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^4.6.2",
-    "eslint-plugin-unused-imports": "4.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "firebase-tools": "^15.35.0",
+    "globals": "^17.14.0",
     "husky": "^9.1.7",
     "jsdom": "^31.0.0",
     "lint-staged": "^16.4.0",
     "postcss": "8.5.6",
-    "prettier": "3.7.3",
+    "prettier": "^3.9.10",
     "tailwindcss": "^3.4.18",
-    "typescript": "5.9.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.6",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "zod": "^4.6.7"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
+    "*.{ts,tsx,js,mjs}": [
       "prettier --write",
-      "eslint -c .eslintrc.json --fix",
-      "bash -c 'tsc --noEmit'"
+      "eslint --fix"
     ],
     "*.{json,md,css}": [
       "prettier --write"
