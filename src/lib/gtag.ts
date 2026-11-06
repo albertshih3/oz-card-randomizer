@@ -1,20 +1,29 @@
-/**
- * Defaults to the stream behind GA4_PROPERTY_ID, which feeds the admin dashboard.
- * The older VITE_GA_ID is deliberately not read: it holds a different ID that
- * never received traffic, so using it would silently split the data.
- */
-export const GA_TRACKING_ID =
-  import.meta.env.VITE_GA_MEASUREMENT_ID || "G-Q4K84LKR3M";
+/** The stream behind GA4_PROPERTY_ID, which feeds the admin dashboard. */
+export const PRODUCTION_GA_ID = "G-Q4K84LKR3M";
 
 const PRODUCTION_HOST = "ozboosterpacks.albertshih.org";
+const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
 
-/** The one GA initializer. Only the production site reports to the property. */
+/**
+ * Picks the stream by where the app is running, so local testing can never
+ * reach production numbers: the production site uses the production stream,
+ * local development uses VITE_GA_ID, and anything else (previews) sends nothing.
+ */
+export const trackingIdFor = (hostname: string): string => {
+  if (hostname === PRODUCTION_HOST) return PRODUCTION_GA_ID;
+  if (!LOCAL_HOSTS.includes(hostname)) return "";
+  const localId = import.meta.env.VITE_GA_ID || "";
+  return localId === PRODUCTION_GA_ID ? "" : localId;
+};
+
+/** The one GA initializer. */
 export const initGtag = (hostname = window.location.hostname) => {
-  if (hostname !== PRODUCTION_HOST || typeof window.gtag === "function") return;
+  const trackingId = trackingIdFor(hostname);
+  if (!trackingId || typeof window.gtag === "function") return;
 
   const script = document.createElement("script");
   script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${trackingId}`;
   document.head.appendChild(script);
 
   window.dataLayer = window.dataLayer || [];
@@ -26,7 +35,7 @@ export const initGtag = (hostname = window.location.hostname) => {
   };
   window.gtag("js", new Date());
   // SPA navigation is reported by pageview(), once per route.
-  window.gtag("config", GA_TRACKING_ID, { send_page_view: false });
+  window.gtag("config", trackingId, { send_page_view: false });
 };
 
 // https://developers.google.com/analytics/devguides/collection/ga4/views

@@ -40,7 +40,7 @@ and exporting packs is unaffected throughout.
 6. **Promote to production.**
 7. **Follow up:** add a TTL policy on `rateLimits.expiresAt`; check the browser
    console on preview for CSP report-only violations, correct the allowed origins,
-   then enforce the CSP (no report endpoint is configured); remove `VITE_GA_ID`; turn
+   then enforce the CSP (no report endpoint is configured); turn
    off Clerk's Firebase integration; and mark the CI checks as required in branch
    protection.
 
@@ -131,12 +131,11 @@ metadata and one card; 5 cards store `number` as an integer; many cards carry le
   query, every day appears in the series, and dates use the GA property's timezone
   (America/Los_Angeles).
 - `generate` counts actions, not packs, so the dashboard label is "Generation Runs".
-- **GA stream.** Production has been sending to `G-Q4K84LKR3M` through
-  vite-plugin-radar, which set `window.gtag` first and so stopped `initGtag` from
-  ever running. `.env.local`'s `VITE_GA_ID` is a different ID (`G-ZV5VFQ9H7P`). A
-  read-only query confirmed the property behind `GA4_PROPERTY_ID` receives live
-  production traffic, so `G-Q4K84LKR3M` is the correct stream and is now the default.
-  `VITE_GA_ID` is no longer read and can be removed.
+- **GA streams.** There are two by design. `G-Q4K84LKR3M` is production, and the
+  property behind `GA4_PROPERTY_ID` receives its traffic. `VITE_GA_ID`
+  (`G-ZV5VFQ9H7P` in `.env.local`) is for local testing. `trackingIdFor` chooses by
+  hostname: production site to production, localhost to `VITE_GA_ID`, previews to
+  nothing. It refuses to use the production ID on localhost.
 - `initGtag` had never run in production, and it pushed arrays, which gtag.js ignores.
   It now pushes Arguments objects, as the real snippet does.
 
