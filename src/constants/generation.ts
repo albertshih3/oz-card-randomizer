@@ -2,18 +2,16 @@
  * Pack generation tuning constants.
  *
  * These values are referenced by:
- *   - src/hooks/use-booster-pack-generation.ts (wildcard draw logic, history cap)
+ *   - src/utils/pack-generation.ts (pack size, count validation)
+ *   - src/hooks/use-booster-pack-generation.ts (history cap)
  *   - src/pages/index.tsx (UI labels, input constraints)
  */
 
-/** Minimum wildcard draw attempts regardless of eligible pool size. */
-export const MIN_WILDCARD_ATTEMPTS = 10;
-
-/** Multiplier applied to eligible pool size to scale maximum wildcard draw attempts. */
-export const RETRY_MULTIPLIER = 2;
+/** Cards in a complete pack: eight base, one wildcard, one Spoonbill. */
+export const PACK_SIZE = 10;
 
 /** Maximum number of historical generation runs to retain in the pack history list. */
 export const PACK_HISTORY_LIMIT = 10;
 
-/** Maximum number of packs allowed in a single export operation (enforced by the UI input). */
+/** Maximum number of packs allowed in a single export operation (enforced at the generation boundary). */
 export const MAX_PACKS_PER_EXPORT = 1000;

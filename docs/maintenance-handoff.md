@@ -57,3 +57,13 @@ metadata and one card; 5 cards store `number` as an integer; many cards carry le
   limiter outage cannot run up Resend usage), 20/hour per user for invitations (fails
   open). Keys are hashed. Client IP comes from Vercel's `x-vercel-forwarded-for`.
 - A honeypot and a minimum fill time drop obvious bots with a silent success.
+
+## Batch E — generation and export
+
+- Packs are ten explicit slots (`src/utils/pack-generation.ts`). The UI, history, and
+  workbook read slot identity directly, so a third card from a base set no longer
+  vanishes from the export and a Spoonbill wildcard is not mistaken for the fixed card.
+- Category weighting is unchanged (uniform over eligible categories), but only
+  categories with cards left are considered, replacing the retry loop.
+- The workbook keeps its columns and filename and gains a final `Warnings` column.
+- `download` means the browser download started; it cannot confirm a saved file.

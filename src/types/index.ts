@@ -19,8 +19,25 @@ export type Collection = {
   isWildcardEligible?: boolean;
 };
 
+export type CardsByCollection = { [collectionId: string]: Card[] };
+
+export type PackSlotKind = "base" | "wildcard" | "spoonbill";
+
+/** One of the ten logical positions in a pack. An empty slot has no card. */
+export type PackSlot = {
+  kind: PackSlotKind;
+  label: string;
+  card: Card | null;
+};
+
+export type GeneratedPack = {
+  slots: PackSlot[];
+};
+
 export type PackHistoryItem = {
   id: string;
   timestamp: Date;
   cards: Card[];
+  /** Labels of slots that had no card when the pack was generated. */
+  missing: string[];
 };
