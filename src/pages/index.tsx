@@ -131,7 +131,7 @@ export default function IndexPage() {
       } catch (err) {
         console.error("Error fetching data:", err);
         exception({
-          description: `Failed to load card data: ${err}`,
+          description: "Failed to load card data",
           fatal: false,
         });
         setError("Failed to load card data. Please try again later.");
@@ -167,10 +167,7 @@ export default function IndexPage() {
       await exportToExcel(packs);
     } catch (err) {
       console.error("Error exporting packs:", err);
-      exception({
-        description: `Failed to export packs: ${err}`,
-        fatal: false,
-      });
+      exception({ description: "Failed to export packs", fatal: false });
       // Keep these packs so Retry exports the same set rather than new ones.
       setUnexportedPacks(packs);
       setExportError(

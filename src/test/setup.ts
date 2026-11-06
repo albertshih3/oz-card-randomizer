@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 
 /**
  * Node 25+ ships an experimental global `localStorage` accessor that returns

@@ -44,9 +44,7 @@ describe("DefaultLayout", () => {
     fireEvent.pointerDown(changelogLink);
 
     expect(changelogLink).toHaveStyle({ transform: "scale(0.97)" });
-    expect(dismissButton).toHaveStyle({
-      color: "var(--md-sys-color-on-primary)",
-    });
+    expect(dismissButton.style.color).toBe("var(--md-sys-color-on-primary)");
   });
 
   it("lets users dismiss the Version 3 announcement banner", () => {

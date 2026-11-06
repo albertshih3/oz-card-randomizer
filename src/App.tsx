@@ -35,7 +35,7 @@ function App() {
     if (!hasSeenAnalyticsNotice) {
       const timer = setTimeout(() => {
         toast.info(
-          "Analytics tracking is enabled to help understand usage patterns. No personal data is collected.",
+          "This site uses Google Analytics and Vercel Analytics to understand how it’s used.",
           {
             duration: 6000,
             // Bottom placement covers the tour sheet's controls on mobile.

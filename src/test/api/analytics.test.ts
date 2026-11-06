@@ -22,7 +22,11 @@ vi.mock("@google-analytics/data", () => ({
   },
 }));
 
-import handler from "../../../api/analytics/summary";
+vi.mock("../../../api/_rate-limit", () => ({
+  enforceRateLimit: vi.fn().mockResolvedValue(true),
+}));
+
+import handler, { completeDaysBefore } from "../../../api/analytics/summary";
 
 function makeReq(overrides: Partial<VercelRequest> = {}): VercelRequest {
   return {
@@ -110,22 +114,22 @@ describe("api/analytics/summary handler", () => {
     expect(mock.getBody()).toEqual({ error: "Analytics not configured" });
   });
 
-  it("clamps days param to 90", async () => {
-    mockVerifyToken.mockResolvedValueOnce({ sub: "user_123" });
-    const emptyResponse = [{ rows: [] }];
-    mockRunReport.mockResolvedValue(emptyResponse);
-    const mock = makeRes();
-    await handler(
-      makeReq({
-        headers: { authorization: "Bearer validtoken" },
-        query: { days: "365" },
-      }),
-      mock.res,
-    );
-    expect(mock.getStatusCode()).toBe(200);
-    const body = mock.getBody() as { days: number };
-    expect(body.days).toBe(90);
-  });
+  it.each([["365"], ["0"], ["7.5"], ["abc"], [["7", "30"]]])(
+    "rejects days=%j without calling GA",
+    async (days) => {
+      mockVerifyToken.mockResolvedValueOnce({ sub: "user_123" });
+      const mock = makeRes();
+      await handler(
+        makeReq({
+          headers: { authorization: "Bearer validtoken" },
+          query: { days },
+        }),
+        mock.res,
+      );
+      expect(mock.getStatusCode()).toBe(400);
+      expect(mockRunReport).not.toHaveBeenCalled();
+    },
+  );
 
   it("defaults days to 30 when missing", async () => {
     mockVerifyToken.mockResolvedValueOnce({ sub: "user_123" });
@@ -141,111 +145,164 @@ describe("api/analytics/summary handler", () => {
     expect(body.days).toBe(30);
   });
 
-  it("returns 200 with correctly shaped SummaryResponse", async () => {
-    mockVerifyToken.mockResolvedValueOnce({ sub: "user_123" });
+  describe("report handling", () => {
+    const yesterday = completeDaysBefore(
+      new Date(),
+      "America/Los_Angeles",
+      7,
+    ).at(-1) as string;
+    const gaDate = yesterday.replace(/-/g, "");
 
-    // Response A: current period generate events with date dimension
-    const responseA = [
-      {
-        rows: [
-          {
-            dimensionValues: [{ value: "20260327" }],
-            metricValues: [{ value: "5" }, { value: "8" }, { value: "12" }],
-          },
-        ],
-      },
-    ];
-    // Response B: current period download events with date dimension
-    const responseB = [
-      {
-        rows: [
-          {
-            dimensionValues: [{ value: "20260327" }],
-            metricValues: [{ value: "3" }],
-          },
-        ],
-      },
-    ];
-    // Response C: prior period generate totals
-    const responseC = [
-      {
-        rows: [
-          {
-            metricValues: [{ value: "2" }, { value: "4" }, { value: "6" }],
-          },
-        ],
-      },
-    ];
-    // Response D: prior period download totals
-    const responseD = [
-      {
-        rows: [
-          {
-            metricValues: [{ value: "1" }],
-          },
-        ],
-      },
-    ];
+    const row = (dimensions: string[], metrics: string[]) => ({
+      dimensionValues: dimensions.map((value) => ({ value })),
+      metricValues: metrics.map((value) => ({ value })),
+    });
 
-    mockRunReport
-      .mockResolvedValueOnce(responseA)
-      .mockResolvedValueOnce(responseB)
-      .mockResolvedValueOnce(responseC)
-      .mockResolvedValueOnce(responseD);
+    function stubReports() {
+      mockRunReport.mockImplementation(
+        async (request: {
+          dateRanges: Array<{ startDate: string }>;
+          dimensions?: Array<{ name: string }>;
+          dimensionFilter?: unknown;
+        }) => {
+          const isCurrent = request.dateRanges[0].startDate === "7daysAgo";
+          const dimensions = request.dimensions?.map((d) => d.name) ?? [];
+          let rows: unknown[];
+          if (isCurrent && dimensions.join() === "date") {
+            rows = [row([gaDate], ["5", "8"])];
+          } else if (isCurrent && dimensions.length === 0) {
+            rows = [row([], ["3", "6"])];
+          } else if (isCurrent) {
+            rows = [
+              row([gaDate, "generate"], ["12"]),
+              row([gaDate, "download"], ["4"]),
+            ];
+          } else if (dimensions.length === 0) {
+            rows = [row([], ["2", "4"])];
+          } else {
+            rows = [row(["generate"], ["6"]), row(["download"], ["1"])];
+          }
+          return [{ rows, metadata: { timeZone: "America/Los_Angeles" } }];
+        },
+      );
+    }
 
+    async function summary() {
+      mockVerifyToken.mockResolvedValueOnce({ sub: "user_123" });
+      const mock = makeRes();
+      await handler(
+        makeReq({
+          headers: { authorization: "Bearer validtoken" },
+          query: { days: "7" },
+        }),
+        mock.res,
+      );
+      return mock.getBody() as {
+        series: Array<Record<string, unknown>>;
+        current: Record<string, number>;
+        prior: Record<string, number>;
+      };
+    }
+
+    it("counts period users once rather than summing daily uniques", async () => {
+      stubReports();
+      const body = await summary();
+      expect(body.series.at(-1)?.activeUsers).toBe(5);
+      expect(body.current.activeUsers).toBe(3);
+      expect(body.current.sessions).toBe(6);
+    });
+
+    it("measures users and sessions across all app usage", async () => {
+      stubReports();
+      await summary();
+      const usageQueries = mockRunReport.mock.calls
+        .map(([request]) => request)
+        .filter((request) =>
+          request.metrics.some(
+            (m: { name: string }) => m.name === "activeUsers",
+          ),
+        );
+      expect(usageQueries.length).toBeGreaterThan(0);
+      for (const query of usageQueries) {
+        expect(query.dimensionFilter).toBeUndefined();
+      }
+    });
+
+    it("keeps generation and export counts separate", async () => {
+      stubReports();
+      const body = await summary();
+      expect(body.current).toMatchObject({ packGenerations: 12, exports: 4 });
+      expect(body.prior).toEqual({
+        activeUsers: 2,
+        sessions: 4,
+        packGenerations: 6,
+        exports: 1,
+      });
+    });
+
+    it("includes every day, with zeros where nothing happened", async () => {
+      stubReports();
+      const body = await summary();
+      expect(body.series).toHaveLength(7);
+      expect(body.series[0]).toMatchObject({
+        activeUsers: 0,
+        sessions: 0,
+        packGenerations: 0,
+        exports: 0,
+      });
+    });
+
+    it("excludes today from both periods", async () => {
+      stubReports();
+      await summary();
+      const ranges = mockRunReport.mock.calls.map(
+        ([request]) => request.dateRanges[0],
+      );
+      expect(ranges).toContainEqual({
+        startDate: "7daysAgo",
+        endDate: "yesterday",
+      });
+      expect(ranges).toContainEqual({
+        startDate: "14daysAgo",
+        endDate: "8daysAgo",
+      });
+    });
+
+    it("treats a malformed metric as zero rather than NaN", async () => {
+      mockRunReport.mockResolvedValue([
+        { rows: [row([], ["not-a-number", ""])] },
+      ]);
+      const body = await summary();
+      expect(body.current.activeUsers).toBe(0);
+      expect(body.current.sessions).toBe(0);
+    });
+  });
+
+  describe("completeDaysBefore", () => {
+    it("uses the property's calendar, not UTC", () => {
+      // 02:00 UTC on Mar 10 is still Mar 9 in Los Angeles.
+      const now = new Date("2026-03-10T02:00:00Z");
+      expect(completeDaysBefore(now, "America/Los_Angeles", 1)).toEqual([
+        "2026-03-08",
+      ]);
+      expect(completeDaysBefore(now, "UTC", 1)).toEqual(["2026-03-09"]);
+    });
+
+    it("spans a DST change without skipping or repeating a date", () => {
+      const now = new Date("2026-03-10T20:00:00Z");
+      expect(completeDaysBefore(now, "America/Los_Angeles", 3)).toEqual([
+        "2026-03-07",
+        "2026-03-08",
+        "2026-03-09",
+      ]);
+    });
+  });
+
+  it("never calls GA for a denied request", async () => {
     const mock = makeRes();
-    await handler(
-      makeReq({
-        headers: { authorization: "Bearer validtoken" },
-        query: { days: "30" },
-      }),
-      mock.res,
-    );
-    expect(mock.getStatusCode()).toBe(200);
-
-    const body = mock.getBody() as {
-      days: number;
-      series: Array<{
-        date: string;
-        activeUsers: number;
-        sessions: number;
-        packGenerations: number;
-        exports: number;
-      }>;
-      current: {
-        activeUsers: number;
-        sessions: number;
-        packGenerations: number;
-        exports: number;
-      };
-      prior: {
-        activeUsers: number;
-        sessions: number;
-        packGenerations: number;
-        exports: number;
-      };
-    };
-
-    expect(body.days).toBe(30);
-    expect(body.series).toHaveLength(1);
-    expect(body.series[0].date).toBe("2026-03-27");
-    expect(body.series[0].activeUsers).toBe(5);
-    expect(body.series[0].sessions).toBe(8);
-    expect(body.series[0].packGenerations).toBe(12);
-    expect(body.series[0].exports).toBe(3);
-
-    expect(body.current).toEqual({
-      activeUsers: 5,
-      sessions: 8,
-      packGenerations: 12,
-      exports: 3,
-    });
-    expect(body.prior).toEqual({
-      activeUsers: 2,
-      sessions: 4,
-      packGenerations: 6,
-      exports: 1,
-    });
+    await handler(makeReq({ headers: {} }), mock.res);
+    expect(mock.getStatusCode()).toBe(401);
+    expect(mockRunReport).not.toHaveBeenCalled();
   });
 
   it("returns 500 when runReport throws", async () => {

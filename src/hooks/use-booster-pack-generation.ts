@@ -73,7 +73,7 @@ export function useBoosterPackGeneration(
     } catch (err) {
       console.error("Error generating packs:", err);
       exception({
-        description: `Failed to generate booster packs: ${err}`,
+        description: "Failed to generate booster packs",
         fatal: false,
       });
       return [];

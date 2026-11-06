@@ -79,3 +79,18 @@ metadata and one card; 5 cards store `number` as an integer; many cards carry le
   fixes editing the 5 cards whose `number` is stored as an integer.
 - Stale card reads are discarded, and each card or category allows one write at a
   time. Failed loads show a persistent, retryable error.
+
+## Batch G — analytics
+
+- Users and sessions now cover all app usage. Period totals come from their own
+  query, every day appears in the series, and dates use the GA property's timezone
+  (America/Los_Angeles).
+- `generate` counts actions, not packs, so the dashboard label is "Generation Runs".
+- **GA stream.** Production has been sending to `G-Q4K84LKR3M` through
+  vite-plugin-radar, which set `window.gtag` first and so stopped `initGtag` from
+  ever running. `.env.local`'s `VITE_GA_ID` is a different ID (`G-ZV5VFQ9H7P`). A
+  read-only query confirmed the property behind `GA4_PROPERTY_ID` receives live
+  production traffic, so `G-Q4K84LKR3M` is the correct stream and is now the default.
+  `VITE_GA_ID` is no longer read and can be removed.
+- `initGtag` had never run in production, and it pushed arrays, which gtag.js ignores.
+  It now pushes Arguments objects, as the real snippet does.
