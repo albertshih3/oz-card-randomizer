@@ -7,6 +7,7 @@ import { Provider } from "./provider.tsx";
 import "@/styles/globals.css";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { FirebaseSessionSync } from "@/components/firebase-session-sync";
 
 import { Analytics } from "@vercel/analytics/react";
 import { initGtag } from "@/lib/gtag";
@@ -32,6 +33,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             afterSignOutUrl="/"
             signInUrl="/sign-in"
           >
+            <FirebaseSessionSync />
             <Analytics />
             <App />
           </ClerkProvider>

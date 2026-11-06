@@ -6,7 +6,13 @@ const { mockVerifyToken, mockRunReport } = vi.hoisted(() => ({
 }));
 
 vi.mock("@clerk/backend", () => ({
-  createClerkClient: vi.fn(() => ({})),
+  createClerkClient: vi.fn(() => ({
+    users: {
+      getUser: vi.fn().mockResolvedValue({
+        publicMetadata: { approved: true },
+      }),
+    },
+  })),
   verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
 }));
 

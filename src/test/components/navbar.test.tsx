@@ -8,6 +8,9 @@ vi.mock("@clerk/clerk-react", () => ({
   SignedOut: ({ children }: { children: React.ReactNode }) =>
     mockIsSignedIn ? null : <>{children}</>,
   UserButton: () => <div data-testid="user-button" />,
+  useUser: () => ({
+    user: mockIsSignedIn ? { publicMetadata: { approved: true } } : null,
+  }),
 }));
 
 const mockNavigate = vi.fn();

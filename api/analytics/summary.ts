@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
-import { requireAuth } from "../_auth.js";
+import { requireApproved } from "../_auth.js";
 
 interface DayEntry {
   date: string;
@@ -49,7 +49,7 @@ export default async function handler(
   }
 
   try {
-    await requireAuth(req, res);
+    await requireApproved(req, res);
   } catch {
     return;
   }

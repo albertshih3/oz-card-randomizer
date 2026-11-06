@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireAuth, clerkClient } from "../_auth.js";
+import { requireApproved, clerkClient } from "../_auth.js";
 
 export default async function handler(
   req: VercelRequest,
@@ -12,7 +12,7 @@ export default async function handler(
   }
 
   try {
-    await requireAuth(req, res);
+    await requireApproved(req, res);
   } catch {
     return;
   }
@@ -38,6 +38,8 @@ export default async function handler(
     await clerkClient.invitations.createInvitation({
       emailAddress: email.trim(),
       redirectUrl: `${appUrl}/sign-in`,
+      // Copied to the user's publicMetadata when the invitation is accepted.
+      publicMetadata: { approved: true },
     });
     res.status(200).json({ success: true });
   } catch (err) {

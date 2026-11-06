@@ -2,7 +2,8 @@ const auth = {
   currentUser: null as { uid: string } | null,
 };
 
-export const getAuth = () => auth;
+export const inMemoryPersistence = {};
+export const initializeAuth = () => auth;
 export const signInWithCustomToken = async () => {
   auth.currentUser = { uid: "user_e2e" };
   return { user: auth.currentUser };

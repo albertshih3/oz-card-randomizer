@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireAuth, clerkClient } from "../_auth.js";
+import { requireApproved, clerkClient } from "../_auth.js";
 
 export default async function handler(
   req: VercelRequest,
@@ -12,7 +12,7 @@ export default async function handler(
   }
 
   try {
-    await requireAuth(req, res);
+    await requireApproved(req, res);
   } catch {
     return;
   }

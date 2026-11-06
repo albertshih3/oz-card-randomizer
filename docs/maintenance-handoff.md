@@ -28,3 +28,22 @@ stubbed Clerk/Firebase, no production access).
   errors on first paint.
 - **Fix:** route-local Suspense and error boundaries, one shared target resolver,
   a pending/ready/unavailable lifecycle, and step-follows-route handling.
+
+## Batch B — approval and data boundaries
+
+**Decision.** Clerk `publicMetadata.approved` is the single source of truth: only
+the Backend API can write it, and Clerk copies invitation metadata to the user on
+acceptance, so invited users need no extra step. `/api/auth/firebase-token` mints
+the Firebase session with `approved` and `approvedUntil` claims. This also moves
+off Clerk's Firebase integration, which Clerk has deprecated.
+
+**Revocation.** Immediate on the API (approval is read on every request). Firestore
+writes stop when the lease ends, at most 15 minutes later. The lease is a claim
+rather than token lifetime because custom-token claims survive ID-token refresh.
+
+**Production data does not match the original plan's assumptions** (read-only
+inventory, 2026-11-05): 20 category documents for 8 categories, all with
+auto-generated IDs, some with conflicting wildcard values; `spoonbill` has no
+metadata and one card; 5 cards store `number` as an integer; many cards carry legacy
+`category`/`collection` fields. `firestore.rules` therefore must not ship before
+`scripts/migrate-categories.mjs`, or public catalog reads will fail.

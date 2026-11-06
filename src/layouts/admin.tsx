@@ -1,6 +1,6 @@
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { pageVariants } from "@/lib/motion";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -12,6 +12,8 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { AdminFiltersProvider } from "@/contexts/admin-filters-context";
 import { TutorialProvider } from "@/contexts/tutorial-context";
 import { TutorialOverlay } from "@/components/admin/tutorial";
+import { NotApproved } from "@/components/admin/not-approved";
+import { isApprovedUser } from "@/lib/approval";
 
 const routeLoadingFallback = (
   <div
@@ -42,6 +44,7 @@ const routeErrorFallback = (
 
 export default function AdminLayout() {
   const { isLoaded, userId } = useAuth();
+  const { isLoaded: isUserLoaded, user } = useUser();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const shouldReduceMotion = useReducedMotion();
@@ -69,7 +72,7 @@ export default function AdminLayout() {
     };
   }, [drawerOpen, isDesktop]);
 
-  if (!isLoaded) {
+  if (!isLoaded || (userId && !isUserLoaded)) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -81,6 +84,9 @@ export default function AdminLayout() {
   }
 
   if (!userId) return null;
+
+  // UI only: the API and Firestore rules enforce this independently.
+  if (!isApprovedUser(user)) return <NotApproved />;
 
   return (
     <TutorialProvider>

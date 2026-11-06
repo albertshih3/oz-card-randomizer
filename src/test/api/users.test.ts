@@ -10,7 +10,12 @@ const { mockVerifyToken, mockGetUserList, mockCreateInvitation } = vi.hoisted(
 
 vi.mock("@clerk/backend", () => ({
   createClerkClient: vi.fn(() => ({
-    users: { getUserList: mockGetUserList },
+    users: {
+      getUserList: mockGetUserList,
+      getUser: vi.fn().mockResolvedValue({
+        publicMetadata: { approved: true },
+      }),
+    },
     invitations: { createInvitation: mockCreateInvitation },
   })),
   verifyToken: (...args: unknown[]) => mockVerifyToken(...args),

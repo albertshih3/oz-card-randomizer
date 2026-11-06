@@ -15,13 +15,16 @@ import { useNavigate } from "react-router-dom";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { SignedOut, SignedIn, UserButton } from "@clerk/clerk-react";
+import { SignedOut, SignedIn, UserButton, useUser } from "@clerk/clerk-react";
+import { isApprovedUser } from "@/lib/approval";
 import { M3Button } from "@/components/m3/button";
 import { FeedbackDialog } from "@/components/feedback-dialog";
 import { event } from "@/lib/gtag";
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const { user } = useUser();
+  const canAdminister = isApprovedUser(user);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const handleNavClick = (label: string) => {
@@ -76,7 +79,7 @@ export const Navbar = () => {
                 </Link>
               </NavbarItem>
             ))}
-            <SignedIn>
+            {canAdminister && (
               <NavbarItem>
                 <Link
                   className={clsx(
@@ -90,7 +93,7 @@ export const Navbar = () => {
                   Admin
                 </Link>
               </NavbarItem>
-            </SignedIn>
+            )}
           </div>
         </NavbarContent>
 
@@ -156,7 +159,7 @@ export const Navbar = () => {
                 </Link>
               </NavbarMenuItem>
             ))}
-            <SignedIn>
+            {canAdminister && (
               <NavbarMenuItem>
                 <Link
                   color="foreground"
@@ -168,7 +171,7 @@ export const Navbar = () => {
                   Admin
                 </Link>
               </NavbarMenuItem>
-            </SignedIn>
+            )}
           </div>
           <div className="mx-4 mt-6 flex flex-col gap-2">
             <M3Button
