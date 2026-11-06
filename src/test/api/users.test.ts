@@ -21,6 +21,10 @@ vi.mock("@clerk/backend", () => ({
   verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
 }));
 
+vi.mock("../../../api/_rate-limit", () => ({
+  enforceRateLimit: vi.fn().mockResolvedValue(true),
+}));
+
 // Relative imports -- api/ is outside src/, so @/ alias cannot reach it
 import listHandler from "../../../api/users/list";
 import inviteHandler from "../../../api/users/invite";
@@ -141,7 +145,10 @@ describe("api/users handlers", () => {
     await inviteHandler(
       makeReq({
         method: "POST",
-        headers: { authorization: "Bearer tok" },
+        headers: {
+          authorization: "Bearer tok",
+          "content-type": "application/json",
+        },
         body: {},
       }),
       mock.res,
@@ -156,7 +163,10 @@ describe("api/users handlers", () => {
     await inviteHandler(
       makeReq({
         method: "POST",
-        headers: { authorization: "Bearer tok" },
+        headers: {
+          authorization: "Bearer tok",
+          "content-type": "application/json",
+        },
         body: { email: "new@zoo.org" },
       }),
       mock.res,

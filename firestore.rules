@@ -25,7 +25,7 @@ service cloud.firestore {
     }
 
     function isReservedId(id) {
-      return id in ['categories', 'admin', 'approvals', 'users', 'settings'];
+      return id in ['categories', 'admin', 'approvals', 'users', 'settings', 'rateLimits'];
     }
 
     function categoryPath(id) {

@@ -47,3 +47,13 @@ auto-generated IDs, some with conflicting wildcard values; `spoonbill` has no
 metadata and one card; 5 cards store `number` as an integer; many cards carry legacy
 `category`/`collection` fields. `firestore.rules` therefore must not ship before
 `scripts/migrate-categories.mjs`, or public catalog reads will fail.
+
+## Batch C — feedback and abuse protection
+
+- Feedback and invitations validate the request envelope before use, and feedback
+  only reports success when Resend accepts the message.
+- Limits run in Firestore (`rateLimits`, client access denied by rules) rather than a
+  new service: 5/hour per client and 100/day overall for feedback (fails closed, so a
+  limiter outage cannot run up Resend usage), 20/hour per user for invitations (fails
+  open). Keys are hashed. Client IP comes from Vercel's `x-vercel-forwarded-for`.
+- A honeypot and a minimum fill time drop obvious bots with a silent success.

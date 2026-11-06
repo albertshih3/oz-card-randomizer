@@ -1,4 +1,4 @@
-import { useState, useId } from "react";
+import { useState, useId, useRef } from "react";
 import {
   Modal,
   ModalContent,
@@ -40,6 +40,8 @@ function FeedbackForm({
   const [type, setType] = useState<FeedbackType>("general");
   const [message, setMessage] = useState("");
   const [replyTo, setReplyTo] = useState("");
+  const [website, setWebsite] = useState("");
+  const openedAt = useRef(Date.now());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const typeId = useId();
@@ -47,6 +49,7 @@ function FeedbackForm({
   const replyToId = useId();
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     setError("");
     if (message.trim().length < 5) {
       setError("Please write at least 5 characters.");
@@ -58,7 +61,13 @@ function FeedbackForm({
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, message, replyTo: replyTo || undefined }),
+        body: JSON.stringify({
+          type,
+          message,
+          replyTo: replyTo || undefined,
+          website,
+          elapsedMs: Date.now() - openedAt.current,
+        }),
       });
 
       if (!res.ok) {
@@ -80,6 +89,17 @@ function FeedbackForm({
 
   return (
     <div className="flex flex-col gap-5 px-6 pb-6 pt-2">
+      {/* Honeypot: hidden from people and assistive tech, filled in by bots. */}
+      <input
+        aria-hidden="true"
+        autoComplete="off"
+        className="absolute -left-[9999px] h-px w-px opacity-0"
+        name="website"
+        tabIndex={-1}
+        type="text"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+      />
       <fieldset className="flex flex-col gap-2" disabled={isSubmitting}>
         <legend
           id={typeId}

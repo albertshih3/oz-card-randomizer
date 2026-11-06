@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireApproved, clerkClient } from "../_auth.js";
+import { isValidEmail, readJsonObject } from "../_http.js";
+import { enforceRateLimit } from "../_rate-limit.js";
 
 export default async function handler(
   req: VercelRequest,
@@ -11,23 +13,35 @@ export default async function handler(
     return;
   }
 
+  let userId: string;
   try {
-    await requireApproved(req, res);
+    ({ userId } = await requireApproved(req, res));
   } catch {
     return;
   }
 
-  const { email } = req.body as { email?: string };
-  if (!email || typeof email !== "string" || email.trim() === "") {
+  const body = readJsonObject(req, res);
+  if (!body) return;
+
+  const { email } = body;
+  if (typeof email !== "string" || email.trim() === "") {
     res.status(400).json({ error: "email is required" });
     return;
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email.trim())) {
+  if (!isValidEmail(email.trim())) {
     res.status(400).json({ error: "Invalid email address." });
     return;
   }
+
+  const allowed = await enforceRateLimit(res, {
+    bucket: "invite",
+    key: userId,
+    limit: 20,
+    windowSeconds: 3600,
+    whenUnavailable: "allow",
+  });
+  if (!allowed) return;
 
   const appUrl =
     process.env.APP_URL ??
