@@ -28,7 +28,7 @@
   "dependencies": {
     "@clerk/backend": "^3.27.0",
     "@clerk/react": "^6.18.6",
-    "@google-analytics/data": "^4.0.0",
+    "@google-analytics/data": "^7.3.0",
     "@heroui/button": "2.2.27",
     "@heroui/chip": "^2.2.22",
     "@heroui/code": "2.2.21",
@@ -61,7 +61,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.18.5",
-    "resend": "^6.12.2",
+    "resend": "^6.37.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tailwind-variants": "3.2.2",
