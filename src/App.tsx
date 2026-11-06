@@ -3,12 +3,13 @@ import React, { Suspense, useEffect } from "react";
 import { Toaster, toast } from "sonner";
 
 import IndexPage from "@/pages/index";
-import AboutPage from "@/pages/about";
-import Changelog from "@/pages/changelog";
 import { M3Spinner } from "@/components/m3/spinner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { usePageView } from "@/hooks/use-page-view";
+import { readPreference, writePreference } from "@/lib/safe-storage";
 
+const AboutPage = React.lazy(() => import("@/pages/about"));
+const Changelog = React.lazy(() => import("@/pages/changelog"));
 const AdminLayout = React.lazy(() => import("@/layouts/admin"));
 const AdminCardsPage = React.lazy(() => import("@/pages/admin/index"));
 const AdminUsersPage = React.lazy(() => import("@/pages/admin/users"));
@@ -29,20 +30,19 @@ function App() {
   usePageView();
 
   useEffect(() => {
-    const hasSeenAnalyticsNotice = localStorage.getItem(
-      "hasSeenAnalyticsNotice",
-    );
+    const hasSeenAnalyticsNotice = readPreference("hasSeenAnalyticsNotice");
 
     if (!hasSeenAnalyticsNotice) {
       const timer = setTimeout(() => {
         toast.info(
-          "Analytics tracking is enabled to help understand usage patterns. No personal data is collected.",
+          "This site uses Google Analytics and Vercel Analytics to understand how it’s used.",
           {
             duration: 6000,
-            position: "bottom-center",
+            // Bottom placement covers the tour sheet's controls on mobile.
+            position: "top-center",
           },
         );
-        localStorage.setItem("hasSeenAnalyticsNotice", "true");
+        writePreference("hasSeenAnalyticsNotice", "true");
       }, 2000);
 
       return () => clearTimeout(timer);

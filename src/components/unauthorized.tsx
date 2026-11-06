@@ -8,7 +8,7 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { M3Button } from "@/components/m3/button";
-import { SignInButton } from "@clerk/clerk-react";
+import { SignInButton } from "@clerk/react";
 import { useNavigate } from "react-router-dom";
 
 export default function Unauthorized() {

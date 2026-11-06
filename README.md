@@ -7,15 +7,17 @@ A web application for generating randomized trading card booster packs for the O
 ## Features
 
 - **Random Booster Pack Generation**: Creates balanced packs with cards from multiple zoo collections
-- **Bulk Generation**: Generate multiple booster packs at once (1-20+ packs)
+- **Bulk Generation**: Generate up to 1,000 booster packs at once
 - **Excel Export**: Export bulk pack contents to Excel spreadsheet for easier (and offline) use.
 - **Card Management**: Admin interface for managing card database (add/edit/deactivate cards)
-- **Real-time Updates**: Cards are pulled from Firebase database with real-time availability
+- **Live Catalog**: Cards are read from Firebase each time the generator loads
+- **Incomplete Pack Warnings**: If a set runs short, the pack and the spreadsheet both say which slots are empty
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 
 ## Card Collections
 
 The generator pulls cards from these Oakland Zoo collections:
+
 - African Savannah
 - California Trail
 - Children's Zoo
@@ -31,6 +33,7 @@ The generator pulls cards from these Oakland Zoo collections:
 ## Booster Pack Composition
 
 Each booster pack contains:
+
 - 2 cards from each of the first 4 collections (8 cards total)
 - 1 random card from any collection (wildcard)
 - 1 Spoonbill card
@@ -50,48 +53,43 @@ Each booster pack contains:
 ## Development Setup
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- npm, yarn, pnpm, or bun
+
+- Node.js 26 (see `.nvmrc`)
+- npm
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/albertshih3/oz-card-randomizer.git
 cd oz-card-randomizer
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
-3. Set up environment variables:
-Create a `.env` file with the Firebase configuration (hopefully you don't have this):
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
-```
+3. Set up environment variables. Copy `.env.example` to `.env.local` and fill it in, or run `vercel env pull .env.local`.
 
 4. Run the development server:
+
 ```bash
 npm run dev
 ```
 
-### Setup pnpm (optional)
+`npm run dev` serves the app without the `/api` functions. Use `npm run dev:full` when you need them.
 
-If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
+### Checks
 
 ```bash
-public-hoist-pattern[]=*@heroui/*
+npm run verify       # lint, typecheck, unit tests, production build
+npm run test:e2e     # Playwright, with stubbed auth and data
+npm run test:rules   # Firestore rules in the emulator (needs Java)
+npm run lint:fix     # apply lint fixes
 ```
-
-After modifying the `.npmrc` file, you need to run `pnpm install` again to ensure that the dependencies are installed correctly.
 
 ### Build for Production
 
@@ -99,11 +97,9 @@ After modifying the `.npmrc` file, you need to run `pnpm install` again to ensur
 npm run build
 ```
 
-### Linting
+### Admin access
 
-```bash
-npm run lint
-```
+Approval is Clerk `publicMetadata.approved`. Invitations grant it automatically. Use `scripts/set-user-approval.mjs` to list, approve, or revoke accounts. See `docs/maintenance-handoff.md` for deployment steps.
 
 ## Project Structure
 
@@ -130,6 +126,7 @@ src/
 ## Firebase Database Structure
 
 Collections in Firestore:
+
 - `africansavanna` - African Savannah cards
 - `californiatrail` - California Trail cards
 - `childrenszoo` - Children's Zoo cards
@@ -142,6 +139,7 @@ Collections in Firestore:
 - `spoonbill` - Special Spoonbill cards
 
 Each card document contains:
+
 ```javascript
 {
   name: "Card Name",
@@ -153,12 +151,14 @@ Each card document contains:
 ## Usage
 
 ### For Staff (Basic Use)
+
 1. Visit [ozboosterpacks.albertshih.org](https://ozboosterpacks.albertshih.org)
 2. Click "Generate Booster Pack" for a single pack
 3. Use the table to track which cards to pull from inventory
 4. For multiple packs, click "Create a Spreadsheet" and specify quantity
 
 ### For Admins (Card Management)
+
 1. Click "Edit Cards" in the navigation
 2. Sign in with approved account
 3. Add, edit, or deactivate cards as needed

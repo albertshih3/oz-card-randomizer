@@ -1,73 +1,59 @@
 import { useState } from "react";
 import { event } from "@/lib/gtag";
+import { PACK_SIZE } from "@/constants/generation";
 import {
-  BASE_COLLECTION_IDS,
-  COLLECTION_DISPLAY_NAMES,
-  COLLECTION_IDS,
-} from "@/constants/collections";
-import type { Card } from "@/types";
+  PACK_SLOT_LABELS,
+  missingSlots,
+  packCards,
+} from "@/utils/pack-generation";
+import type { GeneratedPack } from "@/types";
+
+export const WORKBOOK_FILE_NAME = "BoosterPacks.xlsx";
+
+/** One row per pack. Cells come from slots, never from a card's collection. */
+export function buildWorkbookRows(
+  packs: GeneratedPack[],
+): Record<string, string | number>[] {
+  return packs.map((pack, index) => {
+    const row: Record<string, string | number> = { "Pack #": index + 1 };
+    for (const label of PACK_SLOT_LABELS) {
+      const card = pack.slots.find((slot) => slot.label === label)?.card;
+      row[label] = card ? `#${card.number} - ${card.name}` : "";
+    }
+    const missing = missingSlots(pack);
+    row["Warnings"] =
+      missing.length > 0
+        ? `Incomplete (${packCards(pack).length} of ${PACK_SIZE}): missing ${missing.join(", ")}`
+        : "";
+    return row;
+  });
+}
 
 export function useExcelExport() {
   const [isExporting, setIsExporting] = useState(false);
 
-  const exportToExcel = async (packs: Card[][]) => {
+  /** Rejects if the workbook cannot be built, so callers can offer a retry. */
+  const exportToExcel = async (packs: GeneratedPack[]) => {
     if (!packs.length) {
       console.warn("No data to export");
       return;
     }
 
-    event("download", {
-      file_name: "BoosterPacks.xlsx",
-      file_extension: "xlsx",
-      pack_count: packs.length,
-    });
-
     setIsExporting(true);
     try {
       const { utils, writeFile } = await import("xlsx");
 
-      // Construct sheet data
-      const sheetData = packs.map((pack, index) => {
-        const row: Record<string, string | number> = { "Pack #": index + 1 };
-
-        // Order is load-bearing: controls pack slot assignment (cards 1–8) and Excel column order.
-        // Defined in src/constants/collections.ts — do NOT reorder.
-        BASE_COLLECTION_IDS.forEach((col) => {
-          const cards = pack.filter((card) => card.collection === col);
-          const displayName = COLLECTION_DISPLAY_NAMES[col] || col;
-          row[`${displayName} 1`] = cards[0]
-            ? `#${cards[0].number} - ${cards[0].name}`
-            : "";
-          row[`${displayName} 2`] = cards[1]
-            ? `#${cards[1].number} - ${cards[1].name}`
-            : "";
-        });
-
-        // Wildcard is whichever card is not a base-category card and not spoonbill.
-        const wildcard = pack.find(
-          (c) =>
-            !(BASE_COLLECTION_IDS as readonly string[]).includes(
-              c.collection,
-            ) && c.collection !== COLLECTION_IDS.SPOONBILL,
-        );
-        row["Wildcard"] = wildcard
-          ? `#${wildcard.number} - ${wildcard.name}`
-          : "";
-
-        const spoonbill = pack.find(
-          (card) => card.collection === COLLECTION_IDS.SPOONBILL,
-        );
-        row["Spoonbill"] = spoonbill
-          ? `#${spoonbill.number} - ${spoonbill.name}`
-          : "";
-
-        return row;
-      });
-
-      const ws = utils.json_to_sheet(sheetData);
+      const ws = utils.json_to_sheet(buildWorkbookRows(packs));
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, "Booster Packs");
-      writeFile(wb, "BoosterPacks.xlsx");
+      writeFile(wb, WORKBOOK_FILE_NAME);
+
+      // Marks the browser download being started, not a confirmed saved file.
+      event("download", {
+        file_name: WORKBOOK_FILE_NAME,
+        file_extension: "xlsx",
+        pack_count: packs.length,
+      });
     } finally {
       setIsExporting(false);
     }

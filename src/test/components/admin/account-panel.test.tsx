@@ -8,7 +8,7 @@ let mockUser: {
   primaryEmailAddress: { emailAddress: string };
 } | null;
 
-vi.mock("@clerk/clerk-react", () => ({
+vi.mock("@clerk/react", () => ({
   useClerk: () => ({ openUserProfile: mockOpenUserProfile }),
   useUser: () => ({ user: mockUser, isLoaded: true }),
 }));

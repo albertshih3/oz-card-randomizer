@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
 import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";

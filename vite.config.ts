@@ -1,11 +1,11 @@
 import { defineConfig } from "vite";
 import type { IncomingMessage, ServerResponse } from "http";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
-import { VitePluginRadar } from "vite-plugin-radar";
+import tailwindcss from "@tailwindcss/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   server: {
     port: Number(process.env.PORT) || 5173,
     strictPort: true,
@@ -33,12 +33,6 @@ export default defineConfig({
       },
     },
     react(),
-    tsconfigPaths(),
-    VitePluginRadar({
-      // Google Analytics tag injection
-      analytics: {
-        id: "G-Q4K84LKR3M",
-      },
-    }),
+    tailwindcss(),
   ],
 });

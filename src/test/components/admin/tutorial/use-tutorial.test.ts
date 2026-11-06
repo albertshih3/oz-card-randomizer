@@ -145,3 +145,47 @@ describe("useTutorial", () => {
     expect(result.current.isActive).toBe(true);
   });
 });
+
+describe("useTutorial route coordination", () => {
+  it("keeps counting correctly when Next fires twice before a render", () => {
+    localStorage.setItem(STORAGE_KEY, "completed");
+    const { result } = renderHook(() => useTutorial(), { wrapper });
+    act(() => result.current.startTutorial());
+    act(() => {
+      result.current.nextStep();
+      result.current.nextStep();
+    });
+    expect(result.current.currentStep).toBe(2);
+  });
+
+  it("follows the route when it changes outside the tour", () => {
+    localStorage.setItem(STORAGE_KEY, "completed");
+    const { result, rerender } = renderHook(() => useTutorial(), { wrapper });
+    act(() => result.current.startTutorial());
+    mockPathname = "/admin/users";
+    rerender();
+    expect(TUTORIAL_STEPS[result.current.currentStep].route).toBe(
+      "/admin/users",
+    );
+  });
+
+  it("abortTutorial ends the tour without recording completion", () => {
+    localStorage.setItem(STORAGE_KEY, "in-progress");
+    const { result } = renderHook(() => useTutorial(), { wrapper });
+    act(() => result.current.startTutorial());
+    act(() => result.current.abortTutorial());
+    expect(result.current.isActive).toBe(false);
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("in-progress");
+  });
+
+  it("sends a first visit on a deep link to the tour's first route", () => {
+    vi.useFakeTimers();
+    mockPathname = "/admin/users";
+    const { result } = renderHook(() => useTutorial(), { wrapper });
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(result.current.isActive).toBe(true);
+    expect(mockNavigate).toHaveBeenCalledWith("/admin");
+  });
+});

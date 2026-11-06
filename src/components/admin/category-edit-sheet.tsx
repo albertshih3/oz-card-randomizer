@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/modal";
 import { M3Button } from "@/components/m3/button";
 import { Input } from "@heroui/input";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { BottomSheet } from "@/components/m3/bottom-sheet";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { validateCategoryForm, normalizeCategoryId } from "@/utils/validation";
@@ -11,7 +11,9 @@ import {
   createCategory,
   updateCategoryDisplayName,
   deleteCategory,
+  CategoryError,
 } from "@/utils/categories";
+import { REQUIRED_COLLECTION_IDS } from "@/constants/collections";
 import type { Category } from "@/utils/categories";
 import { Trash2, Save, X, AlertCircle } from "lucide-react";
 import { event } from "@/lib/gtag";
@@ -32,6 +34,7 @@ interface FormContentProps {
   formErrors: CategoryFormErrors;
   isSaving: boolean;
   showDeleteConfirm: boolean;
+  canDelete: boolean;
   mode: EditMode;
   onDisplayNameChange: (v: string) => void;
   onCategoryIdChange: (v: string) => void;
@@ -47,6 +50,7 @@ function FormContent({
   formErrors,
   isSaving,
   showDeleteConfirm,
+  canDelete,
   mode,
   onDisplayNameChange,
   onCategoryIdChange,
@@ -106,8 +110,8 @@ function FormContent({
             className="text-body-medium"
             style={{ color: "var(--md-sys-color-on-error-container)" }}
           >
-            Warning: Deleting a category does not delete its cards. Cards in
-            this category will become inaccessible until manually moved.
+            A category must be empty first. If it still has cards, you&apos;ll
+            be asked to move or delete them.
           </p>
           <div className="flex gap-2">
             <M3Button variant="tonal" onPress={onDeleteCancel}>
@@ -126,7 +130,7 @@ function FormContent({
       )}
 
       <div className="flex justify-between items-center pt-2">
-        {mode === "edit" && !showDeleteConfirm && (
+        {canDelete && !showDeleteConfirm && (
           <M3Button
             variant="outlined"
             color="error"
@@ -221,7 +225,9 @@ export function CategoryEditSheet({
       onClose();
     } catch (err) {
       console.error(err);
-      onError("Failed to save category.");
+      onError(
+        err instanceof CategoryError ? err.message : "Failed to save category.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -231,13 +237,17 @@ export function CategoryEditSheet({
     if (!category) return;
     setIsSaving(true);
     try {
-      await deleteCategory(category.id, getToken);
-      event("category_deleted", { category_id: category.id });
+      await deleteCategory(category.name, getToken);
+      event("category_deleted", { category_id: category.name });
       onSaved();
       onClose();
     } catch (err) {
       console.error(err);
-      onError("Failed to delete category.");
+      onError(
+        err instanceof CategoryError
+          ? err.message
+          : "Failed to delete category.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -248,6 +258,10 @@ export function CategoryEditSheet({
     formErrors,
     isSaving,
     showDeleteConfirm,
+    canDelete:
+      mode === "edit" &&
+      !!category &&
+      !REQUIRED_COLLECTION_IDS.includes(category.name),
     mode,
     onDisplayNameChange: (v) => {
       setFormData((p) => ({ ...p, displayName: v }));
@@ -271,6 +285,7 @@ export function CategoryEditSheet({
       <BottomSheet
         isOpen={isOpen}
         onClose={onClose}
+        isDismissable={!isSaving}
         aria-labelledby="cat-edit-title"
       >
         <div className="px-2 pb-6">
@@ -291,6 +306,8 @@ export function CategoryEditSheet({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      isDismissable={!isSaving}
+      isKeyboardDismissDisabled={isSaving}
       size="md"
       hideCloseButton
       aria-labelledby="cat-edit-title"

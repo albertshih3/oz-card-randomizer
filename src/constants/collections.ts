@@ -19,6 +19,22 @@ export const BASE_COLLECTION_IDS = [
   COLLECTION_IDS.AFRICAN_SAVANNA,
 ] as const satisfies readonly string[];
 
+/** Pack generation depends on these, so they can never be deleted. */
+export const REQUIRED_COLLECTION_IDS: readonly string[] = [
+  ...BASE_COLLECTION_IDS,
+  COLLECTION_IDS.SPOONBILL,
+];
+
+/** IDs that are not card collections, or are held back for internal use. */
+export const RESERVED_COLLECTION_IDS: readonly string[] = [
+  "categories",
+  "admin",
+  "approvals",
+  "users",
+  "settings",
+  "ratelimits",
+];
+
 export const COLLECTION_DISPLAY_NAMES: Record<string, string> = {
   [COLLECTION_IDS.TROPICAL_RAINFOREST]: "Tropical Rainforest",
   [COLLECTION_IDS.CHILDRENS_ZOO]: "Children's Zoo",

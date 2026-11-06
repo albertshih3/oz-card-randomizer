@@ -1,20 +1,26 @@
 import { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { ModalSurface } from "@/components/m3/modal-surface";
 
 interface BottomSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Set to false while saving so the sheet cannot close mid-operation. */
+  isDismissable?: boolean;
   children: ReactNode;
   "aria-labelledby"?: string;
 }
 
 export function BottomSheet(props: BottomSheetProps) {
-  const { isOpen, onClose, children } = props;
+  const { isOpen, onClose, isDismissable = true, children } = props;
+  const dismiss = isDismissable ? onClose : undefined;
 
-  return (
+  // Portaled because a transformed ancestor would capture `position: fixed`.
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
+        <ModalSurface key="m3-bs-surface" onEscape={dismiss}>
           <motion.div
             key="m3-bs-backdrop"
             className="fixed inset-0 bg-black/40 z-40"
@@ -22,7 +28,7 @@ export function BottomSheet(props: BottomSheetProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={onClose}
+            onClick={dismiss}
           />
           <motion.div
             key="m3-bs-sheet"
@@ -45,12 +51,13 @@ export function BottomSheet(props: BottomSheetProps) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            drag="y"
+            tabIndex={-1}
+            drag={isDismissable ? "y" : false}
             dragConstraints={{ top: 0 }}
             dragElastic={0.1}
             onDragEnd={(_event, info) => {
               if (info.offset.y > 100) {
-                onClose();
+                dismiss?.();
               }
             }}
           >
@@ -64,8 +71,9 @@ export function BottomSheet(props: BottomSheetProps) {
             </div>
             {children}
           </motion.div>
-        </>
+        </ModalSurface>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

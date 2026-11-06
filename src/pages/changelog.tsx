@@ -146,7 +146,7 @@ export default function Changelog() {
                 onClick={() => toggleVersion(entry.version)}
                 aria-expanded={expandedVersion === entry.version}
                 aria-controls={`changelog-panel-${entry.version}`}
-                className="w-full flex items-center justify-between p-6 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] focus-visible:ring-offset-2"
+                className="w-full flex items-center justify-between p-6 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] focus-visible:ring-offset-2"
               >
                 <div className="flex items-center gap-4">
                   <div
