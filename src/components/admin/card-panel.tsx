@@ -311,16 +311,18 @@ export function CardPanel() {
           ))}
         </div>
 
-        <M3Button
-          data-tutorial-id="new-card-btn"
-          variant="filled"
-          size="sm"
-          className="hidden lg:flex ml-auto"
-          onPress={openCreateSheet}
-          startContent={<Plus size={16} />}
-        >
-          New Card
-        </M3Button>
+        {/* The wrapper owns visibility: M3Button sets its own display. */}
+        <div className="hidden lg:block ml-auto">
+          <M3Button
+            data-tutorial-id="new-card-btn"
+            variant="filled"
+            size="sm"
+            onPress={openCreateSheet}
+            startContent={<Plus size={16} />}
+          >
+            New Card
+          </M3Button>
+        </div>
       </div>
 
       {loadError && !isPending && (

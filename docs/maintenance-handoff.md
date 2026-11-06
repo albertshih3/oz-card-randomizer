@@ -94,3 +94,29 @@ metadata and one card; 5 cards store `number` as an integer; many cards carry le
   `VITE_GA_ID` is no longer read and can be removed.
 - `initGtag` had never run in production, and it pushed arrays, which gtag.js ignores.
   It now pushes Arguments objects, as the real snippet does.
+
+## Batch D — dependencies
+
+Every upgrade is its own commit where the lockfile allowed it. Current targets and
+the exceptions that remain:
+
+| Area                          | Now                         | Exception and revisit trigger                                                                                                                               |
+| ----------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vite, Vitest, React plugin    | 8, 5, 6                     | None                                                                                                                                                        |
+| Clerk                         | `@clerk/react` 6 (Core 3)   | Sign-in uses `@clerk/react/legacy`, the supported path for existing custom flows. Revisit if Clerk retires it.                                              |
+| Firebase                      | 13                          | None                                                                                                                                                        |
+| Router, React, Motion, Lucide | 7, 19.3, 14, 1              | None                                                                                                                                                        |
+| ESLint                        | 9                           | Latest is 10, but eslint-plugin-react and jsx-a11y peer ranges stop at 9. Revisit when they add 10.                                                         |
+| TypeScript                    | 6.0.3                       | Latest is 7, but typescript-eslint requires `<6.1.0`. Revisit when it widens.                                                                               |
+| Tailwind                      | 4                           | None                                                                                                                                                        |
+| HeroUI                        | v2 line, latest             | v3 (`@heroui/react`) is a component rewrite. v2 now works on Tailwind 4, so a rewrite is not justified for this pass. Revisit if v2 stops getting releases. |
+| `tailwind.config.js`          | Kept via `@config`          | Needed for the HeroUI plugin.                                                                                                                               |
+| SheetJS                       | 0.20.3 from cdn.sheetjs.com | Off npm by design: SheetJS no longer publishes there. Lockfile pins integrity. Check the CDN for new releases.                                              |
+
+Tailwind 4 was checked with 32 before/after screenshots (8 pages, light and dark,
+desktop and mobile). It raises the browser floor to Safari 16.4, Chrome 111, and
+Firefox 128. Two intended visual changes remain: slightly different orange badges
+(OKLCH palette), and the banner icon's translucent chip now renders, which Tailwind
+3 dropped because it could not apply opacity to a CSS variable.
+
+`legacy-peer-deps=true` stays: `npm ci` without it has not been proven clean.

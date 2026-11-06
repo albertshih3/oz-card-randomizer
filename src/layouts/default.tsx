@@ -65,7 +65,7 @@ export default function DefaultLayout({
           </div>
         </section>
       )}
-      <main className="mx-auto w-full max-w-7xl flex-grow px-4 pt-4 sm:px-6 md:pt-8">
+      <main className="mx-auto w-full max-w-7xl grow px-4 pt-4 sm:px-6 md:pt-8">
         {children}
       </main>
       <footer className="flex w-full items-center justify-center px-4 py-5">

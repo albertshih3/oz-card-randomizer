@@ -183,7 +183,7 @@ function OtpInput({
           onFocus={() => setFocusedIndex(i)}
           onBlur={() => setFocusedIndex(null)}
           aria-label={`Digit ${i + 1}`}
-          className="w-11 h-14 text-center text-xl font-semibold rounded-xl border-2 outline-none transition-all duration-150"
+          className="w-11 h-14 text-center text-xl font-semibold rounded-xl border-2 outline-hidden transition-all duration-150"
           style={{
             backgroundColor: "transparent",
             borderColor:
@@ -481,7 +481,7 @@ export default function SignInPage() {
                           showPassword ? "Hide password" : "Show password"
                         }
                         onClick={() => setShowPassword((v) => !v)}
-                        className="focus:outline-none"
+                        className="focus:outline-hidden"
                       >
                         {showPassword ? (
                           <EyeOff size={16} />
@@ -702,7 +702,7 @@ export default function SignInPage() {
                           showNewPassword ? "Hide password" : "Show password"
                         }
                         onClick={() => setShowNewPassword((v) => !v)}
-                        className="focus:outline-none"
+                        className="focus:outline-hidden"
                       >
                         {showNewPassword ? (
                           <EyeOff size={16} />

@@ -161,7 +161,7 @@ export function TutorialPopover({ target }: { target: TutorialTarget }) {
         initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        className="shadow-elevation-2 outline-none"
+        className="shadow-elevation-2 outline-hidden"
         style={isDesktop ? desktopStyle : mobileStyle}
       >
         <p

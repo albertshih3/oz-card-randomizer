@@ -132,7 +132,7 @@ export default function DocsPage() {
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <span
-                        className="p-1 rounded-full mt-0.5 flex-shrink-0"
+                        className="p-1 rounded-full mt-0.5 shrink-0"
                         style={{
                           background: "var(--md-sys-color-primary-container)",
                           color: "var(--md-sys-color-on-primary-container)",
@@ -192,7 +192,7 @@ export default function DocsPage() {
                   ].map((step, i) => (
                     <li key={i} className="flex gap-3">
                       <span
-                        className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-label-medium"
+                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-label-medium"
                         style={{
                           background: "var(--md-sys-color-secondary-container)",
                           color: "var(--md-sys-color-on-secondary-container)",
@@ -249,7 +249,7 @@ export default function DocsPage() {
                   ].map((step, i) => (
                     <li key={i} className="flex gap-3">
                       <span
-                        className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-label-medium"
+                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-label-medium"
                         style={{
                           background: "var(--md-sys-color-tertiary-container)",
                           color: "var(--md-sys-color-on-tertiary-container)",
@@ -307,7 +307,7 @@ export default function DocsPage() {
                   color: "var(--md-sys-color-on-error-container)",
                 }}
               >
-                <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
                 <div>
                   <p className="text-label-large">
                     IMPORTANT: Please only edit cards if you have explicit
@@ -387,7 +387,7 @@ export default function DocsPage() {
                       {card.items.map((item, i) => (
                         <li key={i} className="flex items-start gap-2">
                           <div
-                            className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
+                            className="w-1.5 h-1.5 rounded-full mt-2 shrink-0"
                             style={{
                               background: "var(--md-sys-color-primary)",
                             }}

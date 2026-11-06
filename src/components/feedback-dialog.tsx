@@ -23,7 +23,7 @@ const FEEDBACK_TYPES: { value: FeedbackType; label: string }[] = [
 ];
 
 const fieldClassName =
-  "w-full rounded-[16px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-4 py-3 text-body-medium text-[var(--md-sys-color-on-surface)] outline-none transition-colors duration-short4 ease-standard placeholder:text-[var(--md-sys-color-on-surface-variant)] focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-[0.38]";
+  "w-full rounded-[16px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-4 py-3 text-body-medium text-[var(--md-sys-color-on-surface)] outline-hidden transition-colors duration-short4 ease-standard placeholder:text-[var(--md-sys-color-on-surface-variant)] focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-[0.38]";
 
 interface FeedbackDialogProps {
   isOpen: boolean;

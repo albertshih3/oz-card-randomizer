@@ -230,7 +230,7 @@ export default function IndexPage() {
           initial={entrance.initial}
           animate={entrance.animate}
           transition={{ duration: 0.42, ease: [0.2, 0, 0, 1] }}
-          className="flex flex-col gap-4 rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-5 shadow-sm sm:p-6 md:flex-row md:items-end md:justify-between"
+          className="flex flex-col gap-4 rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-5 shadow-xs sm:p-6 md:flex-row md:items-end md:justify-between"
         >
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-label-large text-[var(--md-sys-color-primary)]">
@@ -299,7 +299,7 @@ export default function IndexPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-4 shadow-sm sm:p-5">
+            <div className="rounded-[28px] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] p-4 shadow-xs sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-title-large text-[var(--md-sys-color-on-surface)]">
@@ -388,7 +388,7 @@ export default function IndexPage() {
                     transition={{ duration: 0.3, ease: M3_STANDARD_EASING }}
                     className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl bg-[var(--md-sys-color-primary-container)]/45 px-5 py-10 text-center"
                   >
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-sm">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs">
                       <PackageOpen className="h-8 w-8" />
                     </div>
                     <p className="text-title-medium text-[var(--md-sys-color-on-surface)]">
@@ -431,7 +431,7 @@ export default function IndexPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className={`overflow-hidden rounded-3xl border transition-all duration-200 ${
                         expandedPackId === packItem.id
-                          ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-sm"
+                          ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-xs"
                           : "border-[var(--md-sys-color-outline-variant)] bg-transparent hover:border-[var(--md-sys-color-primary)]"
                       }`}
                     >

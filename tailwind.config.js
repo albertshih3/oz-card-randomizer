@@ -102,6 +102,6 @@ export default {
       },
     },
   },
-  darkMode: ["class", "class"],
-  plugins: [heroui(), import("tailwindcss-animate")],
+  darkMode: "class",
+  plugins: [heroui()],
 };
