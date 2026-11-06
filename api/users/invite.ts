@@ -7,6 +7,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
+  res.setHeader("Cache-Control", "private, no-store");
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     res.status(405).end();

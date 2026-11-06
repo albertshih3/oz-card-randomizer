@@ -285,6 +285,7 @@ export function CategoryEditSheet({
       <BottomSheet
         isOpen={isOpen}
         onClose={onClose}
+        isDismissable={!isSaving}
         aria-labelledby="cat-edit-title"
       >
         <div className="px-2 pb-6">
@@ -305,6 +306,8 @@ export function CategoryEditSheet({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      isDismissable={!isSaving}
+      isKeyboardDismissDisabled={isSaving}
       size="md"
       hideCloseButton
       aria-labelledby="cat-edit-title"

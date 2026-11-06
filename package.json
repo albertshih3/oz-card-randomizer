@@ -39,6 +39,8 @@
     "@heroui/system": "^2.4.28",
     "@heroui/table": "^2.2.32",
     "@heroui/theme": "^2.4.26",
+    "@react-aria/focus": "^3.22.1",
+    "@react-aria/overlays": "^3.32.1",
     "@react-aria/visually-hidden": "^3.9.1",
     "@react-types/shared": "^3.37.0",
     "@vercel/analytics": "^2.0.1",

@@ -112,6 +112,7 @@ function AnimatedAnnouncementLink({
       if (ripple.isConnected) ripple.remove();
     }, 650);
 
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     isPressedRef.current = true;
     element.style.transition =
       "border-radius 100ms cubic-bezier(0.4, 0, 1, 1), transform 100ms cubic-bezier(0.4, 0, 1, 1)";

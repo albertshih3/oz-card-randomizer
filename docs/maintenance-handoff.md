@@ -120,3 +120,16 @@ Firefox 128. Two intended visual changes remain: slightly different orange badge
 3 dropped because it could not apply opacity to a CSS variable.
 
 `legacy-peer-deps=true` stays: `npm ci` without it has not been proven clean.
+
+## Batch H — UI maintenance
+
+- Bottom sheets and the mobile drawer share `ModalSurface`: focus trap and return,
+  Escape, scroll lock, and hidden background, built on React Aria. Sheets cannot be
+  dismissed while saving.
+- Switches, search, and view toggles have accessible names. Grid and list edit
+  buttons have larger hit areas.
+- `MotionConfig reducedMotion="user"` covers every Motion surface; the button morph
+  and ripple respect it too.
+- Preferences survive denied storage (`src/lib/safe-storage.ts`).
+- About and Changelog are lazy-loaded. The entry chunk is 155 kB (47 kB gzip); the
+  audit measured 1,178 kB in one chunk.

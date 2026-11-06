@@ -178,6 +178,9 @@ export const M3Button = forwardRef<HTMLButtonElement, M3ButtonProps>(
       // --- Shape morph: pill → rect, fast decelerate ---
       // borderRadius and transform are NOT in React's style prop, so reconciliation
       // will never overwrite these direct DOM changes between re-renders.
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        return;
+      }
       isPressedRef.current = true;
       el.style.transition = MORPH_PRESS;
       el.style.borderRadius = PRESS_RADIUS[size];

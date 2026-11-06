@@ -315,6 +315,7 @@ export function CardEditSheet({
       <BottomSheet
         isOpen={isOpen}
         onClose={onClose}
+        isDismissable={!isSaving}
         aria-labelledby="card-edit-title"
       >
         <div className="px-2 pb-6">
@@ -335,6 +336,8 @@ export function CardEditSheet({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      isDismissable={!isSaving}
+      isKeyboardDismissDisabled={isSaving}
       size="lg"
       hideCloseButton
       aria-labelledby="card-edit-title"

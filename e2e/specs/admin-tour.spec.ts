@@ -226,3 +226,48 @@ test.describe("mobile", () => {
     expect(pageErrors).toEqual([]);
   });
 });
+
+test.describe("modal surfaces", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the bottom sheet traps focus, closes on Escape, and returns focus", async ({
+    page,
+  }) => {
+    await setup(page);
+    await page.goto("/admin");
+    const trigger = page.getByRole("button", { name: "New card" });
+    await trigger.click();
+
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toBeVisible();
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press("Tab");
+      const inside = await sheet.evaluate((el) =>
+        el.contains(document.activeElement),
+      );
+      expect(inside).toBe(true);
+    }
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test("the navigation drawer closes on Escape and returns focus", async ({
+    page,
+  }) => {
+    await setup(page);
+    await page.goto("/admin");
+    const trigger = page.getByRole("button", {
+      name: "Open navigation menu",
+    });
+    await trigger.click();
+    await expect(
+      page.getByRole("dialog", { name: "Navigation menu" }),
+    ).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+});
