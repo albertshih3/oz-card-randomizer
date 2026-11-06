@@ -5,6 +5,7 @@ const { state, ops } = vi.hoisted(() => ({
     byName: [] as string[],
     canonicalExists: true,
     count: 0,
+    countFails: false,
   },
   ops: [] as string[],
 }));
@@ -32,6 +33,7 @@ vi.mock("firebase-admin/firestore", () => ({
       count: () => ({
         get: async () => {
           ops.push("count");
+          if (state.countFails) throw new Error("firestore down");
           return { data: () => ({ count: state.count }) };
         },
       }),
@@ -79,6 +81,7 @@ describe("POST /api/categories/delete", () => {
     state.byName = [];
     state.canonicalExists = true;
     state.count = 0;
+    state.countFails = false;
     vi.mocked(requireApproved).mockClear();
   });
 
@@ -129,6 +132,18 @@ describe("POST /api/categories/delete", () => {
     await handler(makeReq("disney"), res);
     expect(result.status).toBe(409);
     expect(JSON.stringify(result.body)).toContain("3 cards");
+    expect(ops).toEqual([
+      "mark:true:categories/disney",
+      "count",
+      "mark:false:categories/disney",
+    ]);
+  });
+
+  it("reopens the category if anything fails after it was closed", async () => {
+    state.countFails = true;
+    const { res, result } = makeRes();
+    await handler(makeReq("disney"), res);
+    expect(result.status).toBe(500);
     expect(ops).toEqual([
       "mark:true:categories/disney",
       "count",

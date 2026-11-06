@@ -14,6 +14,21 @@ const REQUIRED_CATEGORIES = new Set([
 ]);
 
 /**
+ * Clears the `deleting` mark after a failure. Without this the category would
+ * stay closed to card writes with no way to reopen it from the app.
+ */
+async function reopen(refs: DocumentReference[]): Promise<void> {
+  if (refs.length === 0) return;
+  try {
+    const batch = getFirestore(getFirebaseAdminApp()).batch();
+    refs.forEach((ref) => batch.update(ref, { deleting: false }));
+    await batch.commit();
+  } catch (err) {
+    console.error("[POST /api/categories/delete] could not reopen", err);
+  }
+}
+
+/**
  * Deletes an empty optional category. Runs here because a client cannot make
  * "empty, then delete" safe: the category is first marked `deleting`, which
  * firestore.rules treats as closed to card writes, and only then counted. A card
@@ -92,6 +107,7 @@ export default async function handler(
     res.status(200).json({ success: true });
   } catch (err) {
     console.error("[POST /api/categories/delete]", err);
+    await reopen(marked);
     res.status(500).json({ error: "Failed to delete category." });
   }
 }

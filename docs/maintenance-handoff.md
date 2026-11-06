@@ -5,27 +5,44 @@ exceptions, and the platform steps only the owner can do.
 
 ## Deployment runbook
 
-**Order matters. Merging before steps 1 to 3 locks every admin out**, because the
-API will require approval that nobody has yet. The public generator is unaffected
-until step 5.
+**Order matters. Complete steps 1 to 3 before merging.** Without them, every admin
+is locked out, because the API will require approval nobody has yet, and public
+feedback returns 503, because its rate limiter needs the new credential. Generating
+and exporting packs is unaffected throughout.
 
 1. **Create the credential.** Make a Firebase service account, base64-encode its
    JSON, and set `FIREBASE_SERVICE_ACCOUNT_JSON` in Vercel (all environments).
-2. **Approve existing admins.** Review `scripts/set-user-approval.mjs --list`, then
-   run `--approve <email> --apply` for each trusted account.
+2. **Approve existing admins in every Clerk instance your environments use.**
+   Approval is per instance, and `.env.local` holds the _development_ instance, so
+   pull production first:
+
+   ```bash
+   vercel env pull .env.production.local --environment=production
+   node --env-file=.env.production.local scripts/set-user-approval.mjs --list
+   node --env-file=.env.production.local scripts/set-user-approval.mjs \
+     --approve you@example.org --apply --instance=live
+   ```
+
+   The script prints which instance it is using and refuses to write unless
+   `--instance` matches. Repeat with `.env.local` and `--instance=test` for the
+   instance previews use.
+
 3. **Set `AUTHORIZED_PARTIES`** if any origin besides production and this project's
    preview URLs needs access.
 4. **Deploy to preview and smoke test:** sign in, password reset, MFA, public
-   generation and export, card create/edit/delete, category delete, invitation.
+   generation and export, feedback, invitation, and card and category edits. If
+   preview shares the production Firestore project, these writes are live: use a
+   throwaway category and delete it afterward.
 5. **Migrate categories, then deploy rules, in that order.** Back up Firestore, run
    `scripts/migrate-categories.mjs` (preview) and review it, then `--apply`, then
    `firebase deploy --only firestore:rules`. Rules before migration breaks the public
-   catalog. Old clients keep working on the old rules until you deploy.
+   catalog. Existing clients keep working on the old rules until you deploy.
 6. **Promote to production.**
-7. **Follow up:** add a TTL policy on `rateLimits.expiresAt`, add the two Clerk
-   domains seen in report-only CSP violations and then enforce the CSP, remove
-   `VITE_GA_ID`, turn off Clerk's Firebase integration, and mark the CI checks as
-   required in branch protection.
+7. **Follow up:** add a TTL policy on `rateLimits.expiresAt`; check the browser
+   console on preview for CSP report-only violations, correct the allowed origins,
+   then enforce the CSP (no report endpoint is configured); remove `VITE_GA_ID`; turn
+   off Clerk's Firebase integration; and mark the CI checks as required in branch
+   protection.
 
 **Rollback.** If approval misbehaves, fix provisioning or disable mutations. Do not
 restore the old catch-all rules. Each dependency commit reverts on its own with its

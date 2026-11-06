@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 // Grants or revokes admin approval (Clerk publicMetadata.approved).
 //
-//   node --env-file=.env.local scripts/set-user-approval.mjs --list
-//   node --env-file=.env.local scripts/set-user-approval.mjs --approve user@example.org
-//   node --env-file=.env.local scripts/set-user-approval.mjs --revoke user@example.org
+//   vercel env pull .env.production.local --environment=production
+//   node --env-file=.env.production.local scripts/set-user-approval.mjs --list
+//   node --env-file=.env.production.local scripts/set-user-approval.mjs --approve user@example.org
+//   node --env-file=.env.production.local scripts/set-user-approval.mjs --revoke user@example.org
 //
-// Changes are previewed unless --apply is passed. Revoked users lose API access
-// immediately and Firestore write access when their lease ends (15 minutes).
+// Approval is per Clerk instance, and .env.local usually holds the development
+// one. Changes are previewed unless --apply is passed, and --apply also needs
+// --instance=live or --instance=test to match the key in use. Revoked users lose
+// API access immediately and Firestore write access when their lease ends (15
+// minutes).
 import { createClerkClient } from "@clerk/backend";
 
 const args = process.argv.slice(2);
@@ -22,6 +26,18 @@ if (!mode || (mode !== "--list" && !email)) {
 }
 if (!process.env.CLERK_SECRET_KEY) {
   console.error("CLERK_SECRET_KEY is not set");
+  process.exit(1);
+}
+
+const instance = process.env.CLERK_SECRET_KEY.startsWith("sk_live_")
+  ? "live"
+  : "test";
+console.log(`Clerk instance: ${instance.toUpperCase()}`);
+
+if (apply && !args.includes(`--instance=${instance}`)) {
+  console.error(
+    `Refusing to write: pass --instance=${instance} to confirm this instance.`,
+  );
   process.exit(1);
 }
 
