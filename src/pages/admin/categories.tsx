@@ -21,6 +21,7 @@ export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isPending, setIsPending] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Category | null>(null);
@@ -46,7 +47,10 @@ export default function AdminCategoriesPage() {
     fetchCategories();
   }, [fetchCategories]);
 
+  // One write per category at a time, so a late failure cannot undo a later one.
   const handleToggleWildcard = async (cat: Category) => {
+    if (togglingIds.has(cat.id)) return;
+    setTogglingIds((prev) => new Set(prev).add(cat.id));
     const newValue = !cat.isWildcardEligible;
     setCategories((prev) =>
       prev.map((c) =>
@@ -70,6 +74,12 @@ export default function AdminCategoriesPage() {
         ),
       );
       setSnackbarMessage("Failed to update wildcard eligibility.");
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(cat.id);
+        return next;
+      });
     }
   };
 
@@ -229,6 +239,8 @@ export default function AdminCategoriesPage() {
                   {...(i === 0
                     ? { "data-tutorial-id": "wildcard-toggle" }
                     : {})}
+                  aria-label={`${cat.displayName} wildcard eligible`}
+                  isDisabled={togglingIds.has(cat.id)}
                   isSelected={cat.isWildcardEligible ?? false}
                   onValueChange={() => handleToggleWildcard(cat)}
                   size="sm"

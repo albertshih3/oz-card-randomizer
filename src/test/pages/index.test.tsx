@@ -46,6 +46,12 @@ vi.mock("@/hooks/use-booster-pack-generation", () => ({
   }),
 }));
 
+vi.mock("@/utils/cards", () => ({
+  readCollections: vi
+    .fn()
+    .mockResolvedValue({ byCollection: {}, malformed: 0 }),
+}));
+
 vi.mock("@/hooks/use-excel-export", () => ({
   useExcelExport: () => ({
     exportToExcel: vi.fn(),

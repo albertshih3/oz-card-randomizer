@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -6,17 +6,16 @@ import {
   listItemVariants,
   pageVariants,
 } from "@/lib/motion";
-import {
-  collection as firestoreCollection,
-  getDocs,
-  updateDoc,
-  doc,
-} from "firebase/firestore";
+import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ensureFirebaseAuth } from "@/lib/firebase-auth";
 import { getCategories } from "@/utils/categories";
+import { readCollections } from "@/utils/cards";
 import type { Category } from "@/utils/categories";
-import { COLLECTION_DISPLAY_NAMES } from "@/constants/collections";
+import {
+  COLLECTION_DISPLAY_NAMES,
+  REQUIRED_COLLECTION_IDS,
+} from "@/constants/collections";
 import { useAdminFiltersContext } from "@/contexts/admin-filters-context";
 import type { ViewMode } from "@/hooks/use-admin-filters";
 import { LinearProgress } from "@/components/m3/linear-progress";
@@ -43,6 +42,8 @@ interface SortDescriptor {
   direction: "ascending" | "descending";
 }
 
+const cardKey = (card: Card) => `${card.collection}:${card.id}`;
+
 function getDisplayName(
   collectionId: string,
   categoryMap?: Record<string, string>,
@@ -61,6 +62,10 @@ export function CardPanel() {
 
   const [cards, setCards] = useState<Card[]>([]);
   const [isPending, setIsPending] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [malformedCount, setMalformedCount] = useState(0);
+  const [togglingKeys, setTogglingKeys] = useState<Set<string>>(new Set());
+  const latestRequest = useRef(0);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Card | null>(null);
@@ -81,41 +86,39 @@ export function CardPanel() {
   }, [categories]);
 
   const fetchCards = useCallback(async () => {
+    // Only the latest request may update state, so switching categories while
+    // a read is in flight can never show the previous category's cards.
+    const requestId = ++latestRequest.current;
+    const isLatest = () => requestId === latestRequest.current;
+
     setIsPending(true);
+    setLoadError(null);
     try {
       const allCategories = await getCategories();
+      if (!isLatest()) return;
       setCategories(allCategories);
 
+      // Required sets are included even if their metadata is missing.
       const collectionsToFetch =
         filters.selectedCategory === "all"
-          ? allCategories.map((c) => c.name)
+          ? Array.from(
+              new Set([
+                ...allCategories.map((c) => c.name),
+                ...REQUIRED_COLLECTION_IDS,
+              ]),
+            )
           : [filters.selectedCategory];
 
-      const fetched: Card[] = [];
-      const seen = new Set<string>();
-
-      for (const colId of collectionsToFetch) {
-        const snap = await getDocs(firestoreCollection(db, colId));
-        snap.forEach((docSnap) => {
-          const key = `${colId}:${docSnap.id}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            const data = docSnap.data();
-            fetched.push({
-              id: docSnap.id,
-              collection: colId,
-              ...data,
-              active: data.active !== false,
-            } as Card);
-          }
-        });
-      }
-      setCards(fetched);
+      const { byCollection, malformed } =
+        await readCollections(collectionsToFetch);
+      if (!isLatest()) return;
+      setCards(Object.values(byCollection).flat());
+      setMalformedCount(malformed);
     } catch (err) {
       console.error("Error fetching cards:", err);
-      setSnackbarMessage("Failed to load cards.");
+      if (isLatest()) setLoadError("Failed to load cards.");
     } finally {
-      setIsPending(false);
+      if (isLatest()) setIsPending(false);
     }
   }, [filters.selectedCategory]);
 
@@ -199,16 +202,17 @@ export function CardPanel() {
     categoryDisplayMap,
   ]);
 
+  // One write per card at a time, so a late failure cannot undo a later toggle.
   const handleToggleActive = async (card: Card) => {
-    setIsPending(true);
-    // Optimistic update
-    setCards((prev) =>
-      prev.map((c) =>
-        c.id === card.id && c.collection === card.collection
-          ? { ...c, active: !c.active }
-          : c,
-      ),
-    );
+    const key = cardKey(card);
+    if (togglingKeys.has(key)) return;
+    const setActive = (active: boolean) =>
+      setCards((prev) =>
+        prev.map((c) => (cardKey(c) === key ? { ...c, active } : c)),
+      );
+
+    setTogglingKeys((prev) => new Set(prev).add(key));
+    setActive(!card.active);
     try {
       await ensureFirebaseAuth(getToken);
       await updateDoc(doc(db, card.collection, card.id), {
@@ -216,17 +220,14 @@ export function CardPanel() {
       });
     } catch (err) {
       console.error(err);
-      // Revert optimistic update
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === card.id && c.collection === card.collection
-            ? { ...c, active: card.active }
-            : c,
-        ),
-      );
+      setActive(card.active);
       setSnackbarMessage("Failed to update card.");
     } finally {
-      setIsPending(false);
+      setTogglingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -258,6 +259,7 @@ export function CardPanel() {
         className="flex flex-wrap items-center gap-3 mb-4"
       >
         <Input
+          aria-label="Search cards"
           placeholder="Search cards..."
           value={filters.searchQuery}
           onValueChange={setSearchQuery}
@@ -288,6 +290,7 @@ export function CardPanel() {
             <button
               key={vm.key}
               onClick={() => setViewMode(vm.key)}
+              aria-label={`${vm.label} view`}
               aria-pressed={filters.viewMode === vm.key}
               className="flex items-center gap-1.5 px-3 py-1.5 text-label-medium transition-colors"
               style={
@@ -320,6 +323,25 @@ export function CardPanel() {
         </M3Button>
       </div>
 
+      {loadError && !isPending && (
+        <div
+          role="alert"
+          className="rounded-2xl p-4 mb-3 flex items-center justify-between"
+          style={{
+            background: "var(--md-sys-color-error-container)",
+            color: "var(--md-sys-color-on-error-container)",
+          }}
+        >
+          <p className="text-body-medium">{loadError}</p>
+          <button
+            onClick={fetchCards}
+            className="text-label-large hover:opacity-80 transition-opacity ml-4"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Card count */}
       <p
         className="text-body-medium mb-3"
@@ -327,7 +349,20 @@ export function CardPanel() {
       >
         {filteredCards.length} card{filteredCards.length !== 1 ? "s" : ""}
         {filters.selectedCategory !== "all" ? " in selected category" : ""}
+        {malformedCount > 0 &&
+          ` · ${malformedCount} hidden because of missing data`}
       </p>
+
+      {!isPending && !loadError && filteredCards.length === 0 && (
+        <p
+          className="text-body-medium py-6 text-center"
+          style={{ color: "var(--md-sys-color-on-surface-variant)" }}
+        >
+          {cards.length === 0
+            ? "No cards yet."
+            : "No cards match your search or filter."}
+        </p>
+      )}
 
       <div data-tutorial-id="card-list">
         <AnimatePresence mode="wait" initial={false}>
@@ -380,7 +415,9 @@ export function CardPanel() {
                         </TableCell>
                         <TableCell>
                           <Switch
+                            aria-label={`${card.name} active`}
                             isSelected={card.active}
+                            isDisabled={togglingKeys.has(cardKey(card))}
                             onValueChange={() => handleToggleActive(card)}
                             size="sm"
                           />
@@ -389,7 +426,7 @@ export function CardPanel() {
                           <button
                             onClick={() => openEditSheet(card)}
                             aria-label={`Edit ${card.name}`}
-                            className="p-1 rounded-lg"
+                            className="p-2 rounded-lg"
                             style={{ color: "var(--md-sys-color-primary)" }}
                           >
                             <Pencil size={16} />
@@ -462,6 +499,7 @@ export function CardPanel() {
                     <button
                       onClick={() => openEditSheet(card)}
                       aria-label={`Edit ${card.name}`}
+                      className="p-2.5 -m-2.5 rounded-lg"
                       style={{ color: "var(--md-sys-color-primary)" }}
                     >
                       <Pencil size={14} />
@@ -508,13 +546,16 @@ export function CardPanel() {
                     #{card.number}
                   </span>
                   <Switch
+                    aria-label={`${card.name} active`}
                     isSelected={card.active}
+                    isDisabled={togglingKeys.has(cardKey(card))}
                     onValueChange={() => handleToggleActive(card)}
                     size="sm"
                   />
                   <button
                     onClick={() => openEditSheet(card)}
                     aria-label={`Edit ${card.name}`}
+                    className="p-2 -m-1 rounded-lg"
                     style={{ color: "var(--md-sys-color-primary)" }}
                   >
                     <Pencil size={16} />

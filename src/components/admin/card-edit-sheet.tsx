@@ -214,7 +214,7 @@ export function CardEditSheet({
     } else if (card) {
       setFormData({
         name: card.name,
-        number: card.number,
+        number: String(card.number),
         collection: card.collection,
         active: card.active,
       });

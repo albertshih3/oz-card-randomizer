@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import DefaultLayout from "@/layouts/default";
-import { collection, getDocs } from "firebase/firestore";
 import { M3Button } from "@/components/m3/button";
 import {
   Modal,
@@ -14,12 +13,11 @@ import { Input } from "@heroui/input";
 import { Skeleton } from "@heroui/skeleton";
 import { toast } from "sonner";
 import { event, exception } from "@/lib/gtag";
-import { db } from "@/lib/firebase";
 import { getCategories, categoriesToLegacyFormat } from "@/utils/categories";
+import { readCollections } from "@/utils/cards";
 import {
-  BASE_COLLECTION_IDS,
-  COLLECTION_IDS,
   COLLECTION_DISPLAY_NAMES,
+  REQUIRED_COLLECTION_IDS,
 } from "@/constants/collections";
 import {
   MAX_PACKS_PER_EXPORT,
@@ -115,22 +113,18 @@ export default function IndexPage() {
         const legacyCollections = categoriesToLegacyFormat(categories);
         setCollections(legacyCollections);
 
-        const data: { [key: string]: Card[] } = {};
-        // Ensure we always include base categories, even if not listed in Firestore categories
-        const categoryIds = Array.from(
-          new Set([
-            ...legacyCollections.map((c) => c.id),
-            ...BASE_COLLECTION_IDS,
-            COLLECTION_IDS.SPOONBILL,
-          ]),
+        // Always include required sets, even if metadata does not list them.
+        const { byCollection } = await readCollections(
+          Array.from(
+            new Set([
+              ...legacyCollections.map((c) => c.id),
+              ...REQUIRED_COLLECTION_IDS,
+            ]),
+          ),
         );
-        for (const col of categoryIds) {
-          const querySnapshot = await getDocs(collection(db, col));
-          data[col] = querySnapshot.docs
-            .map(
-              (doc) => ({ id: doc.id, collection: col, ...doc.data() }) as Card,
-            )
-            .filter((card) => card.active !== false); // Consider cards active if 'active' is true or null/undefined
+        const data: CardsByCollection = {};
+        for (const [col, cards] of Object.entries(byCollection)) {
+          data[col] = cards.filter((card) => card.active);
         }
         setCardsData(data);
         setLoading(false);

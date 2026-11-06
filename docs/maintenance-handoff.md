@@ -67,3 +67,15 @@ metadata and one card; 5 cards store `number` as an integer; many cards carry le
   categories with cards left are considered, replacing the retry loop.
 - The workbook keeps its columns and filename and gains a final `Warnings` column.
 - `download` means the browser download started; it cannot confirm a saved file.
+
+## Batch F — category integrity and loading
+
+- Reading categories never writes, and a failed read rejects instead of returning
+  cached defaults. `createCategory` refuses to overwrite.
+- Deleting a category runs on the server. It marks the category `deleting`, which
+  rules treat as closed to card writes, then counts, then deletes. This closes the
+  race a client-side count cannot.
+- Cards are parsed in one place with identity taken from the snapshot, which also
+  fixes editing the 5 cards whose `number` is stored as an integer.
+- Stale card reads are discarded, and each card or category allows one write at a
+  time. Failed loads show a persistent, retryable error.

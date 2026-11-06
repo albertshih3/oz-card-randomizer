@@ -1,6 +1,11 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { updateDoc } from "firebase/firestore";
+
+const { mockTransactionSet } = vi.hoisted(() => ({
+  mockTransactionSet: vi.fn(),
+}));
 
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn().mockReturnValue({}),
@@ -8,7 +13,14 @@ vi.mock("firebase/firestore", () => ({
   updateDoc: vi.fn().mockResolvedValue(undefined),
   deleteDoc: vi.fn().mockResolvedValue(undefined),
   collection: vi.fn().mockReturnValue({}),
-  getDocs: vi.fn().mockResolvedValue({ docs: [] }),
+  getDocs: vi.fn().mockResolvedValue({ forEach: vi.fn() }),
+  runTransaction: vi.fn(
+    async (_db: unknown, fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        get: async () => ({ exists: () => false }),
+        set: mockTransactionSet,
+      }),
+  ),
 }));
 vi.mock("firebase/auth", () => ({
   signInWithCustomToken: vi.fn().mockResolvedValue(undefined),
@@ -126,7 +138,6 @@ vi.mock("@/components/m3/bottom-sheet", () => ({
 }));
 
 import { CategoryEditSheet } from "@/components/admin/category-edit-sheet";
-import { setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { event } from "@/lib/gtag";
 
 const testCategory = {
@@ -163,7 +174,7 @@ describe("CategoryEditSheet — OAK-105", () => {
     await waitFor(() =>
       expect(screen.getByText("Display name is required.")).toBeInTheDocument(),
     );
-    expect(setDoc).not.toHaveBeenCalled();
+    expect(mockTransactionSet).not.toHaveBeenCalled();
   });
 
   it("shows validation error when Category ID is empty in create mode", async () => {
@@ -173,7 +184,7 @@ describe("CategoryEditSheet — OAK-105", () => {
     await waitFor(() =>
       expect(screen.getByText("Category ID is required.")).toBeInTheDocument(),
     );
-    expect(setDoc).not.toHaveBeenCalled();
+    expect(mockTransactionSet).not.toHaveBeenCalled();
   });
 
   it("createCategory called with correct args on valid create; onSaved and onClose called", async () => {
@@ -181,7 +192,7 @@ describe("CategoryEditSheet — OAK-105", () => {
     await userEvent.type(screen.getByLabelText("Display Name"), "Test Zoo");
     await userEvent.type(screen.getByLabelText("Category ID"), "testzoo");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() => expect(setDoc).toHaveBeenCalled());
+    await waitFor(() => expect(mockTransactionSet).toHaveBeenCalled());
     expect(event).toHaveBeenCalledWith("category_created", {
       category_id: "testzoo",
     });
@@ -210,12 +221,14 @@ describe("CategoryEditSheet — OAK-105", () => {
     expect(defaultProps.onSaved).toHaveBeenCalled();
   });
 
-  it("delete confirmation appears on Delete press; deleteCategory called on Confirm; onSaved/onClose called", async () => {
+  it("delete confirmation appears on Delete press; the server is asked on Confirm; onSaved/onClose called", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
     render(
       <CategoryEditSheet
         {...defaultProps}
         mode="edit"
-        category={testCategory}
+        category={{ ...testCategory, id: "disney", name: "disney" }}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
@@ -225,12 +238,55 @@ describe("CategoryEditSheet — OAK-105", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /delete permanently/i }),
     );
-    await waitFor(() => expect(deleteDoc).toHaveBeenCalled());
-    expect(event).toHaveBeenCalledWith("category_deleted", {
-      category_id: "africansavanna",
-    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(event).toHaveBeenCalledWith("category_deleted", {
+        category_id: "disney",
+      }),
+    );
     expect(defaultProps.onSaved).toHaveBeenCalled();
     expect(defaultProps.onClose).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("offers no delete action for a required category", () => {
+    render(
+      <CategoryEditSheet
+        {...defaultProps}
+        mode="edit"
+        category={testCategory}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /^delete$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the server's reason when a category cannot be deleted", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "still has 2 cards" }), {
+            status: 409,
+          }),
+      ),
+    );
+    render(
+      <CategoryEditSheet
+        {...defaultProps}
+        mode="edit"
+        category={{ ...testCategory, id: "disney", name: "disney" }}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /delete permanently/i }),
+    );
+    await waitFor(() =>
+      expect(defaultProps.onError).toHaveBeenCalledWith("still has 2 cards"),
+    );
+    vi.unstubAllGlobals();
   });
 
   it("category ID error clears when user types in the field", async () => {
