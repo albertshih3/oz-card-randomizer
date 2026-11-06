@@ -33,12 +33,14 @@ and exporting packs is unaffected throughout.
    generation and export, feedback, invitation, and card and category edits. If
    preview shares the production Firestore project, these writes are live: use a
    throwaway category and delete it afterward.
-5. **Migrate categories, then deploy rules, in that order.** Back up Firestore, run
+5. **Merge and confirm production.** The new app works with the old rules and with
+   either category format, so this order leaves no gap. Deploying rules first would
+   block admin edits, because the old app's Firebase session has no approval claim.
+6. **Migrate categories, then deploy rules, in that order.** Run
    `scripts/migrate-categories.mjs` (preview) and review it, then `--apply`, then
-   `firebase deploy --only firestore:rules`. The preview counts every collection, and
-   `--apply` stops if any has no category, because the rules would hide it. Rules before migration breaks the public
-   catalog. Existing clients keep working on the old rules until you deploy.
-6. **Promote to production.**
+   `npx firebase deploy --only firestore:rules --project <id>`. The preview counts
+   every collection, and `--apply` stops if any has no category, because the rules
+   would hide it. Rules before migration breaks the public catalog.
 7. **Follow up:** add a TTL policy on `rateLimits.expiresAt`; check the browser
    console on preview for CSP report-only violations, correct the allowed origins,
    then enforce the CSP (no report endpoint is configured); turn
