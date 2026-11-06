@@ -1,10 +1,10 @@
 import { defineConfig } from "vite";
 import type { IncomingMessage, ServerResponse } from "http";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   server: {
     port: Number(process.env.PORT) || 5173,
     strictPort: true,
@@ -32,6 +32,5 @@ export default defineConfig({
       },
     },
     react(),
-    tsconfigPaths(),
   ],
 });
